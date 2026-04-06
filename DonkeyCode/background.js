@@ -731,20 +731,46 @@ async function openLoginWindowsThenQueueRestore(sessionName) {
   await chrome.storage.local.set({
     [STORAGE.PENDING_RESTORE]: trimmed,
   });
-  for (let i = 0; i < LOGIN_WINDOW_URLS.length; i++) {
-    await chrome.windows.create({
-      url: LOGIN_WINDOW_URLS[i],
-      focused: i === 0,
-    });
+  const width = 820;
+  const height = 880;
+  const top = 32;
+  const left0 = 40;
+  const gap = 12;
+  const w1 = await chrome.windows.create({
+    url: LOGIN_WINDOW_URLS[0],
+    focused: true,
+    type: "normal",
+    width,
+    height,
+    left: left0,
+    top,
+  });
+  let left2 = left0 + width + gap;
+  try {
+    const b1 = await chrome.windows.get(w1.id);
+    if (b1.left != null && b1.width != null) {
+      left2 = b1.left + b1.width + gap;
+    }
+  } catch (e) {
+    logWarn("could not read first login window bounds", e);
   }
-  log("login windows opened; pending restore", trimmed);
+  await chrome.windows.create({
+    url: LOGIN_WINDOW_URLS[1],
+    focused: false,
+    type: "normal",
+    width,
+    height,
+    left: left2,
+    top,
+  });
+  log("login windows opened side by side; pending restore", trimmed);
 }
 
 async function completePendingRestore() {
   const data = await chrome.storage.local.get(STORAGE.PENDING_RESTORE);
   const name = data[STORAGE.PENDING_RESTORE];
   if (!name || !String(name).trim()) {
-    throw new Error("No restore is waiting. Use “Restore after login” first.");
+    throw new Error("No session is waiting. Use Login First, then Continue.");
   }
   await chrome.storage.local.remove(STORAGE.PENDING_RESTORE);
   await restoreSessionInternal(String(name).trim());

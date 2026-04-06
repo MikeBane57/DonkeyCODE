@@ -69,6 +69,38 @@ body {
   display: none !important;
 }
 
+.login-first-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: #eef1f6;
+  border: 1px solid #d8dde4;
+  border-radius: 8px;
+}
+
+.login-first-label {
+  font-size: 12px;
+  color: #333;
+  margin: 0;
+}
+
+.login-first-select {
+  flex: 1;
+  min-width: 120px;
+  padding: 6px 8px;
+  border: 1px solid #c5cad3;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.login-first-btn {
+  padding: 8px 14px;
+  white-space: nowrap;
+}
+
 .section-title {
   margin: 12px 0 8px;
   font-size: 12px;
@@ -248,16 +280,32 @@ button.danger:hover {
 
 .session-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 4px;
   flex-shrink: 0;
   justify-content: flex-end;
+  align-items: center;
   max-width: 100%;
 }
 
-.session-actions button {
-  padding: 4px 8px;
-  font-size: 11px;
+button.btn-icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 8px;
+}
+
+button.btn-icon-launch {
+  padding: 0 10px;
+  width: auto;
+  min-width: auto;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .pending-banner {

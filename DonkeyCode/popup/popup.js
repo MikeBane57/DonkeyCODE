@@ -66,15 +66,33 @@ function updatePendingBanner(state) {
   const actions = $("pending-restore-actions");
   if (pending) {
     banner.textContent =
-      'Pending restore: "' +
+      'Ready to launch: "' +
       pending +
-      '". Sign in to both sites if needed, then click Continue.';
+      '". After signing in, click Continue below.';
     banner.classList.remove("hidden");
     actions.classList.remove("hidden");
   } else {
     banner.classList.add("hidden");
     actions.classList.add("hidden");
   }
+}
+
+function syncLoginFirstSelect(names) {
+  const sel = $("login-first-session");
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = "";
+  const opt0 = document.createElement("option");
+  opt0.value = "";
+  opt0.textContent = "— Select —";
+  sel.appendChild(opt0);
+  for (const n of names) {
+    const opt = document.createElement("option");
+    opt.value = n;
+    opt.textContent = n;
+    sel.appendChild(opt);
+  }
+  if (prev && names.includes(prev)) sel.value = prev;
 }
 
 async function loadState() {
@@ -89,6 +107,7 @@ async function loadState() {
 
     updatePendingBanner(state);
     renderSessions(state.sessions || []);
+    syncLoginFirstSelect(state.sessions || []);
     renderScripts(state.scripts || []);
     setStatus("");
   } catch (e) {
@@ -120,30 +139,30 @@ function renderSessions(names) {
 
     const btnEdit = document.createElement("button");
     btnEdit.type = "button";
-    btnEdit.textContent = "Edit";
+    btnEdit.className = "btn-icon";
+    btnEdit.textContent = "\u270F";
+    btnEdit.setAttribute("aria-label", "Edit session");
+    btnEdit.title = "Edit session";
     btnEdit.addEventListener("click", () => openSessionEditor(name));
 
-    const btnRestore = document.createElement("button");
-    btnRestore.type = "button";
-    btnRestore.textContent = "Restore";
-    btnRestore.addEventListener("click", () => restoreSession(name));
-
-    const btnLogin = document.createElement("button");
-    btnLogin.type = "button";
-    btnLogin.className = "secondary";
-    btnLogin.textContent = "After login";
-    btnLogin.title = "Open opssuite + swalife for sign-in, then continue restore";
-    btnLogin.addEventListener("click", () => restoreAfterLogin(name));
+    const btnLaunch = document.createElement("button");
+    btnLaunch.type = "button";
+    btnLaunch.className = "btn-icon btn-icon-launch secondary";
+    btnLaunch.textContent = "Launch";
+    btnLaunch.setAttribute("aria-label", "Launch session");
+    btnLaunch.title = "Launch saved windows and tabs";
+    btnLaunch.addEventListener("click", () => launchSession(name));
 
     const btnDelete = document.createElement("button");
     btnDelete.type = "button";
-    btnDelete.className = "danger";
-    btnDelete.textContent = "Delete";
+    btnDelete.className = "btn-icon danger";
+    btnDelete.textContent = "\uD83D\uDDD1";
+    btnDelete.setAttribute("aria-label", "Delete session");
+    btnDelete.title = "Delete session";
     btnDelete.addEventListener("click", () => deleteSession(name));
 
     actions.appendChild(btnEdit);
-    actions.appendChild(btnRestore);
-    actions.appendChild(btnLogin);
+    actions.appendChild(btnLaunch);
     actions.appendChild(btnDelete);
     li.appendChild(span);
     li.appendChild(actions);
@@ -263,24 +282,29 @@ async function saveSession() {
   }
 }
 
-async function restoreSession(name) {
-  setStatus("Restoring session…");
+async function launchSession(name) {
+  setStatus("Launching session…");
   try {
     await send("RESTORE_SESSION", { name });
-    setStatus('Session "' + name + '" restored (new windows opened).');
+    setStatus('Session "' + name + '" launched (new windows opened).');
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
     setStatus(String(e.message || e), true);
   }
 }
 
-async function restoreAfterLogin(name) {
+async function loginFirst() {
+  const name = ($("login-first-session") && $("login-first-session").value) || "";
+  if (!name.trim()) {
+    setStatus("Choose a session in the dropdown first.", true);
+    return;
+  }
   setStatus("Opening login windows…");
   try {
-    const res = await send("RESTORE_SESSION_AFTER_LOGIN", { name });
+    const res = await send("RESTORE_SESSION_AFTER_LOGIN", { name: name.trim() });
     updatePendingBanner(res);
     setStatus(
-      "Sign in to opssuite and swalife, then click Continue to open your saved session."
+      "Sign in to both sites, then click Continue to launch your saved session."
     );
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
@@ -289,11 +313,11 @@ async function restoreAfterLogin(name) {
 }
 
 async function completePendingRestore() {
-  setStatus("Opening saved session…");
+  setStatus("Launching saved session…");
   try {
     const res = await send("COMPLETE_PENDING_RESTORE", {});
     updatePendingBanner(res);
-    setStatus("Saved session windows opened.");
+    setStatus("Session launched.");
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
     setStatus(String(e.message || e), true);
@@ -390,6 +414,7 @@ $("btn-apply-source").addEventListener("click", applySourceUrl);
 $("btn-apply-extra").addEventListener("click", applyExtraUrls);
 $("btn-complete-pending").addEventListener("click", completePendingRestore);
 $("btn-cancel-pending").addEventListener("click", cancelPendingRestore);
+$("btn-login-first").addEventListener("click", loginFirst);
 
 $("session-editor-save").addEventListener("click", saveSessionEditor);
 $("session-editor-cancel").addEventListener("click", closeSessionEditor);

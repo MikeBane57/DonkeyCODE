@@ -22,6 +22,13 @@
     </nav>
 
     <section id="panel-sessions" class="panel active" role="tabpanel">
+      <div class="login-first-bar">
+        <label for="login-first-session" class="login-first-label">Session</label>
+        <select id="login-first-session" class="login-first-select" aria-label="Session for login first">
+          <option value="">— Select —</option>
+        </select>
+        <button type="button" id="btn-login-first" class="login-first-btn">Login First</button>
+      </div>
       <p id="pending-restore-banner" class="pending-banner hidden" role="status"></p>
       <div class="btn-row pending-actions hidden" id="pending-restore-actions">
         <button type="button" id="btn-complete-pending" class="secondary">Continue: open saved session</button>
@@ -39,8 +46,8 @@
       <ul id="session-list" class="list"></ul>
       <p id="sessions-empty" class="hint hidden">No saved sessions yet.</p>
       <p class="hint restore-hint">
-        <strong>Restore after login</strong> opens two windows (opssuite + swalife) so you can sign in, then use
-        <strong>Continue: open saved session</strong> to open your saved layout.
+        <strong>Login First</strong> opens two side-by-side windows (opssuite + swalife). Sign in, then click
+        <strong>Continue: open saved session</strong> to launch your saved layout.
       </p>
     </section>
 
