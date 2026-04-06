@@ -14,6 +14,7 @@ const STORAGE = {
   SESSIONS: "donkeycode_sessions",
   LAST_FETCH: "donkeycode_last_script_fetch_ms",
   PENDING_RESTORE: "donkeycode_pending_restore_session",
+  SETUP_DISMISSED: "donkeycode_setup_banner_dismissed",
 };
 
 /** Default URLs opened before restoring a session (user signs in, then continues). */
@@ -93,9 +94,32 @@ if (chrome.permissions && chrome.permissions.onRemoved) {
     if (details.origins && details.origins.length) {
       hasOptionalHostAccess().then((still) => {
         if (!still) unregisterBridgeContentScripts();
+        updateInstallBadge().catch(() => {});
       });
     }
   });
+}
+
+async function updateInstallBadge() {
+  try {
+    const dismissed = await chrome.storage.local.get(STORAGE.SETUP_DISMISSED);
+    if (dismissed[STORAGE.SETUP_DISMISSED]) {
+      await chrome.action.setBadgeText({ text: "" });
+      return;
+    }
+    const hasHost = await hasOptionalHostAccess();
+    const scripts = await getStoredScripts();
+    const needsPerm = !hasHost;
+    const needsScripts = scripts.length === 0;
+    if (needsPerm || needsScripts) {
+      await chrome.action.setBadgeText({ text: "!" });
+      await chrome.action.setBadgeBackgroundColor({ color: needsPerm ? "#C62828" : "#F57C00" });
+    } else {
+      await chrome.action.setBadgeText({ text: "" });
+    }
+  } catch (e) {
+    logWarn("updateInstallBadge", e);
+  }
 }
 
 function log(...args) {
@@ -559,6 +583,7 @@ async function loadScriptsFromRemote() {
 
   forgetAllInjections();
   log("scripts saved", next.length);
+  updateInstallBadge().catch(() => {});
   return next;
 }
 
@@ -580,14 +605,30 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.runtime.onStartup.addListener(() => {
   log("onStartup: refresh scripts");
   ensureHostAccessAndBridge().catch((e) => logError("startup host/bridge", e));
-  loadScriptsFromRemote().catch((e) => logError("startup refresh failed", e));
+  loadScriptsFromRemote()
+    .then(() => updateInstallBadge())
+    .catch((e) => {
+      logError("startup refresh failed", e);
+      updateInstallBadge();
+    });
 });
 
-chrome.runtime.onInstalled.addListener(() => {
-  log("onInstalled: refresh scripts + alarm");
+chrome.runtime.onInstalled.addListener((details) => {
+  log("onInstalled: refresh scripts + alarm", details && details.reason);
   ensureDailyAlarm();
   ensureHostAccessAndBridge().catch((e) => logError("install host/bridge", e));
-  loadScriptsFromRemote().catch((e) => logError("install refresh failed", e));
+  loadScriptsFromRemote()
+    .then(() => updateInstallBadge())
+    .catch((e) => {
+      logError("install refresh failed", e);
+      updateInstallBadge();
+    });
+  if (details.reason === "install") {
+    const url = chrome.runtime.getURL("welcome.html");
+    chrome.tabs.create({ url }).catch((e) => logWarn("welcome tab", e));
+  } else {
+    updateInstallBadge().catch(() => {});
+  }
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -689,6 +730,7 @@ async function toggleScript(scriptId, enabled) {
     forgetScriptEverywhere(scriptId);
     await resyncAllTabs();
   }
+  updateInstallBadge().catch(() => {});
 }
 
 function normalizeSessionSnapshot(snap) {
@@ -927,6 +969,8 @@ async function getStateForPopup() {
     extensionVersion = "";
   }
   const hasHostAccess = await hasOptionalHostAccess();
+  const setupData = await chrome.storage.local.get(STORAGE.SETUP_DISMISSED);
+  const setupDismissed = !!setupData[STORAGE.SETUP_DISMISSED];
   return {
     scripts,
     scriptSourceUrl: sourceUrl,
@@ -937,6 +981,7 @@ async function getStateForPopup() {
     loginUrls: LOGIN_WINDOW_URLS,
     extensionVersion,
     hasHostAccess,
+    setupDismissed,
   };
 }
 
@@ -964,7 +1009,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           if (granted) await ensureHostAccessAndBridge();
           else await unregisterBridgeContentScripts();
           const hasHostAccess = await hasOptionalHostAccess();
+          await updateInstallBadge();
           sendResponse({ ok: true, granted, hasHostAccess });
+          break;
+        }
+        case "DISMISS_SETUP_BANNER": {
+          await chrome.storage.local.set({ [STORAGE.SETUP_DISMISSED]: true });
+          await updateInstallBadge();
+          sendResponse({ ok: true });
+          break;
+        }
+        case "OPEN_WELCOME_TAB": {
+          const url = chrome.runtime.getURL("welcome.html");
+          await chrome.tabs.create({ url });
+          sendResponse({ ok: true });
           break;
         }
         case "REFRESH_SCRIPTS": {
@@ -1125,4 +1183,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 // Initial load
 ensureDailyAlarm();
 ensureHostAccessAndBridge().catch((e) => logError("initial host/bridge", e));
-loadScriptsFromRemote().catch((e) => logError("initial load failed", e));
+loadScriptsFromRemote()
+  .then(() => updateInstallBadge())
+  .catch((e) => {
+    logError("initial load failed", e);
+    updateInstallBadge();
+  });

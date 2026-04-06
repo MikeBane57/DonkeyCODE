@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Welcome to DonkeyCode</title>
+    <link rel="stylesheet" href="welcome.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="hero">
+        <img src="icons/icon48.png" alt="" width="48" height="48" class="hero-icon" />
+        <h1>Welcome to DonkeyCode</h1>
+        <p class="lead">A few quick steps and you’re ready to use user scripts and saved sessions.</p>
+      </header>
+
+      <ol class="steps">
+        <li class="step" id="step-access">
+          <h2>1. Allow website access</h2>
+          <p>
+            DonkeyCode needs permission to run on <strong>http</strong> and <strong>https</strong> pages so your
+            scripts can inject. We don’t use broad “read all data” at install—you choose here.
+          </p>
+          <p id="access-status" class="status-line"></p>
+          <button type="button" id="btn-allow" class="btn primary">Allow website access</button>
+        </li>
+        <li class="step">
+          <h2>2. Pin the extension (optional)</h2>
+          <p>
+            Click the <strong>puzzle piece</strong> in the toolbar → find <strong>DonkeyCode</strong> → click the
+            pin so the donkey icon stays visible.
+          </p>
+        </li>
+        <li class="step">
+          <h2>3. Load scripts</h2>
+          <p>Open Settings (gear icon in the popup), check your script source URL, then click <strong>Refresh scripts</strong>.</p>
+          <button type="button" id="btn-open-panel" class="btn secondary">Open DonkeyCode in this tab</button>
+        </li>
+      </ol>
+
+      <p class="footer-links">
+        <a href="https://github.com/MikeBane57/DonkeyCODE/blob/main/DonkeyCode/PRIVACY.md" target="_blank" rel="noopener noreferrer">Privacy policy</a>
+      </p>
+    </div>
+    <script src="welcome.js"></script>
+  </body>
+</html>

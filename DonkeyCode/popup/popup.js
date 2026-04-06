@@ -77,6 +77,32 @@ function updatePendingBanner(state) {
   }
 }
 
+function updateSetupBanner(state) {
+  const bar = $("setup-banner");
+  const text = $("setup-banner-text");
+  const btnAllow = $("btn-setup-allow");
+  if (!bar || !text) return;
+  const dismissed = state && state.setupDismissed;
+  const hasHost = state && state.hasHostAccess;
+  const scripts = (state && state.scripts) || [];
+  const needsSetup =
+    !dismissed && (!hasHost || scripts.length === 0);
+  if (!needsSetup) {
+    bar.classList.add("hidden");
+    return;
+  }
+  bar.classList.remove("hidden");
+  if (!hasHost) {
+    text.textContent =
+      "Finish setup: allow website access so user scripts can run on http(s) pages.";
+    if (btnAllow) btnAllow.style.display = "";
+  } else {
+    text.textContent =
+      "Finish setup: open Settings (gear) and tap Refresh scripts to load your script list.";
+    if (btnAllow) btnAllow.style.display = "none";
+  }
+}
+
 function updateHostAccessUI(hasHostAccess) {
   const st = $("host-access-status");
   const btn = $("btn-request-host-access");
@@ -130,6 +156,7 @@ async function loadState() {
 
     setTabVersions(state.extensionVersion || "");
     updateHostAccessUI(!!state.hasHostAccess);
+    updateSetupBanner(state);
     updatePendingBanner(state);
     renderSessions(state.sessions || []);
     syncLoginFirstSelect(state.sessions || []);
@@ -246,6 +273,8 @@ async function toggleScript(scriptId, enabled) {
   try {
     const res = await send("SET_SCRIPT_ENABLED", { scriptId, enabled });
     renderScripts(res.scripts || []);
+    const st = await send("GET_STATE", {});
+    updateSetupBanner(st);
     setStatus(enabled ? "Script enabled." : "Script disabled and cleaned up.");
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
@@ -263,6 +292,7 @@ async function refreshScripts() {
     $("last-fetch").textContent = st.lastScriptFetch
       ? "Last fetch: " + formatTime(st.lastScriptFetch)
       : "";
+    updateSetupBanner(st);
     setStatus("Scripts refreshed.");
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
@@ -280,6 +310,7 @@ async function applySourceUrl() {
     $("last-fetch").textContent = st.lastScriptFetch
       ? "Last fetch: " + formatTime(st.lastScriptFetch)
       : "";
+    updateSetupBanner(st);
     setStatus("Source updated and scripts reloaded.");
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
@@ -297,6 +328,7 @@ async function applyExtraUrls() {
     $("last-fetch").textContent = st.lastScriptFetch
       ? "Last fetch: " + formatTime(st.lastScriptFetch)
       : "";
+    updateSetupBanner(st);
     setStatus("Extra URLs saved and scripts reloaded.");
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
@@ -421,6 +453,7 @@ async function openSettings() {
   try {
     const st = await send("GET_STATE", {});
     updateHostAccessUI(!!st.hasHostAccess);
+    updateSetupBanner(st);
   } catch (e) {
     /* ignore */
   }
@@ -476,6 +509,41 @@ $("btn-apply-source").addEventListener("click", applySourceUrl);
 $("btn-apply-extra").addEventListener("click", applyExtraUrls);
 $("btn-open-settings").addEventListener("click", openSettings);
 $("btn-close-settings").addEventListener("click", closeSettings);
+
+$("btn-setup-allow").addEventListener("click", async function () {
+  setStatus("Requesting permission…");
+  try {
+    const res = await send("REQUEST_HOST_ACCESS", {});
+    updateHostAccessUI(!!res.hasHostAccess);
+    const st = await send("GET_STATE", {});
+    updateSetupBanner(st);
+    if (res.granted) setStatus("Website access granted.");
+    else setStatus("Permission not granted.", true);
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+  }
+});
+
+$("btn-setup-welcome").addEventListener("click", async function () {
+  try {
+    await send("OPEN_WELCOME_TAB", {});
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+  }
+});
+
+$("btn-setup-dismiss").addEventListener("click", async function () {
+  try {
+    await send("DISMISS_SETUP_BANNER", {});
+    const st = await send("GET_STATE", {});
+    updateSetupBanner(st);
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+  }
+});
+
 $("btn-request-host-access").addEventListener("click", async function () {
   const btn = $("btn-request-host-access");
   if (btn && btn.dataset.mode === "manage") {
@@ -498,6 +566,8 @@ $("btn-request-host-access").addEventListener("click", async function () {
   try {
     const res = await send("REQUEST_HOST_ACCESS", {});
     updateHostAccessUI(!!res.hasHostAccess);
+    const st2 = await send("GET_STATE", {});
+    updateSetupBanner(st2);
     if (res.granted) setStatus("Website access granted. Reload open tabs if needed.");
     else setStatus("Permission not granted.", true);
   } catch (e) {
