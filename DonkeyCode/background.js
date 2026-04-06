@@ -271,31 +271,30 @@ function donkeycodeInjectMain(payload) {
   const wantsGmByCode = /\bGM_xmlhttpRequest\b/.test(code);
   const wantsGmXhr = wantsGmByMeta || wantsGmByCode;
 
-  const prevGm = g.GM_xmlhttpRequest;
+  /** Pass GM as a Function arg so nested/async code closes over it. Pages using SES
+   * lockdown (e.g. lockdown-install.js) strip globals we add to window — lexical
+   * binding survives. */
   let gmImpl;
   if (wantsGmXhr) {
     gmImpl = makeGmXmlHttpRequest(scriptId);
-    try {
-      g.GM_xmlhttpRequest = gmImpl;
-      if (typeof globalThis !== "undefined") {
-        globalThis.GM_xmlhttpRequest = gmImpl;
-      }
-    } catch (e) {
-      console.warn("[DonkeyCode:page] could not set GM_xmlhttpRequest on global", e);
-    }
     console.log(
-      "[DonkeyCode:page] GM_xmlhttpRequest on window (Tampermonkey-style)",
+      "[DonkeyCode:page] GM_xmlhttpRequest via closure (SES-safe)",
       scriptId,
       { wantsGmByMeta, wantsGmByCode, connects }
     );
-  } else {
-    console.log("[DonkeyCode:page] executing script", scriptId, "(no GM_xmlhttpRequest)");
   }
 
   try {
-    console.log("[DonkeyCode:page] executing script", scriptId);
-    const run = new Function(code);
-    run();
+    console.log(
+      "[DonkeyCode:page] executing script",
+      scriptId,
+      wantsGmXhr ? "+GM_xmlhttpRequest" : ""
+    );
+    const run = wantsGmXhr
+      ? new Function("GM_xmlhttpRequest", code)
+      : new Function(code);
+    if (wantsGmXhr) run(gmImpl);
+    else run();
     if (typeof g.__myScriptCleanup === "function") {
       cleanups[scriptId] = g.__myScriptCleanup;
       try {
@@ -312,21 +311,6 @@ function donkeycodeInjectMain(payload) {
     }
   } catch (e) {
     console.error("[DonkeyCode:page] script error", scriptId, e);
-  } finally {
-    if (gmImpl) {
-      try {
-        if (g.GM_xmlhttpRequest === gmImpl) {
-          if (typeof prevGm === "function") g.GM_xmlhttpRequest = prevGm;
-          else delete g.GM_xmlhttpRequest;
-        }
-        if (typeof globalThis !== "undefined" && globalThis.GM_xmlhttpRequest === gmImpl) {
-          if (typeof prevGm === "function") globalThis.GM_xmlhttpRequest = prevGm;
-          else delete globalThis.GM_xmlhttpRequest;
-        }
-      } catch (e2) {
-        console.warn("[DonkeyCode:page] GM restore", e2);
-      }
-    }
   }
 }
 
