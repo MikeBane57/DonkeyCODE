@@ -176,6 +176,18 @@ body {
   margin-top: 0;
 }
 
+.settings-perm-title {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.privacy-link {
+  font-size: 12px;
+  color: #0d47a1;
+}
+
 .modal-head {
   display: flex;
   align-items: center;

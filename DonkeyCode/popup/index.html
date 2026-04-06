@@ -82,6 +82,25 @@
           </button>
         </div>
         <p class="hint modal-hint">Script sources and other extension options.</p>
+        <div class="row settings-perm">
+          <p class="settings-perm-title">Website access</p>
+          <p id="host-access-status" class="hint"></p>
+          <button type="button" id="btn-request-host-access" class="secondary">
+            Allow access to websites (http/https)
+          </button>
+          <p class="hint">
+            Needed to inject user scripts and run <code>GM_xmlhttpRequest</code>. You can revoke anytime in the browser’s extension details.
+          </p>
+        </div>
+        <div class="row">
+          <a
+            class="privacy-link"
+            href="https://github.com/MikeBane57/DonkeyCODE/blob/main/DonkeyCode/PRIVACY.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Privacy policy</a
+          >
+        </div>
         <div class="row">
           <label for="script-source-url">GitHub API listing URL</label>
           <input

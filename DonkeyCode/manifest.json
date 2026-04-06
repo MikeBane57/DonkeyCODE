@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "DonkeyCode",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Lightweight user-script loader with session management for Chrome and Edge.",
   "permissions": ["scripting", "tabs", "storage", "alarms", "windows"],
-  "host_permissions": ["<all_urls>"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "background.js"
   },
@@ -23,13 +23,5 @@
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["bridge.js"],
-      "run_at": "document_start",
-      "all_frames": false
-    }
-  ]
+  }
 }

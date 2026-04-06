@@ -24,8 +24,79 @@ const LOGIN_WINDOW_URLS = [
 
 const ALARM_DAILY = "donkeycode_daily_script_refresh";
 
+/** Optional broad host patterns (must match manifest optional_host_permissions). */
+const OPTIONAL_ORIGIN_PATTERNS = ["http://*/*", "https://*/*"];
+
+const BRIDGE_CS_ID = "donkeycode-bridge";
+
 /** @type {Map<number, Set<string>>} */
 const tabInjectedScripts = new Map();
+
+async function hasOriginAccessForUrl(pageUrl) {
+  try {
+    const u = new URL(pageUrl);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+    return await hasOptionalHostAccess();
+  } catch (e) {
+    return false;
+  }
+}
+
+async function hasOptionalHostAccess() {
+  return chrome.permissions.contains({ origins: OPTIONAL_ORIGIN_PATTERNS });
+}
+
+async function registerBridgeContentScripts() {
+  try {
+    await chrome.scripting.unregisterContentScripts({ ids: [BRIDGE_CS_ID] });
+  } catch (e) {
+    /* ignore */
+  }
+  await chrome.scripting.registerContentScripts([
+    {
+      id: BRIDGE_CS_ID,
+      matches: ["http://*/*", "https://*/*"],
+      js: ["bridge.js"],
+      runAt: "document_start",
+      allFrames: false,
+    },
+  ]);
+  log("registered bridge content script");
+}
+
+async function unregisterBridgeContentScripts() {
+  try {
+    await chrome.scripting.unregisterContentScripts({ ids: [BRIDGE_CS_ID] });
+    log("unregistered bridge content script");
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+async function ensureHostAccessAndBridge() {
+  const ok = await hasOptionalHostAccess();
+  if (!ok) {
+    log("optional http(s) host access not granted — grant in extension settings to run scripts");
+    await unregisterBridgeContentScripts();
+    return false;
+  }
+  try {
+    await registerBridgeContentScripts();
+  } catch (e) {
+    logError("registerBridgeContentScripts failed", e);
+  }
+  return true;
+}
+
+if (chrome.permissions && chrome.permissions.onRemoved) {
+  chrome.permissions.onRemoved.addListener((details) => {
+    if (details.origins && details.origins.length) {
+      hasOptionalHostAccess().then((still) => {
+        if (!still) unregisterBridgeContentScripts();
+      });
+    }
+  });
+}
 
 function log(...args) {
   console.log(LOG_PREFIX, ...args);
@@ -508,12 +579,14 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 chrome.runtime.onStartup.addListener(() => {
   log("onStartup: refresh scripts");
+  ensureHostAccessAndBridge().catch((e) => logError("startup host/bridge", e));
   loadScriptsFromRemote().catch((e) => logError("startup refresh failed", e));
 });
 
 chrome.runtime.onInstalled.addListener(() => {
   log("onInstalled: refresh scripts + alarm");
   ensureDailyAlarm();
+  ensureHostAccessAndBridge().catch((e) => logError("install host/bridge", e));
   loadScriptsFromRemote().catch((e) => logError("install refresh failed", e));
 });
 
@@ -528,6 +601,11 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 async function syncTabScripts(tabId, url) {
   if (!url || url.startsWith("chrome://") || url.startsWith("devtools://"))
     return;
+
+  if (!(await hasOriginAccessForUrl(url))) {
+    log("skip inject (no optional host permission for origin)", url);
+    return;
+  }
 
   const scripts = await getStoredScripts();
   for (const script of scripts) {
@@ -848,6 +926,7 @@ async function getStateForPopup() {
   } catch (e) {
     extensionVersion = "";
   }
+  const hasHostAccess = await hasOptionalHostAccess();
   return {
     scripts,
     scriptSourceUrl: sourceUrl,
@@ -857,6 +936,7 @@ async function getStateForPopup() {
     pendingRestoreSession: pendingRestore,
     loginUrls: LOGIN_WINDOW_URLS,
     extensionVersion,
+    hasHostAccess,
   };
 }
 
@@ -867,6 +947,24 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         case "GET_STATE": {
           const state = await getStateForPopup();
           sendResponse({ ok: true, ...state });
+          break;
+        }
+        case "REQUEST_HOST_ACCESS": {
+          const granted = await new Promise((resolve) => {
+            try {
+              chrome.permissions.request(
+                { origins: OPTIONAL_ORIGIN_PATTERNS },
+                resolve
+              );
+            } catch (e) {
+              logError("permissions.request failed", e);
+              resolve(false);
+            }
+          });
+          if (granted) await ensureHostAccessAndBridge();
+          else await unregisterBridgeContentScripts();
+          const hasHostAccess = await hasOptionalHostAccess();
+          sendResponse({ ok: true, granted, hasHostAccess });
           break;
         }
         case "REFRESH_SCRIPTS": {
@@ -978,6 +1076,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             break;
           }
 
+          if (!(await hasOriginAccessForUrl(reqUrl))) {
+            logWarn("GM_XHR blocked (no host permission)", reqUrl);
+            sendResponse({
+              error: "Host permission not granted for this URL. Open DonkeyCode settings and allow website access.",
+            });
+            break;
+          }
+
           log("GM_xmlhttpRequest", method, reqUrl, script.name);
           try {
             const init = { method, redirect: "follow" };
@@ -1018,4 +1124,5 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 // Initial load
 ensureDailyAlarm();
+ensureHostAccessAndBridge().catch((e) => logError("initial host/bridge", e));
 loadScriptsFromRemote().catch((e) => logError("initial load failed", e));
