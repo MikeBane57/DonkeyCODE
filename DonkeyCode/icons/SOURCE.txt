@@ -1,0 +1,19 @@
+Extension toolbar icons are generated from one master image.
+
+Default in this repo:
+  DonkeyCode/icons/donkey-logo.svg  →  rendered to source.png  →  icon16/32/48/128.png
+
+Regenerate after editing the SVG or replacing the artwork:
+
+1. Optional: replace DonkeyCode/icons/source.png with your own PNG (donkey, airplane, etc.).
+   The image should read clearly at 16×16 (simple shapes help).
+
+2. From the repo root:
+   pip install -r DonkeyCode/scripts/requirements.txt
+   python3 DonkeyCode/scripts/build-icons.py
+   (Or: python3 DonkeyCode/scripts/build-icons.py /path/to/your-master.png)
+
+   To rebuild source.png from the SVG only:
+   python3 -c "import cairosvg; cairosvg.svg2png(url='DonkeyCode/icons/donkey-logo.svg', write_to='DonkeyCode/icons/source.png', output_width=512, output_height=512)"
+
+3. Reload the extension on chrome://extensions (click the refresh icon on the card).
