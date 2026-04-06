@@ -254,28 +254,48 @@ function donkeycodeInjectMain(payload) {
     };
   }
 
-  const grantSet = {};
-  for (let gi = 0; gi < grants.length; gi++) {
-    grantSet[String(grants[gi]).toLowerCase()] = true;
+  /** Normalize @grant tokens: "GM_xmlhttpRequest" / "GM.xmlhttpRequest" → "xmlhttprequest" */
+  function canonicalGrant(g) {
+    let t = String(g).trim().toLowerCase().replace(/\s+/g, "");
+    t = t.replace(/\./g, "_");
+    if (t.startsWith("gm_")) t = t.slice(3);
+    return t;
   }
 
-  let gmArg;
-  if (grantSet["gm_xmlhttprequest"] || grantSet["gm.xmlhttprequest"]) {
-    gmArg = makeGmXmlHttpRequest(scriptId);
+  const grantSet = {};
+  for (let gi = 0; gi < grants.length; gi++) {
+    grantSet[canonicalGrant(grants[gi])] = true;
+  }
+
+  const wantsGmByMeta = grantSet["xmlhttprequest"];
+  const wantsGmByCode = /\bGM_xmlhttpRequest\b/.test(code);
+  const wantsGmXhr = wantsGmByMeta || wantsGmByCode;
+
+  const prevGm = g.GM_xmlhttpRequest;
+  let gmImpl;
+  if (wantsGmXhr) {
+    gmImpl = makeGmXmlHttpRequest(scriptId);
+    try {
+      g.GM_xmlhttpRequest = gmImpl;
+      if (typeof globalThis !== "undefined") {
+        globalThis.GM_xmlhttpRequest = gmImpl;
+      }
+    } catch (e) {
+      console.warn("[DonkeyCode:page] could not set GM_xmlhttpRequest on global", e);
+    }
     console.log(
-      "[DonkeyCode:page] GM_xmlhttpRequest available for script",
+      "[DonkeyCode:page] GM_xmlhttpRequest on window (Tampermonkey-style)",
       scriptId,
-      "connects",
-      connects
+      { wantsGmByMeta, wantsGmByCode, connects }
     );
   } else {
-    gmArg = undefined;
+    console.log("[DonkeyCode:page] executing script", scriptId, "(no GM_xmlhttpRequest)");
   }
 
   try {
     console.log("[DonkeyCode:page] executing script", scriptId);
-    const run = new Function("GM_xmlhttpRequest", code);
-    run(gmArg);
+    const run = new Function(code);
+    run();
     if (typeof g.__myScriptCleanup === "function") {
       cleanups[scriptId] = g.__myScriptCleanup;
       try {
@@ -292,6 +312,21 @@ function donkeycodeInjectMain(payload) {
     }
   } catch (e) {
     console.error("[DonkeyCode:page] script error", scriptId, e);
+  } finally {
+    if (gmImpl) {
+      try {
+        if (g.GM_xmlhttpRequest === gmImpl) {
+          if (typeof prevGm === "function") g.GM_xmlhttpRequest = prevGm;
+          else delete g.GM_xmlhttpRequest;
+        }
+        if (typeof globalThis !== "undefined" && globalThis.GM_xmlhttpRequest === gmImpl) {
+          if (typeof prevGm === "function") globalThis.GM_xmlhttpRequest = prevGm;
+          else delete globalThis.GM_xmlhttpRequest;
+        }
+      } catch (e2) {
+        console.warn("[DonkeyCode:page] GM restore", e2);
+      }
+    }
   }
 }
 
@@ -423,6 +458,18 @@ async function loadScriptsFromRemote() {
     }
 
     const meta = parseUserScript(text);
+    const grants =
+      meta.grants && meta.grants.length
+        ? meta.grants
+        : prevRow && prevRow.grants && prevRow.grants.length
+          ? prevRow.grants
+          : meta.grants || [];
+    const connects =
+      meta.connects && meta.connects.length
+        ? meta.connects
+        : prevRow && prevRow.connects && prevRow.connects.length
+          ? prevRow.connects
+          : meta.connects || [];
     next.push({
       id,
       url: e.url,
@@ -430,8 +477,8 @@ async function loadScriptsFromRemote() {
       enabled: prevRow ? prevRow.enabled !== false : true,
       matches: meta.matches,
       excludes: meta.excludes,
-      grants: meta.grants,
-      connects: meta.connects,
+      grants,
+      connects,
       code: meta.body,
     });
   }
