@@ -8,16 +8,26 @@
   </head>
   <body>
     <header class="header">
-      <h1>DonkeyCode</h1>
-      <p class="sub">Sessions and user scripts</p>
+      <div class="header-row">
+        <div class="header-brand">
+          <img src="../icons/icon32.png" alt="" class="header-icon" width="32" height="32" />
+          <div class="header-titles">
+            <h1>DonkeyCode</h1>
+            <p class="sub">Sessions &amp; user scripts</p>
+          </div>
+        </div>
+        <button type="button" id="btn-open-settings" class="btn-gear" title="Settings" aria-label="Settings">
+          &#9881;
+        </button>
+      </div>
     </header>
 
     <nav class="tabs" role="tablist">
       <button type="button" class="tab active" data-tab="sessions" role="tab" aria-selected="true">
-        Sessions
+        Sessions <span class="tab-ver" id="tab-ver-sessions"></span>
       </button>
       <button type="button" class="tab" data-tab="scripts" role="tab" aria-selected="false">
-        Scripts
+        Scripts <span class="tab-ver" id="tab-ver-scripts"></span>
       </button>
     </nav>
 
@@ -52,16 +62,26 @@
     </section>
 
     <section id="panel-scripts" class="panel" role="tabpanel" hidden>
-      <div class="btn-row">
+      <div class="scripts-toolbar">
         <button type="button" id="btn-refresh-scripts">Refresh scripts</button>
+        <p id="last-fetch" class="hint scripts-toolbar-hint"></p>
       </div>
-      <p id="last-fetch" class="hint"></p>
       <h2 class="section-title">Scripts</h2>
       <ul id="script-list" class="list script-list"></ul>
-      <p id="scripts-empty" class="hint hidden">No scripts loaded. Check the source URL or click Refresh.</p>
+      <p id="scripts-empty" class="hint hidden">No scripts loaded. Open settings (gear) and refresh.</p>
+    </section>
 
-      <div class="script-settings">
-        <h2 class="section-title">Script sources</h2>
+    <p id="status" class="status" role="status"></p>
+
+    <div id="settings-overlay" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal settings-modal" role="dialog" aria-labelledby="settings-title">
+        <div class="modal-head">
+          <h2 id="settings-title" class="modal-title">Settings</h2>
+          <button type="button" id="btn-close-settings" class="btn-close-modal" aria-label="Close settings">
+            &times;
+          </button>
+        </div>
+        <p class="hint modal-hint">Script sources and other extension options.</p>
         <div class="row">
           <label for="script-source-url">GitHub API listing URL</label>
           <input
@@ -74,13 +94,14 @@
         </div>
         <div class="row">
           <label for="extra-urls">Extra raw script URLs (one per line)</label>
-          <textarea id="extra-urls" rows="3" placeholder="https://raw.githubusercontent.com/.../test-banner.user.js"></textarea>
+          <textarea id="extra-urls" rows="4" placeholder="https://raw.githubusercontent.com/.../test-banner.user.js"></textarea>
           <button type="button" id="btn-apply-extra" class="small">Apply &amp; reload</button>
         </div>
+        <div class="btn-row">
+          <button type="button" id="btn-refresh-scripts-settings" class="secondary">Refresh scripts</button>
+        </div>
       </div>
-    </section>
-
-    <p id="status" class="status" role="status"></p>
+    </div>
 
     <div id="session-editor-overlay" class="modal-overlay hidden" aria-hidden="true">
       <div class="modal" role="dialog" aria-labelledby="session-editor-title">

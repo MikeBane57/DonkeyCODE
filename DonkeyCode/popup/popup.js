@@ -77,6 +77,14 @@ function updatePendingBanner(state) {
   }
 }
 
+function setTabVersions(version) {
+  const v = (version && String(version).trim()) || "";
+  const s1 = $("tab-ver-sessions");
+  const s2 = $("tab-ver-scripts");
+  if (s1) s1.textContent = v ? v : "";
+  if (s2) s2.textContent = v ? v : "";
+}
+
 function syncLoginFirstSelect(names) {
   const sel = $("login-first-session");
   if (!sel) return;
@@ -102,9 +110,10 @@ async function loadState() {
     $("script-source-url").value = state.scriptSourceUrl || "";
     $("extra-urls").value = state.extraScriptUrls || "";
     $("last-fetch").textContent = state.lastScriptFetch
-      ? "Last script fetch: " + formatTime(state.lastScriptFetch)
-      : "No fetch recorded yet.";
+      ? "Last fetch: " + formatTime(state.lastScriptFetch)
+      : "No fetch yet — open settings (gear) and refresh.";
 
+    setTabVersions(state.extensionVersion || "");
     updatePendingBanner(state);
     renderSessions(state.sessions || []);
     syncLoginFirstSelect(state.sessions || []);
@@ -182,12 +191,19 @@ function renderScripts(scripts) {
   for (const s of scripts) {
     const li = document.createElement("li");
 
+    const displayName =
+      (s.userScriptName && String(s.userScriptName).trim()) ||
+      s.name ||
+      s.url ||
+      "Script";
+
     const labelSpan = document.createElement("span");
     labelSpan.className = "script-row-label";
-    labelSpan.textContent = s.name || s.url;
+    labelSpan.textContent = displayName;
+    labelSpan.title = s.url || displayName;
 
     const toggleLabel = document.createElement("label");
-    toggleLabel.className = "toggle";
+    toggleLabel.className = "toggle toggle--sm";
     toggleLabel.setAttribute("title", s.enabled !== false ? "On" : "Off");
 
     const input = document.createElement("input");
@@ -203,8 +219,8 @@ function renderScripts(scripts) {
     toggleLabel.appendChild(input);
     toggleLabel.appendChild(slider);
 
-    li.appendChild(labelSpan);
     li.appendChild(toggleLabel);
+    li.appendChild(labelSpan);
     ul.appendChild(li);
   }
 }
@@ -229,7 +245,7 @@ async function refreshScripts() {
     renderScripts(res.scripts || []);
     const st = await send("GET_STATE", {});
     $("last-fetch").textContent = st.lastScriptFetch
-      ? "Last script fetch: " + formatTime(st.lastScriptFetch)
+      ? "Last fetch: " + formatTime(st.lastScriptFetch)
       : "";
     setStatus("Scripts refreshed.");
   } catch (e) {
@@ -244,6 +260,10 @@ async function applySourceUrl() {
   try {
     const res = await send("SET_SCRIPT_SOURCE_URL", { url });
     renderScripts(res.scripts || []);
+    const st = await send("GET_STATE", {});
+    $("last-fetch").textContent = st.lastScriptFetch
+      ? "Last fetch: " + formatTime(st.lastScriptFetch)
+      : "";
     setStatus("Source updated and scripts reloaded.");
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
@@ -257,6 +277,10 @@ async function applyExtraUrls() {
   try {
     const res = await send("SET_EXTRA_SCRIPT_URLS", { text });
     renderScripts(res.scripts || []);
+    const st = await send("GET_STATE", {});
+    $("last-fetch").textContent = st.lastScriptFetch
+      ? "Last fetch: " + formatTime(st.lastScriptFetch)
+      : "";
     setStatus("Extra URLs saved and scripts reloaded.");
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
@@ -375,6 +399,20 @@ function closeSessionEditor() {
   $("session-editor-overlay").setAttribute("aria-hidden", "true");
 }
 
+function openSettings() {
+  const el = $("settings-overlay");
+  if (!el) return;
+  el.classList.remove("hidden");
+  el.setAttribute("aria-hidden", "false");
+}
+
+function closeSettings() {
+  const el = $("settings-overlay");
+  if (!el) return;
+  el.classList.add("hidden");
+  el.setAttribute("aria-hidden", "true");
+}
+
 async function saveSessionEditor() {
   if (!editingSessionName) return;
   let parsed;
@@ -410,8 +448,15 @@ document.querySelectorAll(".tab").forEach((btn) => {
 $("btn-save-session").addEventListener("click", saveSession);
 $("btn-refresh-sessions").addEventListener("click", loadState);
 $("btn-refresh-scripts").addEventListener("click", refreshScripts);
+const btnRefreshSettings = $("btn-refresh-scripts-settings");
+if (btnRefreshSettings) btnRefreshSettings.addEventListener("click", refreshScripts);
 $("btn-apply-source").addEventListener("click", applySourceUrl);
 $("btn-apply-extra").addEventListener("click", applyExtraUrls);
+$("btn-open-settings").addEventListener("click", openSettings);
+$("btn-close-settings").addEventListener("click", closeSettings);
+$("settings-overlay").addEventListener("click", function (ev) {
+  if (ev.target === $("settings-overlay")) closeSettings();
+});
 $("btn-complete-pending").addEventListener("click", completePendingRestore);
 $("btn-cancel-pending").addEventListener("click", cancelPendingRestore);
 $("btn-login-first").addEventListener("click", loginFirst);

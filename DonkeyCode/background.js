@@ -65,6 +65,7 @@ function parseUserScript(fullText) {
   const excludes = [];
   const grants = [];
   const connects = [];
+  let userScriptName = "";
   const lines = metaText.split(/\r?\n/);
   for (const line of lines) {
     const m = line.match(/^\s*\/\/\s*@(\S+)\s+(.*)$/);
@@ -75,11 +76,12 @@ function parseUserScript(fullText) {
     else if (key === "exclude") excludes.push(val);
     else if (key === "grant") grants.push(val);
     else if (key === "connect") connects.push(val);
+    else if (key === "name" && val) userScriptName = val;
   }
 
   if (matches.length === 0) matches.push("*://*/*");
 
-  return { matches, excludes, grants, connects, body };
+  return { matches, excludes, grants, connects, userScriptName, body };
 }
 
 /**
@@ -461,10 +463,15 @@ async function loadScriptsFromRemote() {
         : prevRow && prevRow.connects && prevRow.connects.length
           ? prevRow.connects
           : meta.connects || [];
+    const userScriptName =
+      meta.userScriptName ||
+      (prevRow && prevRow.userScriptName) ||
+      "";
     next.push({
       id,
       url: e.url,
       name: e.name,
+      userScriptName,
       enabled: prevRow ? prevRow.enabled !== false : true,
       matches: meta.matches,
       excludes: meta.excludes,
@@ -835,6 +842,12 @@ async function getStateForPopup() {
   const sessions = sessionsData[STORAGE.SESSIONS] || {};
   const last = await chrome.storage.local.get(STORAGE.LAST_FETCH);
   const pendingRestore = await getPendingRestore();
+  let extensionVersion = "";
+  try {
+    extensionVersion = chrome.runtime.getManifest().version || "";
+  } catch (e) {
+    extensionVersion = "";
+  }
   return {
     scripts,
     scriptSourceUrl: sourceUrl,
@@ -843,6 +856,7 @@ async function getStateForPopup() {
     lastScriptFetch: last[STORAGE.LAST_FETCH] || null,
     pendingRestoreSession: pendingRestore,
     loginUrls: LOGIN_WINDOW_URLS,
+    extensionVersion,
   };
 }
 
