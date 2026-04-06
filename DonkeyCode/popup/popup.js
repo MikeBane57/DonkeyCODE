@@ -162,6 +162,30 @@ async function loadState() {
     syncLoginFirstSelect(state.sessions || []);
     renderScripts(state.scripts || []);
     setStatus("");
+
+    if (state.pendingFirstPopupRefresh) {
+      switchTab("scripts");
+      setStatus("Loading scripts…");
+      try {
+        const res = await send("REFRESH_SCRIPTS", {});
+        renderScripts(res.scripts || []);
+        const st2 = await send("GET_STATE", {});
+        $("last-fetch").textContent = st2.lastScriptFetch
+          ? "Last fetch: " + formatTime(st2.lastScriptFetch)
+          : "";
+        updateSetupBanner(st2);
+        setStatus("Scripts loaded.");
+      } catch (e) {
+        console.error("[DonkeyCode:popup] first-load refresh", e);
+        setStatus(String(e.message || e), true);
+      } finally {
+        try {
+          await send("POPUP_CONSUMED_FIRST_REFRESH", {});
+        } catch (e2) {
+          /* ignore */
+        }
+      }
+    }
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
     setStatus(String(e.message || e), true);

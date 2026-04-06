@@ -15,6 +15,7 @@ const STORAGE = {
   LAST_FETCH: "donkeycode_last_script_fetch_ms",
   PENDING_RESTORE: "donkeycode_pending_restore_session",
   SETUP_DISMISSED: "donkeycode_setup_banner_dismissed",
+  PENDING_FIRST_POPUP_REFRESH: "donkeycode_pending_first_popup_refresh",
 };
 
 /** Default URLs opened before restoring a session (user signs in, then continues). */
@@ -971,6 +972,10 @@ async function getStateForPopup() {
   const hasHostAccess = await hasOptionalHostAccess();
   const setupData = await chrome.storage.local.get(STORAGE.SETUP_DISMISSED);
   const setupDismissed = !!setupData[STORAGE.SETUP_DISMISSED];
+  const pendingData = await chrome.storage.local.get(
+    STORAGE.PENDING_FIRST_POPUP_REFRESH
+  );
+  const pendingFirstPopupRefresh = !!pendingData[STORAGE.PENDING_FIRST_POPUP_REFRESH];
   return {
     scripts,
     scriptSourceUrl: sourceUrl,
@@ -982,6 +987,7 @@ async function getStateForPopup() {
     extensionVersion,
     hasHostAccess,
     setupDismissed,
+    pendingFirstPopupRefresh,
   };
 }
 
@@ -1023,6 +1029,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           const url = chrome.runtime.getURL("welcome.html");
           await chrome.tabs.create({ url });
           sendResponse({ ok: true });
+          break;
+        }
+        case "POPUP_CONSUMED_FIRST_REFRESH": {
+          await chrome.storage.local.remove(STORAGE.PENDING_FIRST_POPUP_REFRESH);
+          sendResponse({ ok: true });
+          break;
+        }
+        case "OPEN_POPUP_AND_QUEUE_FIRST_REFRESH": {
+          await chrome.storage.local.set({
+            [STORAGE.PENDING_FIRST_POPUP_REFRESH]: true,
+          });
+          let opened = false;
+          try {
+            if (chrome.action && typeof chrome.action.openPopup === "function") {
+              await chrome.action.openPopup();
+              opened = true;
+            }
+          } catch (e) {
+            logWarn("openPopup failed", e);
+          }
+          sendResponse({ ok: true, opened });
           break;
         }
         case "REFRESH_SCRIPTS": {

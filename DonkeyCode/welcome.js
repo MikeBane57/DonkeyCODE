@@ -65,9 +65,33 @@ document.getElementById("btn-allow").addEventListener("click", async function ()
   }
 });
 
-document.getElementById("btn-open-panel").addEventListener("click", function () {
-  const url = chrome.runtime.getURL("popup/index.html");
-  chrome.tabs.create({ url });
+document.getElementById("btn-get-started").addEventListener("click", async function () {
+  const hint = document.getElementById("get-started-hint");
+  const btn = this;
+  btn.disabled = true;
+  try {
+    const res = await send("OPEN_POPUP_AND_QUEUE_FIRST_REFRESH", {});
+    if (hint) {
+      if (res.opened) {
+        hint.textContent = "Check the toolbar popup — scripts will load automatically.";
+      } else {
+        hint.textContent =
+          "Click the DonkeyCode icon in the toolbar — scripts will refresh on first open.";
+      }
+    }
+    try {
+      chrome.tabs.getCurrent(function (tab) {
+        if (tab && tab.id != null) {
+          chrome.tabs.remove(tab.id);
+        }
+      });
+    } catch (e) {
+      /* ignore */
+    }
+  } catch (e) {
+    if (hint) hint.textContent = String(e.message || e);
+    btn.disabled = false;
+  }
 });
 
 document.addEventListener("DOMContentLoaded", refreshAccessState);

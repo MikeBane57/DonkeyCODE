@@ -115,3 +115,10 @@ body {
 .footer-links a {
   color: #0d47a1;
 }
+
+.hint-after-btn {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #666;
+  min-height: 1.2em;
+}
