@@ -56,6 +56,8 @@ function parseUserScript(fullText) {
 
   const matches = [];
   const excludes = [];
+  const grants = [];
+  const connects = [];
   const lines = metaText.split(/\r?\n/);
   for (const line of lines) {
     const m = line.match(/^\s*\/\/\s*@(\S+)\s+(.*)$/);
@@ -64,11 +66,44 @@ function parseUserScript(fullText) {
     const val = (m[2] || "").trim();
     if (key === "match") matches.push(val);
     else if (key === "exclude") excludes.push(val);
+    else if (key === "grant") grants.push(val);
+    else if (key === "connect") connects.push(val);
   }
 
   if (matches.length === 0) matches.push("*://*/*");
 
-  return { matches, excludes, body };
+  return { matches, excludes, grants, connects, body };
+}
+
+/**
+ * @param {string} hostname
+ * @param {string} pattern e.g. example.com or *.example.com
+ */
+function hostMatchesConnect(hostname, pattern) {
+  const p = (pattern || "").trim().toLowerCase();
+  const h = (hostname || "").toLowerCase();
+  if (!p) return false;
+  if (p.startsWith("*.")) {
+    const suf = p.slice(2);
+    return h === suf || h.endsWith("." + suf);
+  }
+  return h === p;
+}
+
+function urlAllowedByConnects(pageUrl, connects) {
+  if (!connects || connects.length === 0) return true;
+  if (connects.some((c) => String(c).trim() === "*")) return true;
+  let u;
+  try {
+    u = new URL(pageUrl);
+  } catch (e) {
+    return false;
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+  for (const c of connects) {
+    if (hostMatchesConnect(u.hostname, c.trim())) return true;
+  }
+  return false;
 }
 
 /**
@@ -146,9 +181,17 @@ function scriptMatchesUrl(script, pageUrl) {
 
 /**
  * Injected into MAIN world — runs user code and registers cleanup.
+ * Passes Tampermonkey-style GM_xmlhttpRequest when @grant requests it (via
+ * new Function argument so each script keeps the correct script id for @connect).
  * Must be self-contained (serialized).
+ * @param {{ id: string, code: string, grants?: string[], connects?: string[] }} payload
  */
-function donkeycodeInjectMain(scriptId, code) {
+function donkeycodeInjectMain(payload) {
+  const scriptId = payload.id;
+  const code = payload.code;
+  const grants = payload.grants || [];
+  const connects = payload.connects || [];
+
   const g = typeof window !== "undefined" ? window : globalThis;
   const key = "__donkeycodeCleanups";
   if (!g[key]) g[key] = Object.create(null);
@@ -162,10 +205,77 @@ function donkeycodeInjectMain(scriptId, code) {
     }
     delete cleanups[scriptId];
   }
+
+  function ensureGmBridge() {
+    if (g.__donkeycodeGmBridge) return;
+    g.__donkeycodeGmBridge = true;
+    g.__donkeycodeGmPending = Object.create(null);
+    g.__donkeycodeGmNextId = 0;
+    g.addEventListener("message", function (ev) {
+      if (ev.source !== g) return;
+      const d = ev.data;
+      if (!d || d.type !== "DONKEYCODE_GM_XHR_RESPONSE") return;
+      const rec = g.__donkeycodeGmPending[d.id];
+      delete g.__donkeycodeGmPending[d.id];
+      if (!rec) return;
+      const details = rec.details;
+      if (d.error) {
+        console.warn("[DonkeyCode:page] GM_xmlhttpRequest error", d.error);
+        if (details.onerror) details.onerror({ status: 0, statusText: d.error });
+      } else if (details.onload) {
+        details.onload({
+          responseText: d.responseText || "",
+          status: d.status || 0,
+          statusText: d.statusText || "",
+          finalUrl: d.finalUrl || "",
+        });
+      }
+    });
+  }
+
+  function makeGmXmlHttpRequest(sid) {
+    ensureGmBridge();
+    return function (details) {
+      const id = ++g.__donkeycodeGmNextId;
+      g.__donkeycodeGmPending[id] = { details: details };
+      g.postMessage(
+        {
+          type: "DONKEYCODE_GM_XHR",
+          id: id,
+          scriptId: sid,
+          details: {
+            method: (details && details.method) || "GET",
+            url: details && details.url,
+            headers: details && details.headers,
+          },
+        },
+        "*"
+      );
+    };
+  }
+
+  const grantSet = {};
+  for (let gi = 0; gi < grants.length; gi++) {
+    grantSet[String(grants[gi]).toLowerCase()] = true;
+  }
+
+  let gmArg;
+  if (grantSet["gm_xmlhttprequest"] || grantSet["gm.xmlhttprequest"]) {
+    gmArg = makeGmXmlHttpRequest(scriptId);
+    console.log(
+      "[DonkeyCode:page] GM_xmlhttpRequest available for script",
+      scriptId,
+      "connects",
+      connects
+    );
+  } else {
+    gmArg = undefined;
+  }
+
   try {
     console.log("[DonkeyCode:page] executing script", scriptId);
-    const run = new Function(code);
-    run();
+    const run = new Function("GM_xmlhttpRequest", code);
+    run(gmArg);
     if (typeof g.__myScriptCleanup === "function") {
       cleanups[scriptId] = g.__myScriptCleanup;
       try {
@@ -320,6 +430,8 @@ async function loadScriptsFromRemote() {
       enabled: prevRow ? prevRow.enabled !== false : true,
       matches: meta.matches,
       excludes: meta.excludes,
+      grants: meta.grants,
+      connects: meta.connects,
       code: meta.body,
     });
   }
@@ -386,7 +498,14 @@ async function syncTabScripts(tabId, url) {
         target: { tabId, allFrames: false },
         world: "MAIN",
         func: donkeycodeInjectMain,
-        args: [script.id, script.code],
+        args: [
+          {
+            id: script.id,
+            code: script.code,
+            grants: script.grants || [],
+            connects: script.connects || [],
+          },
+        ],
       });
       rememberInjection(tabId, script.id, true);
       log("injected script", script.id, script.name, "tab", tabId, url);
@@ -622,6 +741,59 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           const sessionsData = await chrome.storage.sync.get(STORAGE.SESSIONS);
           const sessions = Object.keys(sessionsData[STORAGE.SESSIONS] || {}).sort();
           sendResponse({ ok: true, sessions });
+          break;
+        }
+        case "GM_XHR": {
+          const scriptId = message.scriptId;
+          const details = message.details || {};
+          const reqUrl = details.url;
+          const method = (details.method || "GET").toUpperCase();
+
+          if (!scriptId || !reqUrl) {
+            sendResponse({ error: "scriptId and url required" });
+            break;
+          }
+
+          const scripts = await getStoredScripts();
+          const script = scripts.find((s) => s.id === scriptId);
+          if (!script) {
+            logWarn("GM_XHR: unknown script", scriptId);
+            sendResponse({ error: "Unknown script" });
+            break;
+          }
+
+          const connects = script.connects || [];
+          if (!urlAllowedByConnects(reqUrl, connects)) {
+            logWarn("GM_XHR blocked by @connect", reqUrl, connects);
+            sendResponse({ error: "URL not allowed by script @connect" });
+            break;
+          }
+
+          log("GM_xmlhttpRequest", method, reqUrl, script.name);
+          try {
+            const init = { method, redirect: "follow" };
+            if (details.headers && typeof details.headers === "object") {
+              const h = new Headers();
+              for (const k of Object.keys(details.headers)) {
+                h.append(k, details.headers[k]);
+              }
+              init.headers = h;
+            }
+            const res = await fetch(reqUrl, init);
+            const text = await res.text();
+            log("GM_xmlhttpRequest done", res.status, reqUrl);
+            sendResponse({
+              responseText: text,
+              status: res.status,
+              statusText: res.statusText,
+              finalUrl: res.url,
+            });
+          } catch (e) {
+            logError("GM_xmlhttpRequest fetch failed", reqUrl, e);
+            sendResponse({
+              error: String(e && e.message ? e.message : e),
+            });
+          }
           break;
         }
         default:
