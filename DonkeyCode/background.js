@@ -13,7 +13,14 @@ const STORAGE = {
   SCRIPTS: "donkeycode_scripts",
   SESSIONS: "donkeycode_sessions",
   LAST_FETCH: "donkeycode_last_script_fetch_ms",
+  PENDING_RESTORE: "donkeycode_pending_restore_session",
 };
+
+/** Default URLs opened before restoring a session (user signs in, then continues). */
+const LOGIN_WINDOW_URLS = [
+  "https://opssuitemain.swacorp.com/",
+  "https://www.swalife.com/",
+];
 
 const ALARM_DAILY = "donkeycode_daily_script_refresh";
 
@@ -599,10 +606,38 @@ async function toggleScript(scriptId, enabled) {
   }
 }
 
+function normalizeSessionSnapshot(snap) {
+  if (!snap || !Array.isArray(snap.windows)) return { windows: [] };
+  const windows = snap.windows.map((w, wi) => {
+    const id =
+      w.id && String(w.id).trim()
+        ? String(w.id)
+        : "w_" + wi + "_" + Math.random().toString(36).slice(2, 9);
+    const tabs = (w.tabs || []).map((t, ti) => ({
+      url: t.url != null ? String(t.url) : "",
+      active: !!t.active,
+      index: typeof t.index === "number" ? t.index : ti,
+      pinned: !!t.pinned,
+    }));
+    return {
+      id,
+      left: w.left,
+      top: w.top,
+      width: w.width,
+      height: w.height,
+      state: w.state,
+      focused: w.focused,
+      tabs,
+    };
+  });
+  return { windows };
+}
+
 async function captureSessionSnapshot() {
   const wins = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] });
   const snapshot = {
-    windows: wins.map((w) => ({
+    windows: wins.map((w, wi) => ({
+      id: "w_" + wi + "_" + Date.now().toString(36),
       left: w.left,
       top: w.top,
       width: w.width,
@@ -617,7 +652,7 @@ async function captureSessionSnapshot() {
       })),
     })),
   };
-  return snapshot;
+  return normalizeSessionSnapshot(snapshot);
 }
 
 async function saveSession(name) {
@@ -626,7 +661,7 @@ async function saveSession(name) {
   const snap = await captureSessionSnapshot();
   const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
   const sessions = data[STORAGE.SESSIONS] || {};
-  sessions[trimmed] = snap;
+  sessions[trimmed] = normalizeSessionSnapshot(snap);
   try {
     await chrome.storage.sync.set({ [STORAGE.SESSIONS]: sessions });
   } catch (e) {
@@ -641,13 +676,13 @@ async function saveSession(name) {
   log("session saved", trimmed, "windows", snap.windows.length);
 }
 
-async function restoreSession(name) {
+async function restoreSessionInternal(name) {
   const trimmed = (name || "").trim();
   if (!trimmed) throw new Error("Session name required");
   const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
   const sessions = data[STORAGE.SESSIONS] || {};
-  const snap = sessions[trimmed];
-  if (!snap || !snap.windows) throw new Error("Session not found");
+  const snap = normalizeSessionSnapshot(sessions[trimmed]);
+  if (!snap.windows.length) throw new Error("Session not found");
 
   for (const w of snap.windows) {
     const urls = (w.tabs || [])
@@ -672,7 +707,8 @@ async function restoreSession(name) {
     });
 
     if (created && created.tabs && w.tabs) {
-      const activeIndex = w.tabs.findIndex((t) => t.active);
+      const sortedTabs = (w.tabs || []).slice().sort((a, b) => (a.index || 0) - (b.index || 0));
+      const activeIndex = sortedTabs.findIndex((t) => t.active);
       if (activeIndex >= 0 && created.tabs[activeIndex]) {
         try {
           await chrome.tabs.update(created.tabs[activeIndex].id, { active: true });
@@ -685,12 +721,83 @@ async function restoreSession(name) {
   log("session restored", trimmed);
 }
 
+async function restoreSession(name) {
+  await restoreSessionInternal(name);
+}
+
+async function openLoginWindowsThenQueueRestore(sessionName) {
+  const trimmed = (sessionName || "").trim();
+  if (!trimmed) throw new Error("Session name required");
+  await chrome.storage.local.set({
+    [STORAGE.PENDING_RESTORE]: trimmed,
+  });
+  for (let i = 0; i < LOGIN_WINDOW_URLS.length; i++) {
+    await chrome.windows.create({
+      url: LOGIN_WINDOW_URLS[i],
+      focused: i === 0,
+    });
+  }
+  log("login windows opened; pending restore", trimmed);
+}
+
+async function completePendingRestore() {
+  const data = await chrome.storage.local.get(STORAGE.PENDING_RESTORE);
+  const name = data[STORAGE.PENDING_RESTORE];
+  if (!name || !String(name).trim()) {
+    throw new Error("No restore is waiting. Use “Restore after login” first.");
+  }
+  await chrome.storage.local.remove(STORAGE.PENDING_RESTORE);
+  await restoreSessionInternal(String(name).trim());
+  log("pending restore completed", name);
+}
+
+async function getPendingRestore() {
+  const data = await chrome.storage.local.get(STORAGE.PENDING_RESTORE);
+  const name = data[STORAGE.PENDING_RESTORE];
+  return name ? String(name) : null;
+}
+
+async function clearPendingRestore() {
+  await chrome.storage.local.remove(STORAGE.PENDING_RESTORE);
+}
+
+async function getSessionDetail(name) {
+  const trimmed = (name || "").trim();
+  if (!trimmed) throw new Error("Session name required");
+  const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
+  const sessions = data[STORAGE.SESSIONS] || {};
+  const raw = sessions[trimmed];
+  if (!raw) throw new Error("Session not found");
+  return { name: trimmed, snapshot: normalizeSessionSnapshot(raw) };
+}
+
+async function saveSessionData(name, snapshot) {
+  const trimmed = (name || "").trim();
+  if (!trimmed) throw new Error("Session name required");
+  const snap = normalizeSessionSnapshot(snapshot);
+  if (!snap.windows.length) throw new Error("Session needs at least one window");
+  const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
+  const sessions = data[STORAGE.SESSIONS] || {};
+  sessions[trimmed] = snap;
+  try {
+    await chrome.storage.sync.set({ [STORAGE.SESSIONS]: sessions });
+  } catch (e) {
+    if (e && e.message && String(e.message).toLowerCase().includes("quota")) {
+      logError("sync quota exceeded saving session data", e);
+    }
+    throw e;
+  }
+  log("session data saved", trimmed);
+}
+
 async function deleteSession(name) {
   const trimmed = (name || "").trim();
   const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
   const sessions = data[STORAGE.SESSIONS] || {};
   delete sessions[trimmed];
   await chrome.storage.sync.set({ [STORAGE.SESSIONS]: sessions });
+  const pend = await getPendingRestore();
+  if (pend === trimmed) await clearPendingRestore();
   log("session deleted", trimmed);
 }
 
@@ -701,12 +808,15 @@ async function getStateForPopup() {
   const sessionsData = await chrome.storage.sync.get(STORAGE.SESSIONS);
   const sessions = sessionsData[STORAGE.SESSIONS] || {};
   const last = await chrome.storage.local.get(STORAGE.LAST_FETCH);
+  const pendingRestore = await getPendingRestore();
   return {
     scripts,
     scriptSourceUrl: sourceUrl,
     extraScriptUrls: extra.join("\n"),
     sessions: Object.keys(sessions).sort(),
     lastScriptFetch: last[STORAGE.LAST_FETCH] || null,
+    pendingRestoreSession: pendingRestore,
+    loginUrls: LOGIN_WINDOW_URLS,
   };
 }
 
@@ -765,6 +875,34 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         case "RESTORE_SESSION": {
           await restoreSession(message.name);
           sendResponse({ ok: true });
+          break;
+        }
+        case "RESTORE_SESSION_AFTER_LOGIN": {
+          await openLoginWindowsThenQueueRestore(message.name);
+          const pending = await getPendingRestore();
+          sendResponse({ ok: true, pendingRestoreSession: pending });
+          break;
+        }
+        case "COMPLETE_PENDING_RESTORE": {
+          await completePendingRestore();
+          sendResponse({ ok: true, pendingRestoreSession: null });
+          break;
+        }
+        case "CANCEL_PENDING_RESTORE": {
+          await clearPendingRestore();
+          sendResponse({ ok: true, pendingRestoreSession: null });
+          break;
+        }
+        case "GET_SESSION_DETAIL": {
+          const detail = await getSessionDetail(message.name);
+          sendResponse({ ok: true, ...detail });
+          break;
+        }
+        case "SAVE_SESSION_DATA": {
+          await saveSessionData(message.name, message.snapshot);
+          const sessionsData = await chrome.storage.sync.get(STORAGE.SESSIONS);
+          const sessions = Object.keys(sessionsData[STORAGE.SESSIONS] || {}).sort();
+          sendResponse({ ok: true, sessions });
           break;
         }
         case "DELETE_SESSION": {

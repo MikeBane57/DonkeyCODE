@@ -22,6 +22,11 @@
     </nav>
 
     <section id="panel-sessions" class="panel active" role="tabpanel">
+      <p id="pending-restore-banner" class="pending-banner hidden" role="status"></p>
+      <div class="btn-row pending-actions hidden" id="pending-restore-actions">
+        <button type="button" id="btn-complete-pending" class="secondary">Continue: open saved session</button>
+        <button type="button" id="btn-cancel-pending" class="small">Cancel pending restore</button>
+      </div>
       <div class="row">
         <label for="session-name">Session name</label>
         <input id="session-name" type="text" placeholder="e.g. Morning ops" autocomplete="off" />
@@ -33,34 +38,57 @@
       <h2 class="section-title">Saved sessions</h2>
       <ul id="session-list" class="list"></ul>
       <p id="sessions-empty" class="hint hidden">No saved sessions yet.</p>
+      <p class="hint restore-hint">
+        <strong>Restore after login</strong> opens two windows (opssuite + swalife) so you can sign in, then use
+        <strong>Continue: open saved session</strong> to open your saved layout.
+      </p>
     </section>
 
     <section id="panel-scripts" class="panel" role="tabpanel" hidden>
       <div class="btn-row">
         <button type="button" id="btn-refresh-scripts">Refresh scripts</button>
       </div>
-      <div class="row">
-        <label for="script-source-url">Script source (GitHub API listing URL)</label>
-        <input
-          id="script-source-url"
-          type="url"
-          spellcheck="false"
-          placeholder="https://api.github.com/repos/owner/repo/contents/?ref=main"
-        />
-        <button type="button" id="btn-apply-source" class="small">Apply &amp; reload</button>
-      </div>
-      <div class="row">
-        <label for="extra-urls">Extra raw script URLs (one per line)</label>
-        <textarea id="extra-urls" rows="3" placeholder="https://raw.githubusercontent.com/.../test-banner.user.js"></textarea>
-        <button type="button" id="btn-apply-extra" class="small">Apply &amp; reload</button>
-      </div>
       <p id="last-fetch" class="hint"></p>
       <h2 class="section-title">Scripts</h2>
       <ul id="script-list" class="list script-list"></ul>
       <p id="scripts-empty" class="hint hidden">No scripts loaded. Check the source URL or click Refresh.</p>
+
+      <div class="script-settings">
+        <h2 class="section-title">Script sources</h2>
+        <div class="row">
+          <label for="script-source-url">GitHub API listing URL</label>
+          <input
+            id="script-source-url"
+            type="url"
+            spellcheck="false"
+            placeholder="https://api.github.com/repos/owner/repo/contents/?ref=main"
+          />
+          <button type="button" id="btn-apply-source" class="small">Apply &amp; reload</button>
+        </div>
+        <div class="row">
+          <label for="extra-urls">Extra raw script URLs (one per line)</label>
+          <textarea id="extra-urls" rows="3" placeholder="https://raw.githubusercontent.com/.../test-banner.user.js"></textarea>
+          <button type="button" id="btn-apply-extra" class="small">Apply &amp; reload</button>
+        </div>
+      </div>
     </section>
 
     <p id="status" class="status" role="status"></p>
+
+    <div id="session-editor-overlay" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-labelledby="session-editor-title">
+        <h2 id="session-editor-title" class="modal-title">Edit session</h2>
+        <p class="hint modal-hint">
+          Edit the JSON below. Each window has <code>left</code>, <code>top</code>, <code>width</code>, <code>height</code>, and
+          <code>tabs</code> with <code>url</code> per tab. Save replaces the stored session.
+        </p>
+        <textarea id="session-editor-json" class="session-json" spellcheck="false" rows="18"></textarea>
+        <div class="btn-row modal-actions">
+          <button type="button" id="session-editor-save">Save</button>
+          <button type="button" id="session-editor-cancel" class="secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
 
     <script src="popup.js"></script>
   </body>

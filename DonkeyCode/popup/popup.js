@@ -58,6 +58,25 @@ function switchTab(name) {
   $("panel-scripts").classList.toggle("active", name === "scripts");
 }
 
+let editingSessionName = null;
+
+function updatePendingBanner(state) {
+  const pending = state && state.pendingRestoreSession;
+  const banner = $("pending-restore-banner");
+  const actions = $("pending-restore-actions");
+  if (pending) {
+    banner.textContent =
+      'Pending restore: "' +
+      pending +
+      '". Sign in to both sites if needed, then click Continue.';
+    banner.classList.remove("hidden");
+    actions.classList.remove("hidden");
+  } else {
+    banner.classList.add("hidden");
+    actions.classList.add("hidden");
+  }
+}
+
 async function loadState() {
   setStatus("Loading…");
   try {
@@ -68,6 +87,7 @@ async function loadState() {
       ? "Last script fetch: " + formatTime(state.lastScriptFetch)
       : "No fetch recorded yet.";
 
+    updatePendingBanner(state);
     renderSessions(state.sessions || []);
     renderScripts(state.scripts || []);
     setStatus("");
@@ -88,6 +108,8 @@ function renderSessions(names) {
   empty.classList.add("hidden");
   for (const name of names) {
     const li = document.createElement("li");
+    li.className = "session-item";
+
     const span = document.createElement("span");
     span.textContent = name;
     span.style.flex = "1";
@@ -96,10 +118,22 @@ function renderSessions(names) {
     const actions = document.createElement("div");
     actions.className = "session-actions";
 
+    const btnEdit = document.createElement("button");
+    btnEdit.type = "button";
+    btnEdit.textContent = "Edit";
+    btnEdit.addEventListener("click", () => openSessionEditor(name));
+
     const btnRestore = document.createElement("button");
     btnRestore.type = "button";
     btnRestore.textContent = "Restore";
     btnRestore.addEventListener("click", () => restoreSession(name));
+
+    const btnLogin = document.createElement("button");
+    btnLogin.type = "button";
+    btnLogin.className = "secondary";
+    btnLogin.textContent = "After login";
+    btnLogin.title = "Open opssuite + swalife for sign-in, then continue restore";
+    btnLogin.addEventListener("click", () => restoreAfterLogin(name));
 
     const btnDelete = document.createElement("button");
     btnDelete.type = "button";
@@ -107,7 +141,9 @@ function renderSessions(names) {
     btnDelete.textContent = "Delete";
     btnDelete.addEventListener("click", () => deleteSession(name));
 
+    actions.appendChild(btnEdit);
     actions.appendChild(btnRestore);
+    actions.appendChild(btnLogin);
     actions.appendChild(btnDelete);
     li.appendChild(span);
     li.appendChild(actions);
@@ -126,18 +162,30 @@ function renderScripts(scripts) {
   empty.classList.add("hidden");
   for (const s of scripts) {
     const li = document.createElement("li");
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = s.enabled !== false;
-    cb.dataset.scriptId = s.id;
-    cb.addEventListener("change", () => toggleScript(s.id, cb.checked));
 
-    const label = document.createElement("label");
-    label.appendChild(cb);
-    const text = document.createTextNode(" " + (s.name || s.url));
-    label.appendChild(text);
+    const labelSpan = document.createElement("span");
+    labelSpan.className = "script-row-label";
+    labelSpan.textContent = s.name || s.url;
 
-    li.appendChild(label);
+    const toggleLabel = document.createElement("label");
+    toggleLabel.className = "toggle";
+    toggleLabel.setAttribute("title", s.enabled !== false ? "On" : "Off");
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = s.enabled !== false;
+    input.dataset.scriptId = s.id;
+    input.addEventListener("change", () => toggleScript(s.id, input.checked));
+
+    const slider = document.createElement("span");
+    slider.className = "toggle-slider";
+    slider.setAttribute("aria-hidden", "true");
+
+    toggleLabel.appendChild(input);
+    toggleLabel.appendChild(slider);
+
+    li.appendChild(labelSpan);
+    li.appendChild(toggleLabel);
     ul.appendChild(li);
   }
 }
@@ -226,6 +274,43 @@ async function restoreSession(name) {
   }
 }
 
+async function restoreAfterLogin(name) {
+  setStatus("Opening login windows…");
+  try {
+    const res = await send("RESTORE_SESSION_AFTER_LOGIN", { name });
+    updatePendingBanner(res);
+    setStatus(
+      "Sign in to opssuite and swalife, then click Continue to open your saved session."
+    );
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+  }
+}
+
+async function completePendingRestore() {
+  setStatus("Opening saved session…");
+  try {
+    const res = await send("COMPLETE_PENDING_RESTORE", {});
+    updatePendingBanner(res);
+    setStatus("Saved session windows opened.");
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+  }
+}
+
+async function cancelPendingRestore() {
+  try {
+    const res = await send("CANCEL_PENDING_RESTORE", {});
+    updatePendingBanner(res);
+    setStatus("Pending restore cancelled.");
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+  }
+}
+
 async function deleteSession(name) {
   const ok = window.confirm(
     'Delete saved session "' + name + '"? This cannot be undone.'
@@ -242,6 +327,58 @@ async function deleteSession(name) {
   }
 }
 
+async function openSessionEditor(name) {
+  editingSessionName = name;
+  setStatus("Loading session…");
+  try {
+    const res = await send("GET_SESSION_DETAIL", { name });
+    const payload = { windows: res.snapshot.windows };
+    $("session-editor-json").value = JSON.stringify(payload, null, 2);
+    $("session-editor-title").textContent = 'Edit session: "' + name + '"';
+    $("session-editor-overlay").classList.remove("hidden");
+    $("session-editor-overlay").setAttribute("aria-hidden", "false");
+    setStatus("");
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+    editingSessionName = null;
+  }
+}
+
+function closeSessionEditor() {
+  editingSessionName = null;
+  $("session-editor-overlay").classList.add("hidden");
+  $("session-editor-overlay").setAttribute("aria-hidden", "true");
+}
+
+async function saveSessionEditor() {
+  if (!editingSessionName) return;
+  let parsed;
+  try {
+    parsed = JSON.parse($("session-editor-json").value);
+  } catch (e) {
+    setStatus("Invalid JSON: " + (e.message || e), true);
+    return;
+  }
+  if (!parsed || !Array.isArray(parsed.windows)) {
+    setStatus('JSON must be an object with a "windows" array.', true);
+    return;
+  }
+  setStatus("Saving session…");
+  try {
+    const res = await send("SAVE_SESSION_DATA", {
+      name: editingSessionName,
+      snapshot: parsed,
+    });
+    closeSessionEditor();
+    renderSessions(res.sessions || []);
+    setStatus('Session "' + editingSessionName + '" updated.');
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+  }
+}
+
 document.querySelectorAll(".tab").forEach((btn) => {
   btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
@@ -251,5 +388,13 @@ $("btn-refresh-sessions").addEventListener("click", loadState);
 $("btn-refresh-scripts").addEventListener("click", refreshScripts);
 $("btn-apply-source").addEventListener("click", applySourceUrl);
 $("btn-apply-extra").addEventListener("click", applyExtraUrls);
+$("btn-complete-pending").addEventListener("click", completePendingRestore);
+$("btn-cancel-pending").addEventListener("click", cancelPendingRestore);
+
+$("session-editor-save").addEventListener("click", saveSessionEditor);
+$("session-editor-cancel").addEventListener("click", closeSessionEditor);
+$("session-editor-overlay").addEventListener("click", function (ev) {
+  if (ev.target === $("session-editor-overlay")) closeSessionEditor();
+});
 
 document.addEventListener("DOMContentLoaded", loadState);
