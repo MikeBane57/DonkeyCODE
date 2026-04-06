@@ -1052,6 +1052,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           sendResponse({ ok: true, opened });
           break;
         }
+        case "OPEN_EXTENSIONS_PAGE_FOR_PIN": {
+          const id = chrome.runtime.id;
+          const scheme =
+            typeof navigator !== "undefined" &&
+            /Edg\//.test(navigator.userAgent || "")
+              ? "edge://"
+              : "chrome://";
+          const url = scheme + "extensions/?id=" + encodeURIComponent(id);
+          await chrome.tabs.create({ url });
+          sendResponse({ ok: true });
+          break;
+        }
         case "REFRESH_SCRIPTS": {
           log("refresh scripts requested");
           const scripts = await loadScriptsFromRemote();

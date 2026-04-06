@@ -65,6 +65,19 @@ document.getElementById("btn-allow").addEventListener("click", async function ()
   }
 });
 
+document.getElementById("btn-pin-extension").addEventListener("click", async function () {
+  const hint = document.getElementById("pin-hint");
+  try {
+    await send("OPEN_EXTENSIONS_PAGE_FOR_PIN", {});
+    if (hint) {
+      hint.textContent =
+        "On that page, use Pin to toolbar (or the pin icon) next to DonkeyCode, then come back here.";
+    }
+  } catch (e) {
+    if (hint) hint.textContent = String(e.message || e);
+  }
+});
+
 document.getElementById("btn-get-started").addEventListener("click", async function () {
   const hint = document.getElementById("get-started-hint");
   const btn = this;
