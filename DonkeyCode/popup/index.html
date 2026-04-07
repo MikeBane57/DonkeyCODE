@@ -54,6 +54,11 @@
         <button type="button" id="btn-cancel-pending" class="small">Cancel pending restore</button>
       </div>
 
+      <p class="hint restore-hint restore-hint--top">
+        <strong>Login First</strong> opens two side-by-side windows (opssuite + swalife). Sign in, then click
+        <strong>Continue: open saved session</strong> to launch your saved layout. Use the <strong>gear</strong> for scripts, GitHub settings, and repo browser.
+      </p>
+
       <div class="row session-folder-row">
         <span class="session-folder-label">Session folder</span>
         <div class="session-folder-controls">
@@ -68,12 +73,14 @@
               Browse…
             </button>
           </div>
+          <button type="button" id="btn-discover-session-folders" class="small secondary" title="Scan repo for session folders and add any missing to the list">
+            Discover
+          </button>
           <button type="button" id="btn-add-session-folder" class="small secondary" title="Add folder">+ Folder</button>
         </div>
         <p id="session-folder-github-hint" class="hint"></p>
         <p class="hint small-hint">
-          <strong>Pull / Push / Sync</strong> only affect the <strong>folder you have selected</strong> (upload deletes to Git, then pull merges).
-          <strong>Discover folders</strong> adds missing paths from the repo to the list (no session merge).
+          <strong>Sync folder</strong> uploads this folder to GitHub, then merges remote changes. <strong>Discover</strong> adds folder paths from the repo (no session merge).
           <strong>+ Folder</strong>: name, or <code>name, path/override</code> for a custom Git path.
         </p>
       </div>
@@ -84,28 +91,13 @@
       </div>
       <div class="btn-row github-sync-row">
         <button type="button" id="btn-save-session">Save current layout</button>
-        <button type="button" id="btn-sync-all-sessions-github" class="primary" title="Push this folder to GitHub, then pull merge (same folder)">
-          Sync (GitHub)
-        </button>
-      </div>
-      <div class="btn-row github-sync-row secondary-row">
-        <button type="button" id="btn-pull-sessions-github" class="small secondary" title="Merge GitHub file into this folder only">
-          Pull
-        </button>
-        <button type="button" id="btn-push-sessions-github" class="small secondary" title="Upload this folder to GitHub">
-          Push
-        </button>
-        <button type="button" id="btn-discover-session-folders" class="small secondary" title="Scan repo for session folders and add any missing to the list">
-          Discover folders
+        <button type="button" id="btn-sync-session-folder-github" class="primary" title="Push this folder to GitHub, then pull merge">
+          Sync folder
         </button>
       </div>
       <h2 class="section-title">Saved sessions</h2>
       <ul id="session-list" class="list"></ul>
       <p id="sessions-empty" class="hint hidden">No saved sessions in this folder yet.</p>
-      <p class="hint restore-hint">
-        <strong>Login First</strong> opens two side-by-side windows (opssuite + swalife). Sign in, then click
-        <strong>Continue: open saved session</strong> to launch your saved layout. Use the <strong>gear</strong> for scripts, GitHub sync, and repo browser.
-      </p>
     </section>
 
     <section id="panel-scripts" class="panel" role="tabpanel" hidden>

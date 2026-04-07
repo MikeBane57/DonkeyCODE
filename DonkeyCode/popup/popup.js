@@ -1023,41 +1023,6 @@ function formatGithubSyncStatus(prefix, res) {
   return { text: parts.join(" "), isErr };
 }
 
-async function pullSessionsFromGithub() {
-  setStatus("Pulling from GitHub (this folder)…");
-  try {
-    const res = await send("GITHUB_SESSIONS_PULL", {});
-    await loadState();
-    const { text, isErr } = formatGithubSyncStatus("Pull complete (this folder).", res);
-    setStatus(text, isErr);
-  } catch (e) {
-    console.error("[DonkeyCode:popup] GitHub pull", e);
-    setStatus(String(e.message || e), true);
-    try {
-      await loadState();
-    } catch (e2) {
-      /* ignore */
-    }
-  }
-}
-
-async function pushCurrentFolderToGithub() {
-  setStatus("Pushing this folder to GitHub…");
-  try {
-    await send("GITHUB_SESSIONS_PUSH", {});
-    await loadState();
-    setStatus("Push complete (this folder).");
-  } catch (e) {
-    console.error("[DonkeyCode:popup] GitHub push", e);
-    setStatus(String(e.message || e), true);
-    try {
-      await loadState();
-    } catch (e2) {
-      /* ignore */
-    }
-  }
-}
-
 async function discoverSessionFoldersFromGithub() {
   setStatus("Discovering folders on GitHub…");
   try {
@@ -1081,11 +1046,11 @@ async function discoverSessionFoldersFromGithub() {
 }
 
 async function syncAllSessionsWithGithub() {
-  setStatus("Sync: push then pull (this folder)…");
+  setStatus("Sync folder (GitHub)…");
   try {
     const res = await send("GITHUB_SESSIONS_SYNC_ALL", {});
     await loadState();
-    const { text, isErr } = formatGithubSyncStatus("Sync complete (this folder).", res);
+    const { text, isErr } = formatGithubSyncStatus("Sync folder complete.", res);
     setStatus(text, isErr);
   } catch (e) {
     console.error("[DonkeyCode:popup] GitHub sync all", e);
@@ -1303,10 +1268,8 @@ bindClick("worksheet-order-cancel", function () {
   });
 })();
 
-bindClick("btn-pull-sessions-github", pullSessionsFromGithub);
-bindClick("btn-push-sessions-github", pushCurrentFolderToGithub);
 bindClick("btn-discover-session-folders", discoverSessionFoldersFromGithub);
-bindClick("btn-sync-all-sessions-github", syncAllSessionsWithGithub);
+bindClick("btn-sync-session-folder-github", syncAllSessionsWithGithub);
 bindClick("btn-refresh-scripts", refreshScripts);
 bindClick("btn-open-settings", openSettingsTab);
 

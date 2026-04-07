@@ -714,6 +714,11 @@ button.btn-icon-launch {
   line-height: 1.45;
 }
 
+.restore-hint--top {
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
 .hint {
   margin: 8px 0 0;
   font-size: 11px;
