@@ -1179,29 +1179,58 @@ async function putGithubSessionsFile(settings, bodyObj, shaOrNull) {
   );
 }
 
+/**
+ * Pull merges each GitHub JSON file into the **local folder(s)** that map to that file path.
+ * Previously only the current folder was updated — sessions from other repo paths never appeared
+ * in their folders. We group by resolved repo path and fetch once per path.
+ */
 async function githubSyncPull() {
-  const fk = await getCurrentSessionFolderKey();
-  const settings = await getGithubPathForFolder(fk);
-  if (!settings.token || !settings.owner || !settings.repo) {
+  const gh = await getGithubSettings();
+  if (!gh.token || !gh.owner || !gh.repo) {
     throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
   }
-  let remoteSessions = {};
-  const file = await fetchGithubSessionsFile(settings);
-  if (!file) {
-    log("GitHub sessions file not found — pull leaves local only");
-    remoteSessions = {};
-  } else {
-    remoteSessions = file.sessions || {};
+  const { folders } = await getSessionFoldersState();
+  const folderKeys = Object.keys(folders);
+  const pathToFolderKeys = new Map();
+  for (const fk of folderKeys) {
+    const settings = await getGithubPathForFolder(fk);
+    const p = settings.path;
+    if (!pathToFolderKeys.has(p)) pathToFolderKeys.set(p, []);
+    pathToFolderKeys.get(p).push(fk);
   }
-  const local = await getSessionsMapForFolder(fk);
-  const merged = mergeSessionsByTimestamp(local, remoteSessions);
-  await setSessionsMapForFolder(fk, merged);
+
+  for (const [repoPath, fks] of pathToFolderKeys) {
+    const settings = await getGithubPathForFolder(fks[0]);
+    let remoteSessions = {};
+    const file = await fetchGithubSessionsFile(settings);
+    if (!file) {
+      log("GitHub pull: no file at path", repoPath, "— folders", fks.join(", "));
+    } else {
+      remoteSessions = file.sessions || {};
+    }
+    for (const fk of fks) {
+      const local = await getSessionsMapForFolder(fk);
+      const merged = mergeSessionsByTimestamp(local, remoteSessions);
+      await setSessionsMapForFolder(fk, merged);
+      log(
+        "GitHub pull merged folder",
+        fk,
+        Object.keys(merged).length,
+        "sessions",
+        "path",
+        repoPath
+      );
+    }
+  }
+
   await chrome.storage.local.set({
     [STORAGE.GITHUB_SYNC_LAST_ERROR]: "",
     [STORAGE.GITHUB_SYNC_LAST_OK]: Date.now(),
   });
-  log("GitHub pull merged", Object.keys(merged).length, "sessions", "folder", fk);
-  return { sessions: Object.keys(merged).sort() };
+  const curFk = await getCurrentSessionFolderKey();
+  const curSessions = Object.keys(await getSessionsMapForFolder(curFk)).sort();
+  log("GitHub pull done; current folder", curFk, "session count", curSessions.length);
+  return { sessions: curSessions };
 }
 
 async function githubSyncPush() {
@@ -1274,13 +1303,18 @@ async function captureSessionSnapshot() {
   return normalizeSessionSnapshot(snapshot);
 }
 
-async function saveSession(name) {
+async function saveSession(name, snapshotOverride) {
   const trimmed = (name || "").trim();
   if (!trimmed) throw new Error("Session name required");
-  const snap = await captureSessionSnapshot();
+  let snap;
+  if (snapshotOverride && typeof snapshotOverride === "object") {
+    snap = touchSessionMeta(normalizeSessionSnapshot(snapshotOverride));
+  } else {
+    snap = touchSessionMeta(await captureSessionSnapshot());
+  }
   const fk = await getCurrentSessionFolderKey();
   const sessions = await getSessionsMapForFolder(fk);
-  sessions[trimmed] = touchSessionMeta(snap);
+  sessions[trimmed] = snap;
   try {
     await setSessionsMapForFolder(fk, sessions);
   } catch (e) {
@@ -1700,8 +1734,32 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           sendResponse({ ok: true, scripts });
           break;
         }
+        case "PREVIEW_SESSION_CAPTURE": {
+          const snap = await captureSessionSnapshot();
+          const ordered = sortWindowsForRestore(snap.windows);
+          const worksheetIndices = [];
+          for (let i = 0; i < snap.windows.length; i++) {
+            if (worksheetPrimaryUrlForWindow(snap.windows[i])) {
+              worksheetIndices.push(i);
+            }
+          }
+          const orderSet = new Set(worksheetIndices);
+          const worksheetIndicesOrdered = [];
+          for (const w of ordered) {
+            const idx = snap.windows.indexOf(w);
+            if (idx >= 0 && orderSet.has(idx)) {
+              worksheetIndicesOrdered.push(idx);
+            }
+          }
+          sendResponse({
+            ok: true,
+            snapshot: snap,
+            worksheetWindowIndices: worksheetIndicesOrdered,
+          });
+          break;
+        }
         case "SAVE_SESSION": {
-          await saveSession(message.name);
+          await saveSession(message.name, message.snapshot);
           const fk = await getCurrentSessionFolderKey();
           const sessions = Object.keys(await getSessionsMapForFolder(fk)).sort();
           const githubAutoSync = await maybeAutoPushSessionsToGithub();

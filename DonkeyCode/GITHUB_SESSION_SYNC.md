@@ -21,7 +21,7 @@ Run **`npm run build`** at the repo root with **`DONKEYCODE_*` environment varia
 1. Open the extension popup → **Settings** (gear).
 2. Fill **Owner**, **Repository**, **Branch** (e.g. `main`), **File path in repo**.
 3. Paste your **token** → **Save GitHub settings**.
-4. In the popup **Sessions** tab, **Pull from GitHub** merges the latest sessions from the repo into the current folder (replaces the old “reload list” button). The full **Settings** page still has **Pull** / **Push** as well.
+4. In the popup **Sessions** tab, **Pull from GitHub** fetches **every** JSON file your session folders use (each folder’s GitHub path can differ via **GitHub subfolder** in settings) and merges remote sessions into **each matching local folder**. The full **Settings** page still has **Pull** / **Push** as well.
 
 ### Auto-sync on save
 
