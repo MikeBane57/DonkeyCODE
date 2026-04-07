@@ -597,7 +597,7 @@ async function loadScriptsFromRemote() {
       url: e.url,
       name: e.name,
       userScriptName,
-      enabled: prevRow ? prevRow.enabled !== false : true,
+      enabled: prevRow ? prevRow.enabled !== false : false,
       matches: meta.matches,
       excludes: meta.excludes,
       grants,

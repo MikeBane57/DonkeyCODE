@@ -386,6 +386,22 @@ button.danger:hover {
   border-bottom: none;
 }
 
+.script-section-heading {
+  list-style: none;
+  margin: 10px 0 6px;
+  padding: 4px 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #546e7a;
+  border-bottom: 1px solid #e0e4e8;
+}
+
+.script-section-heading:first-child {
+  margin-top: 0;
+}
+
 .script-list li {
   align-items: center;
   flex-direction: row;
@@ -572,4 +588,59 @@ button.btn-icon-launch {
 
 .modal-actions {
   margin-top: 10px;
+}
+
+.worksheet-order-modal {
+  max-width: 440px;
+}
+
+.worksheet-order-list {
+  margin: 0 0 10px;
+  padding-left: 22px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 11px;
+}
+
+.worksheet-order-list li {
+  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.worksheet-order-list .ws-url {
+  word-break: break-all;
+  color: #333;
+  flex: 1;
+  min-width: 0;
+}
+
+.worksheet-order-list .ws-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 4px;
+}
+
+.worksheet-order-list .ws-actions button {
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.worksheet-stagger-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 8px 0 4px;
+}
+
+.worksheet-stagger-input {
+  width: 100%;
+  max-width: 120px;
+  padding: 6px 8px;
+  border: 1px solid #cfd8dc;
+  border-radius: 6px;
+  font: inherit;
 }

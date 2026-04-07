@@ -72,6 +72,179 @@ function switchTab(name) {
 
 let editingSessionName = null;
 
+/** Pending save after worksheet order modal */
+let saveSessionPendingName = null;
+let saveSessionPendingSnapshot = null;
+/** Permutation of worksheet window indices (user order) */
+let worksheetOrderIndices = null;
+
+const WS_HOST = "opssuitemain.swacorp.com";
+const WS_PATH = "/widgets/worksheet";
+
+function isOpsSuiteWorksheetUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  try {
+    const u = new URL(url);
+    return (
+      u.hostname === WS_HOST &&
+      u.pathname.toLowerCase().indexOf(WS_PATH) !== -1
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
+function windowHasWorksheet(w) {
+  for (const t of w.tabs || []) {
+    if (isOpsSuiteWorksheetUrl(t.url)) return true;
+  }
+  return false;
+}
+
+function worksheetPrimaryUrl(w) {
+  for (const t of w.tabs || []) {
+    if (isOpsSuiteWorksheetUrl(t.url)) {
+      const u = String(t.url);
+      return u.length > 92 ? u.slice(0, 89) + "…" : u;
+    }
+  }
+  return "";
+}
+
+/**
+ * userOrderedIndices: worksheet window indices in desired open order (permutation of worksheet indices).
+ */
+function applyWorksheetOrderToSnapshot(snapshot, userOrderedIndices) {
+  const wins = snapshot.windows || [];
+  const n = wins.length;
+  const wsSet = new Set();
+  for (let i = 0; i < n; i++) {
+    if (windowHasWorksheet(wins[i])) wsSet.add(i);
+  }
+  const wsQueue = userOrderedIndices.map(function (idx) {
+    return wins[idx];
+  });
+  const nonWsQueue = [];
+  for (let i = 0; i < n; i++) {
+    if (!wsSet.has(i)) nonWsQueue.push(wins[i]);
+  }
+  const newWindows = [];
+  let wq = 0;
+  let nq = 0;
+  for (let i = 0; i < n; i++) {
+    if (wsSet.has(i)) {
+      newWindows.push(wsQueue[wq++]);
+    } else {
+      newWindows.push(nonWsQueue[nq++]);
+    }
+  }
+  const staggerEl = $("worksheet-stagger-ms");
+  const staggerRaw = staggerEl ? parseInt(String(staggerEl.value || "800"), 10) : 800;
+  const stagger = Number.isFinite(staggerRaw) ? Math.max(0, staggerRaw) : 800;
+  const meta = Object.assign({}, snapshot._meta || {}, {
+    worksheetStaggerMs: stagger,
+  });
+  return {
+    windows: newWindows.map(function (w, wi) {
+      const o = Object.assign({}, w);
+      o.restoreOrder = wi;
+      return o;
+    }),
+    _meta: meta,
+  };
+}
+
+function openWorksheetOrderModal(name, snapshot, worksheetWindowIndices) {
+  saveSessionPendingName = name;
+  saveSessionPendingSnapshot = snapshot;
+  worksheetOrderIndices = worksheetWindowIndices.slice();
+  const list = $("worksheet-order-list");
+  const prevStagger =
+    list && list.children.length > 0 && $("worksheet-stagger-ms")
+      ? $("worksheet-stagger-ms").value
+      : null;
+  list.innerHTML = "";
+  worksheetOrderIndices.forEach(function (winIdx, pos) {
+    const w = snapshot.windows[winIdx];
+    const li = document.createElement("li");
+    const label = document.createElement("span");
+    label.className = "ws-url";
+    label.textContent = (pos + 1) + ". " + (worksheetPrimaryUrl(w) || "Worksheet window");
+    const actions = document.createElement("div");
+    actions.className = "ws-actions";
+    const up = document.createElement("button");
+    up.type = "button";
+    up.textContent = "↑";
+    up.title = "Move up";
+    up.addEventListener("click", function () {
+      if (pos <= 0) return;
+      const t = worksheetOrderIndices[pos - 1];
+      worksheetOrderIndices[pos - 1] = worksheetOrderIndices[pos];
+      worksheetOrderIndices[pos] = t;
+      openWorksheetOrderModal(name, snapshot, worksheetOrderIndices);
+    });
+    const down = document.createElement("button");
+    down.type = "button";
+    down.textContent = "↓";
+    down.title = "Move down";
+    down.addEventListener("click", function () {
+      if (pos >= worksheetOrderIndices.length - 1) return;
+      const t = worksheetOrderIndices[pos + 1];
+      worksheetOrderIndices[pos + 1] = worksheetOrderIndices[pos];
+      worksheetOrderIndices[pos] = t;
+      openWorksheetOrderModal(name, snapshot, worksheetOrderIndices);
+    });
+    actions.appendChild(up);
+    actions.appendChild(down);
+    li.appendChild(label);
+    li.appendChild(actions);
+    list.appendChild(li);
+  });
+  const stagger = $("worksheet-stagger-ms");
+  if (stagger) {
+    if (prevStagger != null && prevStagger !== "") {
+      stagger.value = prevStagger;
+    } else {
+      const m = snapshot._meta && snapshot._meta.worksheetStaggerMs;
+      stagger.value =
+        typeof m === "number" && Number.isFinite(m) ? String(m) : "800";
+    }
+  }
+  const ov = $("worksheet-order-overlay");
+  ov.classList.remove("hidden");
+  ov.setAttribute("aria-hidden", "false");
+}
+
+function closeWorksheetOrderModal() {
+  const ov = $("worksheet-order-overlay");
+  if (ov) {
+    ov.classList.add("hidden");
+    ov.setAttribute("aria-hidden", "true");
+  }
+  saveSessionPendingName = null;
+  saveSessionPendingSnapshot = null;
+  worksheetOrderIndices = null;
+}
+
+async function confirmWorksheetOrderSave() {
+  const name = saveSessionPendingName;
+  const snap = saveSessionPendingSnapshot;
+  const order = worksheetOrderIndices;
+  if (!name || !snap || !order) return;
+  const finalSnap = applyWorksheetOrderToSnapshot(snap, order);
+  closeWorksheetOrderModal();
+  setStatus("Saving session…");
+  try {
+    const res = await send("SAVE_SESSION", { name, snapshot: finalSnap });
+    $("session-name").value = "";
+    renderSessions(res.sessions || []);
+    setStatus('Session "' + name + '" saved.' + githubAutoSyncSuffix(res.githubAutoSync));
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+  }
+}
+
 function updatePendingBanner(state) {
   const pending = state && state.pendingRestoreSession;
   const banner = $("pending-restore-banner");
@@ -301,6 +474,15 @@ function renderSessions(names) {
   }
 }
 
+function scriptDisplayName(s) {
+  return (
+    (s.userScriptName && String(s.userScriptName).trim()) ||
+    s.name ||
+    s.url ||
+    "Script"
+  );
+}
+
 function renderScripts(scripts) {
   const ul = $("script-list");
   const empty = $("scripts-empty");
@@ -310,14 +492,27 @@ function renderScripts(scripts) {
     return;
   }
   empty.classList.add("hidden");
-  for (const s of scripts) {
+
+  const cmp = function (a, b) {
+    return scriptDisplayName(a).localeCompare(scriptDisplayName(b), undefined, {
+      sensitivity: "base",
+    });
+  };
+  const enabledList = scripts
+    .filter(function (s) {
+      return s.enabled !== false;
+    })
+    .sort(cmp);
+  const inactiveList = scripts
+    .filter(function (s) {
+      return s.enabled === false;
+    })
+    .sort(cmp);
+
+  function appendScriptRow(s) {
     const li = document.createElement("li");
 
-    const displayName =
-      (s.userScriptName && String(s.userScriptName).trim()) ||
-      s.name ||
-      s.url ||
-      "Script";
+    const displayName = scriptDisplayName(s);
 
     const labelSpan = document.createElement("span");
     labelSpan.className = "script-row-label";
@@ -332,7 +527,9 @@ function renderScripts(scripts) {
     input.type = "checkbox";
     input.checked = s.enabled !== false;
     input.dataset.scriptId = s.id;
-    input.addEventListener("change", () => toggleScript(s.id, input.checked));
+    input.addEventListener("change", function () {
+      toggleScript(s.id, input.checked);
+    });
 
     const slider = document.createElement("span");
     slider.className = "toggle-slider";
@@ -344,6 +541,21 @@ function renderScripts(scripts) {
     li.appendChild(toggleLabel);
     li.appendChild(labelSpan);
     ul.appendChild(li);
+  }
+
+  if (enabledList.length) {
+    const head = document.createElement("li");
+    head.className = "script-section-heading";
+    head.textContent = "Enabled";
+    ul.appendChild(head);
+    enabledList.forEach(appendScriptRow);
+  }
+  if (inactiveList.length) {
+    const head = document.createElement("li");
+    head.className = "script-section-heading";
+    head.textContent = "Inactive";
+    ul.appendChild(head);
+    inactiveList.forEach(appendScriptRow);
   }
 }
 
@@ -402,8 +614,15 @@ async function saveSession() {
     setStatus("Enter a session name first.", true);
     return;
   }
-  setStatus("Saving session…");
+  setStatus("Capturing layout…");
   try {
+    const preview = await send("PREVIEW_SESSION_CAPTURE", {});
+    const wsIdx = preview.worksheetWindowIndices || [];
+    if (wsIdx.length > 0) {
+      openWorksheetOrderModal(name, preview.snapshot, wsIdx);
+      setStatus("Set worksheet order, then Save session.");
+      return;
+    }
     const res = await send("SAVE_SESSION", { name });
     $("session-name").value = "";
     renderSessions(res.sessions || []);
@@ -556,6 +775,20 @@ document.querySelectorAll(".tab").forEach((btn) => {
 });
 
 $("btn-save-session").addEventListener("click", saveSession);
+
+$("worksheet-order-save").addEventListener("click", function () {
+  confirmWorksheetOrderSave();
+});
+$("worksheet-order-cancel").addEventListener("click", function () {
+  closeWorksheetOrderModal();
+  setStatus("Save cancelled.");
+});
+$("worksheet-order-overlay").addEventListener("click", function (ev) {
+  if (ev.target === $("worksheet-order-overlay")) {
+    closeWorksheetOrderModal();
+    setStatus("Save cancelled.");
+  }
+});
 $("btn-pull-sessions-github").addEventListener("click", pullSessionsFromGithub);
 $("btn-refresh-scripts").addEventListener("click", refreshScripts);
 $("btn-open-settings").addEventListener("click", openSettingsTab);
