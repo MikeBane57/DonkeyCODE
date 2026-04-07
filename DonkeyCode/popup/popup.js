@@ -108,21 +108,6 @@ function updateSetupBanner(state) {
   }
 }
 
-function updateHostAccessUI(hasHostAccess) {
-  const st = $("host-access-status");
-  const btn = $("btn-request-host-access");
-  if (!st || !btn) return;
-  if (hasHostAccess) {
-    st.textContent = "Allowed — user scripts can run on http(s) pages.";
-    btn.textContent = "Manage in browser…";
-    btn.dataset.mode = "manage";
-  } else {
-    st.textContent = "Not granted — scripts will not inject until you allow.";
-    btn.textContent = "Allow access to websites (http/https)";
-    btn.dataset.mode = "request";
-  }
-}
-
 function setTabVersions(version) {
   const v = (version && String(version).trim()) || "";
   const s1 = $("tab-ver-sessions");
@@ -185,7 +170,6 @@ async function loadState() {
       : "No fetch yet — open settings (gear) and refresh.";
 
     setTabVersions(state.extensionVersion || "");
-    updateHostAccessUI(!!state.hasHostAccess);
     updateSetupBanner(state);
     updatePendingBanner(state);
     fillSessionFolderUI(state);
@@ -595,7 +579,6 @@ $("btn-setup-allow").addEventListener("click", async function () {
   setStatus("Requesting permission…");
   try {
     const res = await send("REQUEST_HOST_ACCESS", {});
-    updateHostAccessUI(!!res.hasHostAccess);
     const st = await send("GET_STATE", {});
     updateSetupBanner(st);
     if (res.granted) setStatus("Website access granted.");
@@ -625,37 +608,6 @@ $("btn-setup-dismiss").addEventListener("click", async function () {
   }
 });
 
-$("btn-request-host-access").addEventListener("click", async function () {
-  const btn = $("btn-request-host-access");
-  if (btn && btn.dataset.mode === "manage") {
-    const id = chrome.runtime && chrome.runtime.id;
-    const scheme =
-      typeof navigator !== "undefined" && /Edg\//.test(navigator.userAgent)
-        ? "edge://"
-        : "chrome://";
-    const url = id
-      ? scheme + "extensions/?id=" + encodeURIComponent(id)
-      : scheme + "extensions/";
-    try {
-      chrome.tabs.create({ url });
-    } catch (e) {
-      setStatus("Open Extensions → DonkeyCode → Details → Site access.", true);
-    }
-    return;
-  }
-  setStatus("Requesting permission…");
-  try {
-    const res = await send("REQUEST_HOST_ACCESS", {});
-    updateHostAccessUI(!!res.hasHostAccess);
-    const st2 = await send("GET_STATE", {});
-    updateSetupBanner(st2);
-    if (res.granted) setStatus("Website access granted. Reload open tabs if needed.");
-    else setStatus("Permission not granted.", true);
-  } catch (e) {
-    console.error("[DonkeyCode:popup]", e);
-    setStatus(String(e.message || e), true);
-  }
-});
 $("btn-complete-pending").addEventListener("click", completePendingRestore);
 $("btn-cancel-pending").addEventListener("click", cancelPendingRestore);
 $("btn-login-first").addEventListener("click", loginFirst);
