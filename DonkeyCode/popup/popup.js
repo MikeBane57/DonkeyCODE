@@ -2,6 +2,11 @@
  * DonkeyCode popup — all actions use chrome.runtime.sendMessage only.
  */
 
+/** Must match STORAGE.PENDING_FIRST_POPUP_REFRESH in background.js */
+const PENDING_FIRST_POPUP_REFRESH = "donkeycode_pending_first_popup_refresh";
+
+let firstPopupRefreshInflight = null;
+
 function $(id) {
   return document.getElementById(id);
 }
@@ -186,7 +191,24 @@ async function loadState() {
     renderScripts(state.scripts || []);
     setStatus("");
 
-    if (state.pendingFirstPopupRefresh) {
+    await runFirstPopupRefreshIfNeeded();
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+  }
+}
+
+/**
+ * Welcome page sets PENDING_FIRST_POPUP_REFRESH then opens the popup; the popup
+ * can load before storage finishes, so we also listen for storage.onChanged.
+ */
+function runFirstPopupRefreshIfNeeded() {
+  if (firstPopupRefreshInflight) return firstPopupRefreshInflight;
+  firstPopupRefreshInflight = (async function () {
+    try {
+      const state = await send("GET_STATE", {});
+      if (!state.pendingFirstPopupRefresh) return;
+
       switchTab("scripts");
       setStatus("Loading scripts…");
       try {
@@ -208,11 +230,22 @@ async function loadState() {
           /* ignore */
         }
       }
+    } finally {
+      firstPopupRefreshInflight = null;
     }
-  } catch (e) {
-    console.error("[DonkeyCode:popup]", e);
-    setStatus(String(e.message || e), true);
-  }
+  })();
+  return firstPopupRefreshInflight;
+}
+
+if (chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener(function (changes, areaName) {
+    if (areaName !== "local") return;
+    const ch = changes[PENDING_FIRST_POPUP_REFRESH];
+    if (!ch || !ch.newValue) return;
+    runFirstPopupRefreshIfNeeded().catch(function (e) {
+      console.error("[DonkeyCode:popup] storage first refresh", e);
+    });
+  });
 }
 
 function renderSessions(names) {

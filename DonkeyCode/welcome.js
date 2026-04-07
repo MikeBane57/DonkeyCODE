@@ -1,6 +1,8 @@
 /**
  * First-run welcome page (extension context — can message background).
+ * Must match STORAGE.PENDING_FIRST_POPUP_REFRESH in background.js
  */
+const PENDING_FIRST_POPUP_REFRESH = "donkeycode_pending_first_popup_refresh";
 
 function send(type, payload) {
   return new Promise((resolve, reject) => {
@@ -65,38 +67,57 @@ document.getElementById("btn-allow").addEventListener("click", async function ()
   }
 });
 
-document.getElementById("btn-get-started").addEventListener("click", async function () {
+document.getElementById("btn-get-started").addEventListener("click", function () {
   const hint = document.getElementById("get-started-hint");
   const btn = this;
   btn.disabled = true;
-  let opened = false;
+  if (hint) {
+    hint.textContent = "Opening DonkeyCode…";
+  }
+
+  /**
+   * `chrome.action.openPopup()` must run in the same user-gesture turn as the
+   * click. Calling it inside `storage.local.set`’s callback loses the gesture.
+   * Order: start openPopup synchronously, then persist the refresh flag.
+   */
+  let popupPromise = Promise.resolve(false);
   try {
     if (chrome.action && typeof chrome.action.openPopup === "function") {
-      try {
-        await chrome.action.openPopup();
-        opened = true;
-      } catch (e) {
-        console.warn("[DonkeyCode:welcome] openPopup", e);
-      }
+      popupPromise = Promise.resolve(chrome.action.openPopup())
+        .then(function () {
+          return true;
+        })
+        .catch(function (e) {
+          console.warn("[DonkeyCode:welcome] openPopup", e);
+          return false;
+        });
     }
-    await send("QUEUE_FIRST_POPUP_REFRESH", {});
-    if (hint) {
-      if (opened) {
-        hint.textContent =
-          "The DonkeyCode popup should be open — scripts will load automatically. You can leave or close this tab.";
-      } else {
-        hint.textContent =
-          "Click the DonkeyCode icon in the toolbar (use the puzzle piece in step 2 if you don’t see it). Scripts refresh on first open.";
+  } catch (e) {
+    console.warn("[DonkeyCode:welcome] openPopup sync", e);
+    popupPromise = Promise.resolve(false);
+  }
+
+  try {
+    chrome.storage.local.set({ [PENDING_FIRST_POPUP_REFRESH]: true }, function () {
+      const err = chrome.runtime.lastError;
+      if (err) {
+        console.warn("[DonkeyCode:welcome] storage.set", err);
+        if (hint) hint.textContent = String(err.message || err);
+        btn.disabled = false;
+        return;
       }
-    }
-    try {
-      const w = await chrome.windows.getCurrent();
-      if (w && w.id != null) {
-        await chrome.windows.update(w.id, { focused: true });
-      }
-    } catch (e) {
-      /* ignore */
-    }
+      popupPromise.then(function () {
+        try {
+          chrome.tabs.getCurrent(function (tab) {
+            if (tab && tab.id != null) {
+              chrome.tabs.remove(tab.id);
+            }
+          });
+        } catch (e) {
+          /* ignore */
+        }
+      });
+    });
   } catch (e) {
     if (hint) hint.textContent = String(e.message || e);
     btn.disabled = false;

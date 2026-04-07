@@ -1425,13 +1425,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           sendResponse({ ok: true });
           break;
         }
-        case "QUEUE_FIRST_POPUP_REFRESH": {
-          await chrome.storage.local.set({
-            [STORAGE.PENDING_FIRST_POPUP_REFRESH]: true,
-          });
-          sendResponse({ ok: true });
-          break;
-        }
         case "OPEN_EXTENSIONS_PAGE_FOR_PIN": {
           const id = chrome.runtime.id;
           const scheme =
