@@ -21,7 +21,11 @@ Run **`npm run build`** at the repo root with **`DONKEYCODE_*` environment varia
 1. Open the extension popup → **Settings** (gear).
 2. Fill **Owner**, **Repository**, **Branch** (e.g. `main`), **File path in repo**.
 3. Paste your **token** → **Save GitHub settings**.
-4. Use **Pull from GitHub** to merge remote sessions into this browser, or **Push to GitHub** to upload merged sessions after you edit/save locally.
+4. Use **Pull from GitHub** to merge remote sessions into this browser. **Push to GitHub** is still available for a manual upload.
+
+### Auto-sync on save
+
+When **owner, repository, and token** are configured, the extension **automatically pushes** to GitHub after you **save**, **edit**, or **delete** a session in the current folder (same merge rules as manual push). If the push fails, your changes remain **saved locally**; the status line shows an error so you can fix the token or use **Pull** / **Push** from Settings.
 
 ## Merge behavior
 

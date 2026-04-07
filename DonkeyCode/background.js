@@ -1158,6 +1158,28 @@ async function githubSyncPush() {
   return { sessions: Object.keys(merged).sort() };
 }
 
+/**
+ * After local session changes: push to GitHub when owner/repo/token are set.
+ * Skips quietly if not configured; logs and records error on failure (local data still saved).
+ */
+async function maybeAutoPushSessionsToGithub() {
+  const gh = await getGithubSettings();
+  if (!gh.token || !gh.owner || !gh.repo) {
+    return { skipped: true };
+  }
+  try {
+    const result = await githubSyncPush();
+    return { skipped: false, ok: true, sessions: result.sessions };
+  } catch (e) {
+    const msg = String(e && e.message ? e.message : e);
+    await chrome.storage.local.set({
+      [STORAGE.GITHUB_SYNC_LAST_ERROR]: msg,
+    });
+    logWarn("auto GitHub session push failed", e);
+    return { skipped: false, ok: false, error: msg };
+  }
+}
+
 async function captureSessionSnapshot() {
   const wins = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] });
   const snapshot = {
@@ -1594,7 +1616,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           await saveSession(message.name);
           const fk = await getCurrentSessionFolderKey();
           const sessions = Object.keys(await getSessionsMapForFolder(fk)).sort();
-          sendResponse({ ok: true, sessions });
+          const githubAutoSync = await maybeAutoPushSessionsToGithub();
+          sendResponse({ ok: true, sessions, githubAutoSync });
           break;
         }
         case "RESTORE_SESSION": {
@@ -1627,14 +1650,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           await saveSessionData(message.name, message.snapshot);
           const fk = await getCurrentSessionFolderKey();
           const sessions = Object.keys(await getSessionsMapForFolder(fk)).sort();
-          sendResponse({ ok: true, sessions });
+          const githubAutoSync = await maybeAutoPushSessionsToGithub();
+          sendResponse({ ok: true, sessions, githubAutoSync });
           break;
         }
         case "DELETE_SESSION": {
           await deleteSession(message.name);
           const fk = await getCurrentSessionFolderKey();
           const sessions = Object.keys(await getSessionsMapForFolder(fk)).sort();
-          sendResponse({ ok: true, sessions });
+          const githubAutoSync = await maybeAutoPushSessionsToGithub();
+          sendResponse({ ok: true, sessions, githubAutoSync });
           break;
         }
         case "SET_CURRENT_SESSION_FOLDER": {

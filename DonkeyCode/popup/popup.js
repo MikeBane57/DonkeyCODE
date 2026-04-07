@@ -51,6 +51,13 @@ function formatTime(ms) {
   }
 }
 
+/** Appended to status after save/delete when background returns githubAutoSync. */
+function githubAutoSyncSuffix(sync) {
+  if (!sync || sync.skipped) return "";
+  if (sync.ok) return " Synced to GitHub.";
+  return " GitHub sync failed: " + (sync.error || "unknown") + " (saved locally.)";
+}
+
 function switchTab(name) {
   document.querySelectorAll(".tab").forEach((btn) => {
     const on = btn.dataset.tab === name;
@@ -383,7 +390,7 @@ async function saveSession() {
     const res = await send("SAVE_SESSION", { name });
     $("session-name").value = "";
     renderSessions(res.sessions || []);
-    setStatus('Session "' + name + '" saved.');
+    setStatus('Session "' + name + '" saved.' + githubAutoSyncSuffix(res.githubAutoSync));
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
     setStatus(String(e.message || e), true);
@@ -452,7 +459,7 @@ async function deleteSession(name) {
   try {
     const res = await send("DELETE_SESSION", { name });
     renderSessions(res.sessions || []);
-    setStatus('Session "' + name + '" deleted.');
+    setStatus('Session "' + name + '" deleted.' + githubAutoSyncSuffix(res.githubAutoSync));
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
     setStatus(String(e.message || e), true);
@@ -513,7 +520,10 @@ async function saveSessionEditor() {
     });
     closeSessionEditor();
     renderSessions(res.sessions || []);
-    setStatus('Session "' + editingSessionName + '" updated.');
+    setStatus(
+      'Session "' + editingSessionName + '" updated.' +
+        githubAutoSyncSuffix(res.githubAutoSync)
+    );
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
     setStatus(String(e.message || e), true);
