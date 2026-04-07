@@ -164,6 +164,9 @@ function fillSessionFolderUI(state) {
     if (fk === cur) opt.selected = true;
     sel.appendChild(opt);
   }
+  if (folders.includes(cur)) {
+    sel.value = cur;
+  }
   if (hint) {
     const rel = (state.folderGithubRelativePaths && state.folderGithubRelativePaths[cur]) || "";
     const eff = state.githubEffectiveSessionFilePath || "";
@@ -219,7 +222,12 @@ function runFirstPopupRefreshIfNeeded() {
           ? "Last fetch: " + formatTime(st2.lastScriptFetch)
           : "";
         updateSetupBanner(st2);
-        setStatus("Scripts loaded.");
+        fillSessionFolderUI(st2);
+        renderSessions(st2.sessions || []);
+        syncLoginFirstSelect(st2.sessions || []);
+        updatePendingBanner(st2);
+        switchTab("sessions");
+        setStatus("Scripts and sessions loaded.");
       } catch (e) {
         console.error("[DonkeyCode:popup] first-load refresh", e);
         setStatus(String(e.message || e), true);
@@ -658,11 +666,20 @@ $("session-editor-overlay").addEventListener("click", function (ev) {
   if (ev.target === $("session-editor-overlay")) closeSessionEditor();
 });
 
+let visibilityReloadTimer = null;
+function scheduleReloadOnVisible() {
+  if (visibilityReloadTimer) clearTimeout(visibilityReloadTimer);
+  visibilityReloadTimer = setTimeout(function () {
+    visibilityReloadTimer = null;
+    loadState().catch(function (e) {
+      console.error("[DonkeyCode:popup] visibility reload", e);
+    });
+  }, 80);
+}
+
 document.addEventListener("DOMContentLoaded", loadState);
 
 document.addEventListener("visibilitychange", function () {
   if (document.visibilityState !== "visible") return;
-  loadState().catch(function (e) {
-    console.error("[DonkeyCode:popup] visibility reload", e);
-  });
+  scheduleReloadOnVisible();
 });

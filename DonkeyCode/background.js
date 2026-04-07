@@ -1458,6 +1458,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           sendResponse({ ok: true });
           break;
         }
+        /**
+         * Welcome page step 3: set first-run refresh flag and open the action popup from
+         * the service worker while handling sendMessage (often works when openPopup from
+         * welcome.html does not).
+         */
+        case "OPEN_POPUP_AFTER_WELCOME": {
+          await chrome.storage.local.set({
+            [STORAGE.PENDING_FIRST_POPUP_REFRESH]: true,
+          });
+          let opened = false;
+          try {
+            if (chrome.action && typeof chrome.action.openPopup === "function") {
+              await chrome.action.openPopup();
+              opened = true;
+            }
+          } catch (e) {
+            logWarn("OPEN_POPUP_AFTER_WELCOME openPopup failed", e);
+          }
+          sendResponse({ ok: true, opened });
+          break;
+        }
         case "OPEN_EXTENSIONS_PAGE_FOR_PIN": {
           const id = chrome.runtime.id;
           const scheme =

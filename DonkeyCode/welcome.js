@@ -76,52 +76,68 @@ document.getElementById("btn-get-started").addEventListener("click", function ()
   }
 
   /**
-   * `chrome.action.openPopup()` must run in the same user-gesture turn as the
-   * click. Calling it inside `storage.local.set`’s callback loses the gesture.
-   * Order: start openPopup synchronously, then persist the refresh flag.
+   * openPopup from extension pages often fails silently. The service worker can
+   * open the popup while handling this user-initiated message; we also try from
+   * here as a fallback. Close the welcome tab only after a short delay so the
+   * popup can appear first.
    */
-  let popupPromise = Promise.resolve(false);
-  try {
-    if (chrome.action && typeof chrome.action.openPopup === "function") {
-      popupPromise = Promise.resolve(chrome.action.openPopup())
-        .then(function () {
-          return true;
-        })
-        .catch(function (e) {
-          console.warn("[DonkeyCode:welcome] openPopup", e);
-          return false;
+  function closeWelcomeTabSoon() {
+    window.setTimeout(function () {
+      try {
+        chrome.tabs.getCurrent(function (tab) {
+          if (tab && tab.id != null) {
+            chrome.tabs.remove(tab.id);
+          }
         });
-    }
-  } catch (e) {
-    console.warn("[DonkeyCode:welcome] openPopup sync", e);
-    popupPromise = Promise.resolve(false);
+      } catch (e) {
+        /* ignore */
+      }
+    }, 700);
   }
 
-  try {
-    chrome.storage.local.set({ [PENDING_FIRST_POPUP_REFRESH]: true }, function () {
-      const err = chrome.runtime.lastError;
-      if (err) {
-        console.warn("[DonkeyCode:welcome] storage.set", err);
-        if (hint) hint.textContent = String(err.message || err);
-        btn.disabled = false;
-        return;
-      }
-      popupPromise.then(function () {
+  send("OPEN_POPUP_AFTER_WELCOME", {})
+    .then(function (res) {
+      const opened = !!(res && res.opened);
+      if (!opened) {
         try {
-          chrome.tabs.getCurrent(function (tab) {
-            if (tab && tab.id != null) {
-              chrome.tabs.remove(tab.id);
-            }
+          chrome.tabs.create({
+            url: chrome.runtime.getURL("popup/index.html"),
+            active: true,
           });
         } catch (e) {
-          /* ignore */
+          console.warn("[DonkeyCode:welcome] fallback tab", e);
         }
-      });
+      }
+      if (hint) {
+        hint.textContent = opened
+          ? "DonkeyCode is opening — scripts will load automatically."
+          : "Opened DonkeyCode in a tab — scripts will load automatically. You can use the toolbar icon next time.";
+      }
+      closeWelcomeTabSoon();
+    })
+    .catch(function (e) {
+      console.warn("[DonkeyCode:welcome] OPEN_POPUP_AFTER_WELCOME", e);
+      try {
+        chrome.storage.local.set({ [PENDING_FIRST_POPUP_REFRESH]: true }, function () {
+          try {
+            chrome.tabs.create({
+              url: chrome.runtime.getURL("popup/index.html"),
+              active: true,
+            });
+          } catch (e2) {
+            /* ignore */
+          }
+          if (hint) {
+            hint.textContent =
+              "Opened DonkeyCode in a tab. If you prefer the toolbar popup, click the extension icon.";
+          }
+          closeWelcomeTabSoon();
+        });
+      } catch (e3) {
+        if (hint) hint.textContent = String(e.message || e);
+        btn.disabled = false;
+      }
     });
-  } catch (e) {
-    if (hint) hint.textContent = String(e.message || e);
-    btn.disabled = false;
-  }
 });
 
 document.addEventListener("DOMContentLoaded", refreshAccessState);
