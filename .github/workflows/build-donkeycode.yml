@@ -1,0 +1,45 @@
+# Builds DonkeyCode/baked-config.js from Actions secrets and uploads the extension folder as an artifact.
+# Secrets: Settings → Secrets and variables → Actions → New repository secret
+
+name: Build DonkeyCode extension
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "DonkeyCode/**"
+      - "scripts/**"
+      - "package.json"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Generate baked-config.js
+        env:
+          DONKEYCODE_GITHUB_TOKEN: ${{ secrets.DONKEYCODE_GITHUB_TOKEN }}
+          DONKEYCODE_GITHUB_OWNER: ${{ secrets.DONKEYCODE_GITHUB_OWNER }}
+          DONKEYCODE_GITHUB_REPO: ${{ secrets.DONKEYCODE_GITHUB_REPO }}
+          DONKEYCODE_GITHUB_BRANCH: ${{ secrets.DONKEYCODE_GITHUB_BRANCH }}
+          DONKEYCODE_GITHUB_PATH: ${{ secrets.DONKEYCODE_GITHUB_PATH }}
+        run: npm run build
+
+      - name: Upload extension folder (load unpacked from this zip)
+        uses: actions/upload-artifact@v4
+        with:
+          name: donkeycode-extension
+          path: DonkeyCode/
+          if-no-files-found: error

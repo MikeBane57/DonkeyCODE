@@ -93,6 +93,37 @@ Running `npm run build` with **no** `DONKEYCODE_*` variables copies **`baked-con
 
 ---
 
-## CI (GitHub Actions) — optional
+## All on GitHub: Actions + artifacts
 
-Store `DONKEYCODE_GITHUB_TOKEN` as a **repository secret**. In the workflow, set `env:` from secrets and run `npm run build` before packaging. **Never** echo the token in logs.
+The repo includes **`.github/workflows/build-donkeycode.yml`**. It runs `npm run build` using **repository secrets** and uploads **`donkeycode-extension`** (the `DonkeyCode/` folder) as a downloadable artifact.
+
+### 1. Add repository secrets
+
+On GitHub: open your repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
+
+Create these (names must match exactly):
+
+| Name | Required | Example / notes |
+|------|----------|-----------------|
+| `DONKEYCODE_GITHUB_TOKEN` | **Yes** | Your classic PAT (`ghp_…`) with `repo` scope |
+| `DONKEYCODE_GITHUB_OWNER` | **Yes** | GitHub username or org, e.g. `MikeBane57` |
+| `DONKEYCODE_GITHUB_REPO` | **Yes** | Repo name only, e.g. `DonkeyCODE` |
+| `DONKEYCODE_GITHUB_BRANCH` | No | Defaults to `main` in the build script if empty |
+| `DONKEYCODE_GITHUB_PATH` | No | Defaults to `sessions/donkeycode-sessions.json` if empty |
+
+Paste each value once and save. You cannot read secret values back later (only replace them).
+
+### 2. Run the workflow
+
+- **Actions** tab → **Build DonkeyCode extension** → **Run workflow** (if using `workflow_dispatch`), or  
+- Push to `main` when `DonkeyCode/`, `scripts/`, or `package.json` changes.
+
+### 3. Download the built extension
+
+Open the completed run → **Artifacts** → **donkeycode-extension** → download the zip. Unzip and use **Load unpacked** on the **`DonkeyCode`** folder inside.
+
+**Security:** Do not add `echo`/`print` of env vars in the workflow. The default workflow only passes secrets to `npm run build`.
+
+## CI (GitHub Actions) — summary
+
+Store tokens as **repository secrets**. The workflow sets `env` from secrets and runs `npm run build` before uploading the artifact. **Never** echo the token in logs.
