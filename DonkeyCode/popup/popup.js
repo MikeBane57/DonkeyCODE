@@ -345,6 +345,12 @@ async function loadState() {
   setStatus("Loading…");
   try {
     const state = await send("GET_STATE", {});
+    if (state.stateLoadError) {
+      setStatus(
+        "Could not read all saved data — lists may be empty. " + state.stateLoadError,
+        true
+      );
+    }
     $("last-fetch").textContent = state.lastScriptFetch
       ? "Last fetch: " + formatTime(state.lastScriptFetch)
       : "No fetch yet — open settings (gear) and refresh.";
@@ -355,8 +361,8 @@ async function loadState() {
     fillSessionFolderUI(state);
     renderSessions(state.sessions || []);
     syncLoginFirstSelect(state.sessions || []);
-    renderScripts(state.scripts || []);
-    setStatus("");
+    renderScripts(Array.isArray(state.scripts) ? state.scripts : []);
+    if (!state.stateLoadError) setStatus("");
 
     await runFirstPopupRefreshIfNeeded();
   } catch (e) {
@@ -484,10 +490,11 @@ function scriptDisplayName(s) {
 }
 
 function renderScripts(scripts) {
+  const list = Array.isArray(scripts) ? scripts : [];
   const ul = $("script-list");
   const empty = $("scripts-empty");
   ul.innerHTML = "";
-  if (!scripts.length) {
+  if (!list.length) {
     empty.classList.remove("hidden");
     return;
   }
@@ -498,12 +505,12 @@ function renderScripts(scripts) {
       sensitivity: "base",
     });
   };
-  const enabledList = scripts
+  const enabledList = list
     .filter(function (s) {
       return s.enabled !== false;
     })
     .sort(cmp);
-  const inactiveList = scripts
+  const inactiveList = list
     .filter(function (s) {
       return s.enabled === false;
     })

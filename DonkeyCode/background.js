@@ -484,7 +484,8 @@ function forgetAllInjections() {
 
 async function getStoredScripts() {
   const data = await chrome.storage.local.get(STORAGE.SCRIPTS);
-  return data[STORAGE.SCRIPTS] || [];
+  const raw = data[STORAGE.SCRIPTS];
+  return Array.isArray(raw) ? raw : [];
 }
 
 async function saveScripts(scripts) {
@@ -499,7 +500,8 @@ async function getScriptSourceUrl() {
 async function getExtraUrls() {
   const data = await chrome.storage.sync.get(STORAGE.EXTRA_URLS);
   const list = data[STORAGE.EXTRA_URLS];
-  return Array.isArray(list) ? list : [];
+  if (!Array.isArray(list)) return [];
+  return list;
 }
 
 async function fetchGitHubFileList(apiUrl) {
@@ -915,7 +917,9 @@ async function migrateSessionStorageToLocalIfNeeded() {
     STORAGE.SESSIONS,
   ]);
   let folders = syncPack[STORAGE.SESSION_FOLDERS_V2];
-  if (!folders || typeof folders !== "object") folders = {};
+  if (!folders || typeof folders !== "object" || Array.isArray(folders)) {
+    folders = {};
+  }
 
   const legacy = syncPack[STORAGE.SESSIONS];
   if (legacy && typeof legacy === "object" && Object.keys(legacy).length) {
@@ -960,7 +964,9 @@ async function getSessionFoldersState() {
     STORAGE.CURRENT_SESSION_FOLDER,
   ]);
   let folders = d[STORAGE.SESSION_FOLDERS_V2];
-  if (!folders || typeof folders !== "object") folders = {};
+  if (!folders || typeof folders !== "object" || Array.isArray(folders)) {
+    folders = {};
+  }
   if (!folders[DEFAULT_SESSION_FOLDER]) {
     folders[DEFAULT_SESSION_FOLDER] = { sessions: {} };
   }
@@ -979,7 +985,12 @@ async function getSessionsMapForFolder(folderKey) {
   const { folders } = await getSessionFoldersState();
   const fk = normalizeFolderKey(folderKey);
   const entry = folders[fk] || { sessions: {} };
-  const raw = entry.sessions || {};
+  const raw =
+    entry.sessions &&
+    typeof entry.sessions === "object" &&
+    !Array.isArray(entry.sessions)
+      ? entry.sessions
+      : {};
   const out = {};
   for (const k of Object.keys(raw)) {
     out[k] = normalizeSessionSnapshot(raw[k]);
@@ -991,7 +1002,11 @@ async function setSessionsMapForFolder(folderKey, sessionsObj) {
   const { folders } = await getSessionFoldersState();
   const fk = normalizeFolderKey(folderKey);
   if (!folders[fk]) folders[fk] = { sessions: {} };
-  folders[fk].sessions = sessionsObj;
+  const map =
+    sessionsObj && typeof sessionsObj === "object" && !Array.isArray(sessionsObj)
+      ? sessionsObj
+      : {};
+  folders[fk].sessions = map;
   await chrome.storage.local.set({ [STORAGE.SESSION_FOLDERS_V2]: folders });
 }
 
@@ -1472,64 +1487,106 @@ async function deleteSession(name) {
 }
 
 async function getStateForPopup() {
-  const scripts = await getStoredScripts();
-  const sourceUrl = await getScriptSourceUrl();
-  const extra = await getExtraUrls();
-  const { folders, currentKey } = await getSessionFoldersState();
-  const sessionNames = Object.keys(
-    (folders[currentKey] && folders[currentKey].sessions) || {}
-  ).sort();
-  const folderList = Object.keys(folders).sort();
-  const folderGithubRel = {};
-  for (const k of folderList) {
-    folderGithubRel[k] = (folders[k] && folders[k].githubRelativePath) || "";
-  }
-  const last = await chrome.storage.local.get(STORAGE.LAST_FETCH);
-  const pendingRestore = await getPendingRestore();
-  let extensionVersion = "";
   try {
-    extensionVersion = chrome.runtime.getManifest().version || "";
+    const scripts = await getStoredScripts();
+    const sourceUrl = await getScriptSourceUrl();
+    const extra = await getExtraUrls();
+    const { folders, currentKey } = await getSessionFoldersState();
+    const sessObj =
+      folders[currentKey] &&
+      folders[currentKey].sessions &&
+      typeof folders[currentKey].sessions === "object" &&
+      !Array.isArray(folders[currentKey].sessions)
+        ? folders[currentKey].sessions
+        : {};
+    const sessionNames = Object.keys(sessObj).sort();
+    const folderList = Object.keys(folders).sort();
+    const folderGithubRel = {};
+    for (const k of folderList) {
+      folderGithubRel[k] = (folders[k] && folders[k].githubRelativePath) || "";
+    }
+    const last = await chrome.storage.local.get(STORAGE.LAST_FETCH);
+    const pendingRestore = await getPendingRestore();
+    let extensionVersion = "";
+    try {
+      extensionVersion = chrome.runtime.getManifest().version || "";
+    } catch (e) {
+      extensionVersion = "";
+    }
+    const hasHostAccess = await hasOptionalHostAccess();
+    const setupData = await chrome.storage.local.get(STORAGE.SETUP_DISMISSED);
+    const setupDismissed = !!setupData[STORAGE.SETUP_DISMISSED];
+    const pendingData = await chrome.storage.local.get(
+      STORAGE.PENDING_FIRST_POPUP_REFRESH
+    );
+    const pendingFirstPopupRefresh = !!pendingData[STORAGE.PENDING_FIRST_POPUP_REFRESH];
+    const gh = await getGithubSettings();
+    const ghPathForFolder = await getGithubPathForFolder(currentKey);
+    const ghErr = await chrome.storage.local.get(STORAGE.GITHUB_SYNC_LAST_ERROR);
+    const ghOk = await chrome.storage.local.get(STORAGE.GITHUB_SYNC_LAST_OK);
+    return {
+      scripts,
+      scriptSourceUrl: sourceUrl,
+      extraScriptUrls: extra.join("\n"),
+      sessions: sessionNames,
+      currentSessionFolder: currentKey,
+      sessionFolders: folderList,
+      folderGithubRelativePaths: folderGithubRel,
+      lastScriptFetch: last[STORAGE.LAST_FETCH] || null,
+      pendingRestoreSession: pendingRestore,
+      loginUrls: LOGIN_WINDOW_URLS,
+      extensionVersion,
+      hasHostAccess,
+      setupDismissed,
+      pendingFirstPopupRefresh,
+      githubOwner: gh.owner,
+      githubRepo: gh.repo,
+      githubBranch: gh.branch,
+      githubPath: gh.path,
+      githubEffectiveSessionFilePath: ghPathForFolder.path,
+      githubTokenConfigured: !!gh.token,
+      githubBakedIn: !!String(
+        (self.BAKED_GITHUB_DEFAULTS && self.BAKED_GITHUB_DEFAULTS.token) || ""
+      ).trim(),
+      githubSyncLastOk: ghOk[STORAGE.GITHUB_SYNC_LAST_OK] || null,
+      githubSyncLastError: ghErr[STORAGE.GITHUB_SYNC_LAST_ERROR] || "",
+      stateLoadError: "",
+    };
   } catch (e) {
-    extensionVersion = "";
+    logError("getStateForPopup failed — returning safe empty state", e);
+    let extensionVersion = "";
+    try {
+      extensionVersion = chrome.runtime.getManifest().version || "";
+    } catch (e2) {
+      extensionVersion = "";
+    }
+    return {
+      scripts: [],
+      scriptSourceUrl: DEFAULT_SCRIPT_SOURCE_URL,
+      extraScriptUrls: "",
+      sessions: [],
+      currentSessionFolder: DEFAULT_SESSION_FOLDER,
+      sessionFolders: [DEFAULT_SESSION_FOLDER],
+      folderGithubRelativePaths: { [DEFAULT_SESSION_FOLDER]: "" },
+      lastScriptFetch: null,
+      pendingRestoreSession: null,
+      loginUrls: LOGIN_WINDOW_URLS,
+      extensionVersion,
+      hasHostAccess: false,
+      setupDismissed: false,
+      pendingFirstPopupRefresh: false,
+      githubOwner: "",
+      githubRepo: "",
+      githubBranch: "main",
+      githubPath: "sessions/donkeycode-sessions.json",
+      githubEffectiveSessionFilePath: "sessions/donkeycode-sessions.json",
+      githubTokenConfigured: false,
+      githubBakedIn: false,
+      githubSyncLastOk: null,
+      githubSyncLastError: "",
+      stateLoadError: String(e && e.message ? e.message : e),
+    };
   }
-  const hasHostAccess = await hasOptionalHostAccess();
-  const setupData = await chrome.storage.local.get(STORAGE.SETUP_DISMISSED);
-  const setupDismissed = !!setupData[STORAGE.SETUP_DISMISSED];
-  const pendingData = await chrome.storage.local.get(
-    STORAGE.PENDING_FIRST_POPUP_REFRESH
-  );
-  const pendingFirstPopupRefresh = !!pendingData[STORAGE.PENDING_FIRST_POPUP_REFRESH];
-  const gh = await getGithubSettings();
-  const ghPathForFolder = await getGithubPathForFolder(currentKey);
-  const ghErr = await chrome.storage.local.get(STORAGE.GITHUB_SYNC_LAST_ERROR);
-  const ghOk = await chrome.storage.local.get(STORAGE.GITHUB_SYNC_LAST_OK);
-  return {
-    scripts,
-    scriptSourceUrl: sourceUrl,
-    extraScriptUrls: extra.join("\n"),
-    sessions: sessionNames,
-    currentSessionFolder: currentKey,
-    sessionFolders: folderList,
-    folderGithubRelativePaths: folderGithubRel,
-    lastScriptFetch: last[STORAGE.LAST_FETCH] || null,
-    pendingRestoreSession: pendingRestore,
-    loginUrls: LOGIN_WINDOW_URLS,
-    extensionVersion,
-    hasHostAccess,
-    setupDismissed,
-    pendingFirstPopupRefresh,
-    githubOwner: gh.owner,
-    githubRepo: gh.repo,
-    githubBranch: gh.branch,
-    githubPath: gh.path,
-    githubEffectiveSessionFilePath: ghPathForFolder.path,
-    githubTokenConfigured: !!gh.token,
-    githubBakedIn: !!String(
-      (self.BAKED_GITHUB_DEFAULTS && self.BAKED_GITHUB_DEFAULTS.token) || ""
-    ).trim(),
-    githubSyncLastOk: ghOk[STORAGE.GITHUB_SYNC_LAST_OK] || null,
-    githubSyncLastError: ghErr[STORAGE.GITHUB_SYNC_LAST_ERROR] || "",
-  };
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
