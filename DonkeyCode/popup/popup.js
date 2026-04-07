@@ -669,14 +669,6 @@ $("btn-gh-pull").addEventListener("click", async function () {
   setStatus("Pulling sessions from GitHub…");
   try {
     const res = await send("GITHUB_SESSIONS_PULL", {});
-    if (!res.ok) {
-      setStatus(res.error || "Pull failed", true);
-      const st = await send("GET_STATE", {});
-      fillGithubSettings(st);
-      renderSessions(st.sessions || []);
-      syncLoginFirstSelect(st.sessions || []);
-      return;
-    }
     renderSessions(res.sessions || []);
     syncLoginFirstSelect(res.sessions || []);
     const st = await send("GET_STATE", {});
@@ -685,6 +677,14 @@ $("btn-gh-pull").addEventListener("click", async function () {
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
     setStatus(String(e.message || e), true);
+    try {
+      const st = await send("GET_STATE", {});
+      fillGithubSettings(st);
+      renderSessions(st.sessions || []);
+      syncLoginFirstSelect(st.sessions || []);
+    } catch (e2) {
+      /* ignore */
+    }
   }
 });
 
@@ -692,14 +692,6 @@ $("btn-gh-push").addEventListener("click", async function () {
   setStatus("Pushing sessions to GitHub…");
   try {
     const res = await send("GITHUB_SESSIONS_PUSH", {});
-    if (!res.ok) {
-      setStatus(res.error || "Push failed", true);
-      const st = await send("GET_STATE", {});
-      fillGithubSettings(st);
-      renderSessions(st.sessions || []);
-      syncLoginFirstSelect(st.sessions || []);
-      return;
-    }
     renderSessions(res.sessions || []);
     syncLoginFirstSelect(res.sessions || []);
     const st = await send("GET_STATE", {});
@@ -708,6 +700,12 @@ $("btn-gh-push").addEventListener("click", async function () {
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
     setStatus(String(e.message || e), true);
+    try {
+      const st = await send("GET_STATE", {});
+      fillGithubSettings(st);
+    } catch (e2) {
+      /* ignore */
+    }
   }
 });
 
