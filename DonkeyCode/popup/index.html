@@ -72,8 +72,8 @@
         </div>
         <p id="session-folder-github-hint" class="hint"></p>
         <p class="hint small-hint">
-          <strong>Sync all</strong> scans your <strong>sessions root</strong> on GitHub, adds missing folders, then
-          <strong>pushes every folder</strong> and <strong>pulls</strong> so remotes stay merged.
+          <strong>Pull / Push / Sync</strong> only affect the <strong>folder you have selected</strong> (upload deletes to Git, then pull merges).
+          <strong>Discover folders</strong> adds missing paths from the repo to the list (no session merge).
           <strong>+ Folder</strong>: name, or <code>name, path/override</code> for a custom Git path.
         </p>
       </div>
@@ -84,16 +84,19 @@
       </div>
       <div class="btn-row github-sync-row">
         <button type="button" id="btn-save-session">Save current layout</button>
-        <button type="button" id="btn-sync-all-sessions-github" class="primary" title="Discover folders, push all folders to GitHub, then pull all (merge)">
-          Sync all (GitHub)
+        <button type="button" id="btn-sync-all-sessions-github" class="primary" title="Push this folder to GitHub, then pull merge (same folder)">
+          Sync (GitHub)
         </button>
       </div>
       <div class="btn-row github-sync-row secondary-row">
-        <button type="button" id="btn-pull-sessions-github" class="small secondary" title="Discover remote folders, then merge repo into each local folder">
-          Pull all
+        <button type="button" id="btn-pull-sessions-github" class="small secondary" title="Merge GitHub file into this folder only">
+          Pull
         </button>
-        <button type="button" id="btn-push-all-sessions-github" class="small secondary" title="Upload every local folder to its GitHub file (creates new files on Git)">
-          Push all
+        <button type="button" id="btn-push-sessions-github" class="small secondary" title="Upload this folder to GitHub">
+          Push
+        </button>
+        <button type="button" id="btn-discover-session-folders" class="small secondary" title="Scan repo for session folders and add any missing to the list">
+          Discover folders
         </button>
       </div>
       <h2 class="section-title">Saved sessions</h2>

@@ -951,11 +951,11 @@ function formatGithubSyncStatus(prefix, res) {
 }
 
 async function pullSessionsFromGithub() {
-  setStatus("Discovering folders & pulling from GitHub…");
+  setStatus("Pulling from GitHub (this folder)…");
   try {
     const res = await send("GITHUB_SESSIONS_PULL", {});
     await loadState();
-    const { text, isErr } = formatGithubSyncStatus("Pull all complete.", res);
+    const { text, isErr } = formatGithubSyncStatus("Pull complete (this folder).", res);
     setStatus(text, isErr);
   } catch (e) {
     console.error("[DonkeyCode:popup] GitHub pull", e);
@@ -968,19 +968,36 @@ async function pullSessionsFromGithub() {
   }
 }
 
-async function pushAllSessionsToGithub() {
-  setStatus("Pushing every session folder to GitHub…");
+async function pushCurrentFolderToGithub() {
+  setStatus("Pushing this folder to GitHub…");
   try {
-    const res = await send("GITHUB_SESSIONS_PUSH_ALL", {});
+    await send("GITHUB_SESSIONS_PUSH", {});
     await loadState();
-    const err = (res && res.pushErrors) || [];
-    if (err.length) {
-      setStatus("Push all finished with issues: " + err.join(" "), true);
+    setStatus("Push complete (this folder).");
+  } catch (e) {
+    console.error("[DonkeyCode:popup] GitHub push", e);
+    setStatus(String(e.message || e), true);
+    try {
+      await loadState();
+    } catch (e2) {
+      /* ignore */
+    }
+  }
+}
+
+async function discoverSessionFoldersFromGithub() {
+  setStatus("Discovering folders on GitHub…");
+  try {
+    const res = await send("GITHUB_DISCOVER_SESSION_FOLDERS", {});
+    await loadState();
+    const nf = (res && res.newLocalFolders) || [];
+    if (nf.length) {
+      setStatus("Added folders from repo: " + nf.join(", ") + ".");
     } else {
-      setStatus("Push all complete — every folder uploaded.");
+      setStatus("No new folders found on GitHub.");
     }
   } catch (e) {
-    console.error("[DonkeyCode:popup] GitHub push all", e);
+    console.error("[DonkeyCode:popup] GitHub discover folders", e);
     setStatus(String(e.message || e), true);
     try {
       await loadState();
@@ -991,11 +1008,11 @@ async function pushAllSessionsToGithub() {
 }
 
 async function syncAllSessionsWithGithub() {
-  setStatus("Full sync: discover → push all → pull all…");
+  setStatus("Sync: push then pull (this folder)…");
   try {
     const res = await send("GITHUB_SESSIONS_SYNC_ALL", {});
     await loadState();
-    const { text, isErr } = formatGithubSyncStatus("Sync all complete.", res);
+    const { text, isErr } = formatGithubSyncStatus("Sync complete (this folder).", res);
     setStatus(text, isErr);
   } catch (e) {
     console.error("[DonkeyCode:popup] GitHub sync all", e);
@@ -1214,7 +1231,8 @@ bindClick("worksheet-order-cancel", function () {
 })();
 
 bindClick("btn-pull-sessions-github", pullSessionsFromGithub);
-bindClick("btn-push-all-sessions-github", pushAllSessionsToGithub);
+bindClick("btn-push-sessions-github", pushCurrentFolderToGithub);
+bindClick("btn-discover-session-folders", discoverSessionFoldersFromGithub);
 bindClick("btn-sync-all-sessions-github", syncAllSessionsWithGithub);
 bindClick("btn-refresh-scripts", refreshScripts);
 bindClick("btn-open-settings", openSettingsTab);

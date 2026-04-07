@@ -21,9 +21,9 @@ Run **`npm run build`** at the repo root with **`DONKEYCODE_*` environment varia
 1. Open the extension popup → **Settings** (gear).
 2. Fill **Owner**, **Repository**, **Branch** (e.g. `main`), **Sessions root directory**.
 3. Paste your **token** → **Save GitHub settings**.
-4. **Pull all** walks the **sessions root** recursively on GitHub; any directory that contains `donkeycode-sessions.json` becomes a local folder (path relative to root, e.g. `team/a/b`), then each folder is merged from its remote file. **Push all** uploads **every** local folder. **Sync all folders** runs discover → **push all** → **pull all** so pushes are not invalidated by an earlier pull in the same run; push **retries on blob SHA conflicts** (GitHub sometimes returns **422** with details only in `errors[]` — the extension merges those into the error and retries).
+4. **Pull**, **Push**, and **Sync** in the popup affect only the **session folder selected in the popup** (the active folder). **Sync** uploads merged data for that folder, then pulls to reconcile. Use **Discover folders** to scan the repo for directories that contain `donkeycode-sessions.json` and add any missing folder keys locally (no merge). **Push every folder (advanced)** in full settings uploads all local folders in one go.
 
-5. **Push current folder only** (Settings) still uploads just the folder selected in the popup.
+5. Pushes **retry** on blob conflicts and transient errors (refetch remote, merge by `updatedAt`, write again).
 
 Adding a folder from the popup can **create** an empty JSON on GitHub; **Remove…** in Settings can optionally **delete** that remote file.
 

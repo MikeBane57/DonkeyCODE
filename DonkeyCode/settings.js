@@ -399,19 +399,36 @@ $("btn-remove-token").addEventListener("click", async function () {
 });
 
 $("btn-gh-pull").addEventListener("click", async function () {
-  setInlineStatus($("github-status"), "Pulling (discover + merge)…", false);
+  setInlineStatus($("github-status"), "Pulling current folder…", false);
   try {
     const res = await send("GITHUB_SESSIONS_PULL", {});
     if (res.ok === false) throw new Error(res.error || "Pull failed");
     const names = res.sessions || [];
     const pe = res.pullErrors || [];
-    const nf = res.newLocalFolders || [];
     let msg =
-      "Pull all done. Current folder: " +
+      "Pull done (active folder). Sessions: " +
       (names.length ? names.join(", ") : "(none)");
-    if (nf.length) msg += " — added folders from repo: " + nf.join(", ");
     if (pe.length) msg += " — issues: " + pe.join(" ");
     setInlineStatus($("github-status"), msg, !!pe.length);
+    await refreshFoldersOnly();
+  } catch (e) {
+    setInlineStatus($("github-status"), String(e.message || e), true);
+  }
+});
+
+$("btn-gh-discover").addEventListener("click", async function () {
+  setInlineStatus($("github-status"), "Scanning repo for session folders…", false);
+  try {
+    const res = await send("GITHUB_DISCOVER_SESSION_FOLDERS", {});
+    if (res.ok === false) throw new Error(res.error || "Discover failed");
+    const nf = res.newLocalFolders || [];
+    setInlineStatus(
+      $("github-status"),
+      nf.length
+        ? "Added folders from repo: " + nf.join(", ")
+        : "No new folders found.",
+      false
+    );
     await refreshFoldersOnly();
   } catch (e) {
     setInlineStatus($("github-status"), String(e.message || e), true);
@@ -439,18 +456,16 @@ $("btn-gh-push-all").addEventListener("click", async function () {
 });
 
 $("btn-gh-sync-all").addEventListener("click", async function () {
-  setInlineStatus($("github-status"), "Sync all (discover → push → pull)…", false);
+  setInlineStatus($("github-status"), "Sync (push then pull, current folder)…", false);
   try {
     const res = await send("GITHUB_SESSIONS_SYNC_ALL", {});
     if (res.ok === false) throw new Error(res.error || "Sync failed");
     const names = res.sessions || [];
-    const nf = res.newLocalFolders || [];
     const pe = res.pullErrors || [];
     const psh = res.pushErrors || [];
     let msg =
-      "Sync all done. Current folder: " +
+      "Sync done (active folder). Sessions: " +
       (names.length ? names.join(", ") : "(none)");
-    if (nf.length) msg += " — new from repo: " + nf.join(", ");
     if (psh.length) msg += " — push issues: " + psh.join(" ");
     if (pe.length) msg += " — pull issues: " + pe.join(" ");
     setInlineStatus($("github-status"), msg, !!(pe.length || psh.length));
@@ -461,7 +476,7 @@ $("btn-gh-sync-all").addEventListener("click", async function () {
 });
 
 $("btn-gh-push").addEventListener("click", async function () {
-  setInlineStatus($("github-status"), "Pushing current folder…", false);
+  setInlineStatus($("github-status"), "Pushing active folder…", false);
   try {
     const res = await send("GITHUB_SESSIONS_PUSH", {});
     if (res.ok === false) throw new Error(res.error || "Push failed");

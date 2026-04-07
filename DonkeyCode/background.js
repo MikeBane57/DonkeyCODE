@@ -1317,11 +1317,21 @@ function isGithubShaConflictError(e) {
 /**
  * Write merged sessions; on GitHub SHA race, refetch remote, merge again, retry (fixes concurrent edits).
  */
+function isGithubPushRetryableError(e) {
+  if (isGithubShaConflictError(e)) return true;
+  const st = e && e.status;
+  if (st === 409) return true;
+  if (st === 422) return true;
+  if (st === 503 || st === 502 || st === 429) return true;
+  return false;
+}
+
 async function putGithubSessionsMergedWithRetry(settings, folderKey, maxAttempts) {
   const fk = normalizeFolderKey(folderKey);
   const attempts = Math.max(1, Math.min(Number(maxAttempts) || 8, 16));
   let lastErr = null;
   for (let i = 0; i < attempts; i++) {
+    if (i > 0) await delayMs(60 + i * 50);
     const local = await getSessionsMapForFolder(fk);
     let sha = null;
     let remoteSessions = {};
@@ -1338,8 +1348,15 @@ async function putGithubSessionsMergedWithRetry(settings, folderKey, maxAttempts
       return { mergedCount: Object.keys(merged).length };
     } catch (e) {
       lastErr = e;
-      if (isGithubShaConflictError(e) && i < attempts - 1) {
-        logWarn("GitHub SHA conflict, refetching and retrying push", fk, settings.path, i + 1);
+      if (isGithubPushRetryableError(e) && i < attempts - 1) {
+        logWarn(
+          "GitHub push retry (refetch merge)",
+          fk,
+          settings.path,
+          "attempt",
+          i + 2,
+          githubApiErrorFullText(e).slice(0, 120)
+        );
         continue;
       }
       throw e;
@@ -1438,38 +1455,35 @@ async function discoverAndCreateLocalSessionFolders() {
   return { discovered: keys, newLocalFolders };
 }
 
-async function githubPullAllFoldersMerge() {
-  const { folders } = await getSessionFoldersState();
-  const folderKeys = Object.keys(folders).sort();
-  const errors = [];
-  for (const fk of folderKeys) {
-    try {
-      const settings = await getGithubPathForFolder(fk);
-      let remoteSessions = {};
-      const file = await fetchGithubSessionsFile(settings);
-      if (!file) {
-        log("GitHub pull: no file for folder", fk, "path", settings.path);
-      } else {
-        remoteSessions = file.sessions || {};
-      }
-      const local = await getSessionsMapForFolder(fk);
-      const merged = mergeSessionsByTimestamp(local, remoteSessions);
-      await setSessionsMapForFolder(fk, merged);
-      log(
-        "GitHub pull merged folder",
-        fk,
-        Object.keys(merged).length,
-        "sessions",
-        "path",
-        settings.path
-      );
-    } catch (e) {
-      const msg = String(e && e.message ? e.message : e);
-      errors.push(fk + ": " + msg);
-      logWarn("GitHub pull failed for folder", fk, e);
+/** Merge remote into one local folder. Returns "" on success or "fk: message" on failure. */
+async function githubPullSingleFolderMerge(folderKey) {
+  const fk = normalizeFolderKey(folderKey);
+  try {
+    const settings = await getGithubPathForFolder(fk);
+    let remoteSessions = {};
+    const file = await fetchGithubSessionsFile(settings);
+    if (!file) {
+      log("GitHub pull: no file for folder", fk, "path", settings.path);
+    } else {
+      remoteSessions = file.sessions || {};
     }
+    const local = await getSessionsMapForFolder(fk);
+    const merged = mergeSessionsByTimestamp(local, remoteSessions);
+    await setSessionsMapForFolder(fk, merged);
+    log(
+      "GitHub pull merged folder",
+      fk,
+      Object.keys(merged).length,
+      "sessions",
+      "path",
+      settings.path
+    );
+    return "";
+  } catch (e) {
+    const msg = String(e && e.message ? e.message : e);
+    logWarn("GitHub pull failed for folder", fk, e);
+    return fk + ": " + msg;
   }
-  return errors;
 }
 
 async function githubDeleteRepoFile(settings, sha) {
@@ -1541,8 +1555,7 @@ async function ensureTestFixtureFoldersIfNeeded() {
 }
 
 /**
- * Pull: discover subfolders on GitHub under the sessions root, merge them into local
- * folder list, then merge remote JSON into each local folder (including Default).
+ * Pull: merge GitHub JSON into the **current** session folder only.
  */
 async function githubSyncPull() {
   const gh = await getGithubSettings();
@@ -1550,33 +1563,39 @@ async function githubSyncPull() {
     throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
   }
   await ensureTestFixtureFoldersIfNeeded();
-  let discovery = { discovered: [], newLocalFolders: [] };
-  try {
-    discovery = await discoverAndCreateLocalSessionFolders();
-  } catch (e) {
-    logWarn("GitHub folder discovery failed (continuing with local folders only)", e);
-    discovery = {
-      discovered: [],
-      newLocalFolders: [],
-      discoveryError: String(e && e.message ? e.message : e),
-    };
-  }
-  const errors = await githubPullAllFoldersMerge();
-  if (discovery.discoveryError) {
-    errors.unshift("(discovery) " + discovery.discoveryError);
-  }
+  const curFk = await getCurrentSessionFolderKey();
+  const one = await githubPullSingleFolderMerge(curFk);
+  const errors = one ? [one] : [];
 
   await chrome.storage.local.set({
     [STORAGE.GITHUB_SYNC_LAST_ERROR]: errors.length ? errors.join(" | ") : "",
     [STORAGE.GITHUB_SYNC_LAST_OK]: Date.now(),
   });
 
-  const curFk = await getCurrentSessionFolderKey();
   const curSessions = Object.keys(await getSessionsMapForFolder(curFk)).sort();
-  log("GitHub pull all folders done; current", curFk, "count", curSessions.length);
+  log("GitHub pull current folder done", curFk, "count", curSessions.length);
   return {
     sessions: curSessions,
     pullErrors: errors,
+    discoveredRemoteFolders: [],
+    newLocalFolders: [],
+  };
+}
+
+/**
+ * List remote session folders and add any missing keys locally (does not pull session data).
+ */
+async function githubDiscoverFoldersOnly() {
+  const gh = await getGithubSettings();
+  if (!gh.token || !gh.owner || !gh.repo) {
+    throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
+  }
+  await ensureTestFixtureFoldersIfNeeded();
+  const discovery = await discoverAndCreateLocalSessionFolders();
+  const curFk = await getCurrentSessionFolderKey();
+  const curSessions = Object.keys(await getSessionsMapForFolder(curFk)).sort();
+  return {
+    sessions: curSessions,
     discoveredRemoteFolders: discovery.discovered || [],
     newLocalFolders: discovery.newLocalFolders || [],
   };
@@ -1633,8 +1652,7 @@ async function githubSyncPushAll() {
 }
 
 /**
- * Discover remote folders, **push all** then **pull all** so each file’s SHA is not
- * invalidated by an earlier pull in the same run (reduces “does not match” failures).
+ * **Current folder only:** push merged blob, then pull merge (upload local deletes/edits, then reconcile).
  */
 async function githubSyncAll() {
   const gh = await getGithubSettings();
@@ -1642,35 +1660,28 @@ async function githubSyncAll() {
     throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
   }
   await ensureTestFixtureFoldersIfNeeded();
-  let discovery = { discovered: [], newLocalFolders: [] };
+  const fk = await getCurrentSessionFolderKey();
+  const pushErrors = [];
   try {
-    discovery = await discoverAndCreateLocalSessionFolders();
+    await githubPushSingleFolder(fk);
   } catch (e) {
-    logWarn("sync all: discovery failed", e);
-    discovery = {
-      discovered: [],
-      newLocalFolders: [],
-      discoveryError: String(e && e.message ? e.message : e),
-    };
+    pushErrors.push(fk + ": " + String(e && e.message ? e.message : e));
+    logWarn("GitHub sync: push current failed", fk, e);
   }
-  const pushRes = await githubSyncPushAll();
-  const pullErrors = await githubPullAllFoldersMerge();
-  if (discovery.discoveryError) {
-    pullErrors.unshift("(discovery) " + discovery.discoveryError);
-  }
-  const allErrors = (pushRes.pushErrors || []).concat(pullErrors);
+  const pullOne = await githubPullSingleFolderMerge(fk);
+  const pullErrors = pullOne ? [pullOne] : [];
+  const allErrors = pushErrors.concat(pullErrors);
   await chrome.storage.local.set({
     [STORAGE.GITHUB_SYNC_LAST_ERROR]: allErrors.length ? allErrors.join(" | ") : "",
     [STORAGE.GITHUB_SYNC_LAST_OK]: Date.now(),
   });
-  const curFk = await getCurrentSessionFolderKey();
-  const curSessions = Object.keys(await getSessionsMapForFolder(curFk)).sort();
+  const curSessions = Object.keys(await getSessionsMapForFolder(fk)).sort();
   return {
     sessions: curSessions,
     pullErrors,
-    pushErrors: pushRes.pushErrors || [],
-    discoveredRemoteFolders: discovery.discovered || [],
-    newLocalFolders: discovery.newLocalFolders || [],
+    pushErrors,
+    discoveredRemoteFolders: [],
+    newLocalFolders: [],
   };
 }
 
@@ -2127,6 +2138,23 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           await chrome.storage.local.remove(STORAGE.GITHUB_PAT);
           log("GitHub token removed");
           sendResponse({ ok: true });
+          break;
+        }
+        case "GITHUB_DISCOVER_SESSION_FOLDERS": {
+          try {
+            const result = await githubDiscoverFoldersOnly();
+            sendResponse({
+              ok: true,
+              sessions: result.sessions,
+              discoveredRemoteFolders: result.discoveredRemoteFolders || [],
+              newLocalFolders: result.newLocalFolders || [],
+            });
+          } catch (e) {
+            sendResponse({
+              ok: false,
+              error: String(e && e.message ? e.message : e),
+            });
+          }
           break;
         }
         case "GITHUB_SESSIONS_PULL": {
