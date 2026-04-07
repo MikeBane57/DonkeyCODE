@@ -1169,6 +1169,30 @@ function mergeSessionsByTimestamp(localMap, remoteMap) {
   return merged;
 }
 
+/**
+ * Merge for **uploading** to GitHub: local session list is authoritative for **which names exist**.
+ * If a name was removed locally, do not re-add it from remote (fixes deletes reappearing after push).
+ * For names in both, newer `updatedAt` wins (same as pull merge).
+ */
+function mergeSessionsForPush(localMap, remoteMap) {
+  const L = localMap || {};
+  const R = remoteMap || {};
+  const merged = {};
+  for (const name of Object.keys(L)) {
+    const loc = L[name];
+    const rem = R[name];
+    if (!rem) {
+      merged[name] = normalizeSessionSnapshot(loc);
+      continue;
+    }
+    const tL = loc && loc._meta ? Number(loc._meta.updatedAt) || 0 : 0;
+    const tR = rem && rem._meta ? Number(rem._meta.updatedAt) || 0 : 0;
+    merged[name] =
+      tR > tL ? normalizeSessionSnapshot(rem) : normalizeSessionSnapshot(loc);
+  }
+  return merged;
+}
+
 function sessionsToGithubFilePayload(sessionsMap) {
   return {
     version: 1,
@@ -1380,7 +1404,7 @@ async function putGithubSessionsMergedWithRetry(settings, folderKey, maxAttempts
       remoteSessions = file.sessions || {};
       sha = file.sha;
     }
-    const merged = mergeSessionsByTimestamp(local, remoteSessions);
+    const merged = mergeSessionsForPush(local, remoteSessions);
     await setSessionsMapForFolder(fk, merged);
     const payload = sessionsToGithubFilePayload(merged);
     try {

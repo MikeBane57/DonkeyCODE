@@ -36,8 +36,8 @@ When **owner, repository, and token** are configured, the extension **automatica
 ## Merge behavior
 
 - Each saved session has an **`_meta.updatedAt`** timestamp (ms).
-- On **pull** or **push**, the extension **merges by name**: if the same session name exists locally and remotely, the **newer** `updatedAt` wins.
-- **Push** always merges remote + local first, then writes the combined file so teammates’ newer edits are preserved when possible.
+- **Pull:** for each name that exists **locally or remotely**, the **newer** `updatedAt` wins; names that exist only on GitHub are added locally.
+- **Push:** your **local list of session names** is the source of truth for what exists — a session **deleted locally** is **not** re-added from GitHub when merging before upload. For names that exist in both places, the **newer** `updatedAt` wins so teammates’ edits are preserved.
 
 ## Security
 
