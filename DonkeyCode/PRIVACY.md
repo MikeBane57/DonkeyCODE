@@ -20,7 +20,7 @@ We do **not** operate our own servers for your data. Synced data is subject to *
 
 ## GitHub session sync (optional)
 
-If you enable **GitHub session sync** in Settings, the extension sends your **personal access token** only to **`api.github.com`** to read and write the session JSON file you configure. The token is stored **locally** in `chrome.storage.local` on that device only.
+If you enable **GitHub session sync** in Settings, the extension sends your **personal access token** only to **`api.github.com`** to read and write the session JSON file you configure. The token is stored **locally** in `chrome.storage.local` on that device only. Team builds may include a **generated** `baked-config.js` (see `BUILD.md`); that file is gitignored and must not be committed with real secrets.
 
 ## Data sent over the network
 

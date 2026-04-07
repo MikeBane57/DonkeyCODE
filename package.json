@@ -1,0 +1,8 @@
+{
+  "name": "donkeycode-extension",
+  "private": true,
+  "description": "Build tooling for DonkeyCode (baked GitHub config — not the extension runtime deps)",
+  "scripts": {
+    "build": "node scripts/build-baked-config.mjs"
+  }
+}

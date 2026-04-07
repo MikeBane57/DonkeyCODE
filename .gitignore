@@ -1,0 +1,4 @@
+# Generated from env at build time — may contain secrets
+DonkeyCode/baked-config.js
+.env
+.env.local
