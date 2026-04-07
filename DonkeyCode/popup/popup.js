@@ -144,12 +144,34 @@ function syncLoginFirstSelect(names) {
   if (prev && names.includes(prev)) sel.value = prev;
 }
 
+function fillSessionFolderUI(state) {
+  const sel = $("session-folder-select");
+  const hint = $("session-folder-github-hint");
+  if (!sel) return;
+  const folders = state.sessionFolders || ["__default__"];
+  const cur = state.currentSessionFolder || "__default__";
+  sel.innerHTML = "";
+  for (const fk of folders) {
+    const opt = document.createElement("option");
+    opt.value = fk;
+    opt.textContent =
+      fk === "__default__" ? "Default" : fk;
+    if (fk === cur) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  if (hint) {
+    const rel = (state.folderGithubRelativePaths && state.folderGithubRelativePaths[cur]) || "";
+    const eff = state.githubEffectiveSessionFilePath || "";
+    hint.textContent = rel
+      ? "GitHub file for this folder: " + eff
+      : "GitHub file (base path): " + (state.githubPath || "") + " — add subfolder in full settings if needed.";
+  }
+}
+
 async function loadState() {
   setStatus("Loading…");
   try {
     const state = await send("GET_STATE", {});
-    $("script-source-url").value = state.scriptSourceUrl || "";
-    $("extra-urls").value = state.extraScriptUrls || "";
     $("last-fetch").textContent = state.lastScriptFetch
       ? "Last fetch: " + formatTime(state.lastScriptFetch)
       : "No fetch yet — open settings (gear) and refresh.";
@@ -158,6 +180,7 @@ async function loadState() {
     updateHostAccessUI(!!state.hasHostAccess);
     updateSetupBanner(state);
     updatePendingBanner(state);
+    fillSessionFolderUI(state);
     renderSessions(state.sessions || []);
     syncLoginFirstSelect(state.sessions || []);
     renderScripts(state.scripts || []);
@@ -324,42 +347,6 @@ async function refreshScripts() {
   }
 }
 
-async function applySourceUrl() {
-  const url = $("script-source-url").value.trim();
-  setStatus("Applying source and reloading…");
-  try {
-    const res = await send("SET_SCRIPT_SOURCE_URL", { url });
-    renderScripts(res.scripts || []);
-    const st = await send("GET_STATE", {});
-    $("last-fetch").textContent = st.lastScriptFetch
-      ? "Last fetch: " + formatTime(st.lastScriptFetch)
-      : "";
-    updateSetupBanner(st);
-    setStatus("Source updated and scripts reloaded.");
-  } catch (e) {
-    console.error("[DonkeyCode:popup]", e);
-    setStatus(String(e.message || e), true);
-  }
-}
-
-async function applyExtraUrls() {
-  const text = $("extra-urls").value;
-  setStatus("Applying extra URLs and reloading…");
-  try {
-    const res = await send("SET_EXTRA_SCRIPT_URLS", { text });
-    renderScripts(res.scripts || []);
-    const st = await send("GET_STATE", {});
-    $("last-fetch").textContent = st.lastScriptFetch
-      ? "Last fetch: " + formatTime(st.lastScriptFetch)
-      : "";
-    updateSetupBanner(st);
-    setStatus("Extra URLs saved and scripts reloaded.");
-  } catch (e) {
-    console.error("[DonkeyCode:popup]", e);
-    setStatus(String(e.message || e), true);
-  }
-}
-
 async function saveSession() {
   const name = $("session-name").value.trim();
   if (!name) {
@@ -471,54 +458,13 @@ function closeSessionEditor() {
   $("session-editor-overlay").setAttribute("aria-hidden", "true");
 }
 
-function fillGithubSettings(st) {
-  if (!st) return;
-  const o = $("gh-owner");
-  const r = $("gh-repo");
-  const b = $("gh-branch");
-  const p = $("gh-path");
-  const t = $("gh-token");
-  const status = $("gh-status");
-  if (o) o.value = st.githubOwner || "";
-  if (r) r.value = st.githubRepo || "";
-  if (b) b.value = st.githubBranch || "main";
-  if (p) p.value = st.githubPath || "sessions/donkeycode-sessions.json";
-  if (t) t.value = "";
-  if (status) {
-    let msg = "";
-    if (st.githubBakedIn) msg += "Token baked into this build. ";
-    else if (st.githubTokenConfigured) msg += "Token saved on this device. ";
-    else msg += "No token saved. ";
-    if (st.githubSyncLastOk) {
-      msg += "Last sync: " + formatTime(st.githubSyncLastOk) + ". ";
-    }
-    if (st.githubSyncLastError) {
-      msg += "Error: " + st.githubSyncLastError;
-    }
-    status.textContent = msg.trim();
-  }
-}
-
-async function openSettings() {
-  const el = $("settings-overlay");
-  if (!el) return;
+async function openSettingsTab() {
   try {
-    const st = await send("GET_STATE", {});
-    updateHostAccessUI(!!st.hasHostAccess);
-    updateSetupBanner(st);
-    fillGithubSettings(st);
+    await send("OPEN_SETTINGS_TAB", {});
   } catch (e) {
-    /* ignore */
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
   }
-  el.classList.remove("hidden");
-  el.setAttribute("aria-hidden", "false");
-}
-
-function closeSettings() {
-  const el = $("settings-overlay");
-  if (!el) return;
-  el.classList.add("hidden");
-  el.setAttribute("aria-hidden", "true");
 }
 
 async function saveSessionEditor() {
@@ -556,12 +502,49 @@ document.querySelectorAll(".tab").forEach((btn) => {
 $("btn-save-session").addEventListener("click", saveSession);
 $("btn-refresh-sessions").addEventListener("click", loadState);
 $("btn-refresh-scripts").addEventListener("click", refreshScripts);
-const btnRefreshSettings = $("btn-refresh-scripts-settings");
-if (btnRefreshSettings) btnRefreshSettings.addEventListener("click", refreshScripts);
-$("btn-apply-source").addEventListener("click", applySourceUrl);
-$("btn-apply-extra").addEventListener("click", applyExtraUrls);
-$("btn-open-settings").addEventListener("click", openSettings);
-$("btn-close-settings").addEventListener("click", closeSettings);
+$("btn-open-settings").addEventListener("click", openSettingsTab);
+
+$("session-folder-select").addEventListener("change", async function () {
+  const v = this.value;
+  setStatus("Switching folder…");
+  try {
+    const res = await send("SET_CURRENT_SESSION_FOLDER", { folderKey: v });
+    fillSessionFolderUI(res);
+    renderSessions(res.sessions || []);
+    syncLoginFirstSelect(res.sessions || []);
+    setStatus("");
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+    await loadState();
+  }
+});
+
+$("btn-add-session-folder").addEventListener("click", async function () {
+  const name = window.prompt(
+    "New folder name (relative path, e.g. team-a or ops/daily):"
+  );
+  if (!name || !name.trim()) return;
+  const ghRel = window.prompt(
+    "GitHub subfolder under the base path (optional, e.g. team-a):",
+    ""
+  );
+  setStatus("Adding folder…");
+  try {
+    const res = await send("ADD_SESSION_FOLDER", {
+      folderKey: name.trim(),
+      githubRelativePath: (ghRel || "").trim(),
+    });
+    fillSessionFolderUI(res);
+    renderSessions(res.sessions || []);
+    syncLoginFirstSelect(res.sessions || []);
+    $("session-folder-select").value = res.currentSessionFolder || name.trim();
+    setStatus("Folder added.");
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+  }
+});
 
 $("btn-setup-allow").addEventListener("click", async function () {
   setStatus("Requesting permission…");
@@ -628,88 +611,6 @@ $("btn-request-host-access").addEventListener("click", async function () {
     setStatus(String(e.message || e), true);
   }
 });
-$("settings-overlay").addEventListener("click", function (ev) {
-  if (ev.target === $("settings-overlay")) closeSettings();
-});
-
-$("btn-gh-save").addEventListener("click", async function () {
-  setStatus("Saving GitHub settings…");
-  try {
-    await send("SET_GITHUB_SYNC_SETTINGS", {
-      payload: {
-        owner: $("gh-owner").value,
-        repo: $("gh-repo").value,
-        branch: $("gh-branch").value,
-        path: $("gh-path").value,
-        token: $("gh-token").value,
-      },
-    });
-    const st = await send("GET_STATE", {});
-    fillGithubSettings(st);
-    setStatus("GitHub settings saved.");
-  } catch (e) {
-    console.error("[DonkeyCode:popup]", e);
-    setStatus(String(e.message || e), true);
-  }
-});
-
-$("btn-gh-remove-token").addEventListener("click", async function () {
-  try {
-    await send("REMOVE_GITHUB_TOKEN", {});
-    $("gh-token").value = "";
-    const st = await send("GET_STATE", {});
-    fillGithubSettings(st);
-    setStatus("GitHub token removed from this device.");
-  } catch (e) {
-    console.error("[DonkeyCode:popup]", e);
-    setStatus(String(e.message || e), true);
-  }
-});
-
-$("btn-gh-pull").addEventListener("click", async function () {
-  setStatus("Pulling sessions from GitHub…");
-  try {
-    const res = await send("GITHUB_SESSIONS_PULL", {});
-    renderSessions(res.sessions || []);
-    syncLoginFirstSelect(res.sessions || []);
-    const st = await send("GET_STATE", {});
-    fillGithubSettings(st);
-    setStatus("Sessions merged from GitHub.");
-  } catch (e) {
-    console.error("[DonkeyCode:popup]", e);
-    setStatus(String(e.message || e), true);
-    try {
-      const st = await send("GET_STATE", {});
-      fillGithubSettings(st);
-      renderSessions(st.sessions || []);
-      syncLoginFirstSelect(st.sessions || []);
-    } catch (e2) {
-      /* ignore */
-    }
-  }
-});
-
-$("btn-gh-push").addEventListener("click", async function () {
-  setStatus("Pushing sessions to GitHub…");
-  try {
-    const res = await send("GITHUB_SESSIONS_PUSH", {});
-    renderSessions(res.sessions || []);
-    syncLoginFirstSelect(res.sessions || []);
-    const st = await send("GET_STATE", {});
-    fillGithubSettings(st);
-    setStatus("Sessions pushed to GitHub.");
-  } catch (e) {
-    console.error("[DonkeyCode:popup]", e);
-    setStatus(String(e.message || e), true);
-    try {
-      const st = await send("GET_STATE", {});
-      fillGithubSettings(st);
-    } catch (e2) {
-      /* ignore */
-    }
-  }
-});
-
 $("btn-complete-pending").addEventListener("click", completePendingRestore);
 $("btn-cancel-pending").addEventListener("click", cancelPendingRestore);
 $("btn-login-first").addEventListener("click", loginFirst);

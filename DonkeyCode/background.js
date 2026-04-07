@@ -28,6 +28,9 @@ const STORAGE = {
   EXTRA_URLS: "donkeycode_extra_script_urls",
   SCRIPTS: "donkeycode_scripts",
   SESSIONS: "donkeycode_sessions",
+  SESSION_FOLDERS_V2: "donkeycode_session_folders_v2",
+  CURRENT_SESSION_FOLDER: "donkeycode_current_session_folder",
+  SESSIONS_LEGACY_MIGRATED: "donkeycode_sessions_legacy_migrated",
   LAST_FETCH: "donkeycode_last_script_fetch_ms",
   PENDING_RESTORE: "donkeycode_pending_restore_session",
   SETUP_DISMISSED: "donkeycode_setup_banner_dismissed",
@@ -804,9 +807,74 @@ function touchSessionMeta(snap) {
   return n;
 }
 
-async function getSessionsMap() {
+const DEFAULT_SESSION_FOLDER = "__default__";
+
+function normalizeFolderKey(name) {
+  const t = (name || "").trim().replace(/\\/g, "/");
+  if (!t) return DEFAULT_SESSION_FOLDER;
+  return t.replace(/^\/+|\/+$/g, "") || DEFAULT_SESSION_FOLDER;
+}
+
+function combineRepoPath(baseFilePath, folderRel) {
+  const fr = (folderRel || "").trim().replace(/^\/+|\/+$/g, "").replace(/\\/g, "/");
+  const base = (baseFilePath || "sessions/donkeycode-sessions.json").replace(/^\/+/, "");
+  if (!fr || fr === DEFAULT_SESSION_FOLDER) return base;
+  const parts = base.split("/");
+  const fileName = parts.length ? parts.pop() : "donkeycode-sessions.json";
+  const baseDir = parts.join("/");
+  return (baseDir ? baseDir + "/" : "") + fr + "/" + fileName;
+}
+
+async function migrateLegacySessionsIfNeeded() {
+  const flag = await chrome.storage.sync.get(STORAGE.SESSIONS_LEGACY_MIGRATED);
+  if (flag[STORAGE.SESSIONS_LEGACY_MIGRATED]) return;
   const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
-  const raw = data[STORAGE.SESSIONS] || {};
+  const legacy = data[STORAGE.SESSIONS];
+  const v2data = await chrome.storage.sync.get(STORAGE.SESSION_FOLDERS_V2);
+  let folders = v2data[STORAGE.SESSION_FOLDERS_V2];
+  if (!folders || typeof folders !== "object") folders = {};
+  if (legacy && typeof legacy === "object" && Object.keys(legacy).length) {
+    if (!folders[DEFAULT_SESSION_FOLDER]) folders[DEFAULT_SESSION_FOLDER] = { sessions: {} };
+    const existing = folders[DEFAULT_SESSION_FOLDER].sessions || {};
+    folders[DEFAULT_SESSION_FOLDER].sessions = { ...legacy, ...existing };
+    await chrome.storage.sync.set({
+      [STORAGE.SESSION_FOLDERS_V2]: folders,
+      [STORAGE.SESSIONS]: {},
+      [STORAGE.SESSIONS_LEGACY_MIGRATED]: true,
+    });
+    log("migrated legacy sessions to folder", DEFAULT_SESSION_FOLDER);
+  } else {
+    await chrome.storage.sync.set({ [STORAGE.SESSIONS_LEGACY_MIGRATED]: true });
+  }
+}
+
+async function getSessionFoldersState() {
+  await migrateLegacySessionsIfNeeded();
+  const d = await chrome.storage.sync.get([
+    STORAGE.SESSION_FOLDERS_V2,
+    STORAGE.CURRENT_SESSION_FOLDER,
+  ]);
+  let folders = d[STORAGE.SESSION_FOLDERS_V2];
+  if (!folders || typeof folders !== "object") folders = {};
+  if (!folders[DEFAULT_SESSION_FOLDER]) {
+    folders[DEFAULT_SESSION_FOLDER] = { sessions: {} };
+  }
+  let cur = (d[STORAGE.CURRENT_SESSION_FOLDER] || "").trim() || DEFAULT_SESSION_FOLDER;
+  cur = normalizeFolderKey(cur);
+  if (!folders[cur]) folders[cur] = { sessions: {} };
+  return { folders, currentKey: cur };
+}
+
+async function getCurrentSessionFolderKey() {
+  const { currentKey } = await getSessionFoldersState();
+  return currentKey;
+}
+
+async function getSessionsMapForFolder(folderKey) {
+  const { folders } = await getSessionFoldersState();
+  const fk = normalizeFolderKey(folderKey);
+  const entry = folders[fk] || { sessions: {} };
+  const raw = entry.sessions || {};
   const out = {};
   for (const k of Object.keys(raw)) {
     out[k] = normalizeSessionSnapshot(raw[k]);
@@ -814,8 +882,31 @@ async function getSessionsMap() {
   return out;
 }
 
+async function setSessionsMapForFolder(folderKey, sessionsObj) {
+  const { folders } = await getSessionFoldersState();
+  const fk = normalizeFolderKey(folderKey);
+  if (!folders[fk]) folders[fk] = { sessions: {} };
+  folders[fk].sessions = sessionsObj;
+  await chrome.storage.sync.set({ [STORAGE.SESSION_FOLDERS_V2]: folders });
+}
+
+async function getGithubPathForFolder(folderKey) {
+  const base = await getGithubSettings();
+  const { folders } = await getSessionFoldersState();
+  const fk = normalizeFolderKey(folderKey);
+  const rel = (folders[fk] && folders[fk].githubRelativePath) || "";
+  const path = combineRepoPath(base.path, rel);
+  return { ...base, path };
+}
+
+async function getSessionsMap() {
+  const fk = await getCurrentSessionFolderKey();
+  return getSessionsMapForFolder(fk);
+}
+
 async function setSessionsMap(sessionsObj) {
-  await chrome.storage.sync.set({ [STORAGE.SESSIONS]: sessionsObj });
+  const fk = await getCurrentSessionFolderKey();
+  await setSessionsMapForFolder(fk, sessionsObj);
 }
 
 function mergeSessionsByTimestamp(localMap, remoteMap) {
@@ -984,7 +1075,8 @@ async function putGithubSessionsFile(settings, bodyObj, shaOrNull) {
 }
 
 async function githubSyncPull() {
-  const settings = await getGithubSettings();
+  const fk = await getCurrentSessionFolderKey();
+  const settings = await getGithubPathForFolder(fk);
   if (!settings.token || !settings.owner || !settings.repo) {
     throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
   }
@@ -996,23 +1088,24 @@ async function githubSyncPull() {
   } else {
     remoteSessions = file.sessions || {};
   }
-  const local = await getSessionsMap();
+  const local = await getSessionsMapForFolder(fk);
   const merged = mergeSessionsByTimestamp(local, remoteSessions);
-  await setSessionsMap(merged);
+  await setSessionsMapForFolder(fk, merged);
   await chrome.storage.local.set({
     [STORAGE.GITHUB_SYNC_LAST_ERROR]: "",
     [STORAGE.GITHUB_SYNC_LAST_OK]: Date.now(),
   });
-  log("GitHub pull merged", Object.keys(merged).length, "sessions");
+  log("GitHub pull merged", Object.keys(merged).length, "sessions", "folder", fk);
   return { sessions: Object.keys(merged).sort() };
 }
 
 async function githubSyncPush() {
-  const settings = await getGithubSettings();
+  const fk = await getCurrentSessionFolderKey();
+  const settings = await getGithubPathForFolder(fk);
   if (!settings.token || !settings.owner || !settings.repo) {
     throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
   }
-  const local = await getSessionsMap();
+  const local = await getSessionsMapForFolder(fk);
   let sha = null;
   let remoteSessions = {};
   const file = await fetchGithubSessionsFile(settings);
@@ -1021,14 +1114,14 @@ async function githubSyncPush() {
     sha = file.sha;
   }
   const merged = mergeSessionsByTimestamp(local, remoteSessions);
-  await setSessionsMap(merged);
+  await setSessionsMapForFolder(fk, merged);
   const payload = sessionsToGithubFilePayload(merged);
   await putGithubSessionsFile(settings, payload, sha);
   await chrome.storage.local.set({
     [STORAGE.GITHUB_SYNC_LAST_ERROR]: "",
     [STORAGE.GITHUB_SYNC_LAST_OK]: Date.now(),
   });
-  log("GitHub push ok", Object.keys(merged).length, "sessions");
+  log("GitHub push ok", Object.keys(merged).length, "sessions", "folder", fk);
   return { sessions: Object.keys(merged).sort() };
 }
 
@@ -1058,11 +1151,11 @@ async function saveSession(name) {
   const trimmed = (name || "").trim();
   if (!trimmed) throw new Error("Session name required");
   const snap = await captureSessionSnapshot();
-  const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
-  const sessions = data[STORAGE.SESSIONS] || {};
+  const fk = await getCurrentSessionFolderKey();
+  const sessions = await getSessionsMapForFolder(fk);
   sessions[trimmed] = touchSessionMeta(snap);
   try {
-    await chrome.storage.sync.set({ [STORAGE.SESSIONS]: sessions });
+    await setSessionsMapForFolder(fk, sessions);
   } catch (e) {
     if (e && e.message && String(e.message).toLowerCase().includes("quota")) {
       logError(
@@ -1078,8 +1171,8 @@ async function saveSession(name) {
 async function restoreSessionInternal(name) {
   const trimmed = (name || "").trim();
   if (!trimmed) throw new Error("Session name required");
-  const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
-  const sessions = data[STORAGE.SESSIONS] || {};
+  const fk = await getCurrentSessionFolderKey();
+  const sessions = await getSessionsMapForFolder(fk);
   const snap = normalizeSessionSnapshot(sessions[trimmed]);
   if (!snap.windows.length) throw new Error("Session not found");
 
@@ -1189,8 +1282,8 @@ async function clearPendingRestore() {
 async function getSessionDetail(name) {
   const trimmed = (name || "").trim();
   if (!trimmed) throw new Error("Session name required");
-  const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
-  const sessions = data[STORAGE.SESSIONS] || {};
+  const fk = await getCurrentSessionFolderKey();
+  const sessions = await getSessionsMapForFolder(fk);
   const raw = sessions[trimmed];
   if (!raw) throw new Error("Session not found");
   return { name: trimmed, snapshot: normalizeSessionSnapshot(raw) };
@@ -1201,11 +1294,11 @@ async function saveSessionData(name, snapshot) {
   if (!trimmed) throw new Error("Session name required");
   const snap = touchSessionMeta(normalizeSessionSnapshot(snapshot));
   if (!snap.windows.length) throw new Error("Session needs at least one window");
-  const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
-  const sessions = data[STORAGE.SESSIONS] || {};
+  const fk = await getCurrentSessionFolderKey();
+  const sessions = await getSessionsMapForFolder(fk);
   sessions[trimmed] = snap;
   try {
-    await chrome.storage.sync.set({ [STORAGE.SESSIONS]: sessions });
+    await setSessionsMapForFolder(fk, sessions);
   } catch (e) {
     if (e && e.message && String(e.message).toLowerCase().includes("quota")) {
       logError("sync quota exceeded saving session data", e);
@@ -1217,10 +1310,10 @@ async function saveSessionData(name, snapshot) {
 
 async function deleteSession(name) {
   const trimmed = (name || "").trim();
-  const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
-  const sessions = data[STORAGE.SESSIONS] || {};
+  const fk = await getCurrentSessionFolderKey();
+  const sessions = await getSessionsMapForFolder(fk);
   delete sessions[trimmed];
-  await chrome.storage.sync.set({ [STORAGE.SESSIONS]: sessions });
+  await setSessionsMapForFolder(fk, sessions);
   const pend = await getPendingRestore();
   if (pend === trimmed) await clearPendingRestore();
   log("session deleted", trimmed);
@@ -1230,8 +1323,15 @@ async function getStateForPopup() {
   const scripts = await getStoredScripts();
   const sourceUrl = await getScriptSourceUrl();
   const extra = await getExtraUrls();
-  const sessionsData = await chrome.storage.sync.get(STORAGE.SESSIONS);
-  const sessions = sessionsData[STORAGE.SESSIONS] || {};
+  const { folders, currentKey } = await getSessionFoldersState();
+  const sessionNames = Object.keys(
+    (folders[currentKey] && folders[currentKey].sessions) || {}
+  ).sort();
+  const folderList = Object.keys(folders).sort();
+  const folderGithubRel = {};
+  for (const k of folderList) {
+    folderGithubRel[k] = (folders[k] && folders[k].githubRelativePath) || "";
+  }
   const last = await chrome.storage.local.get(STORAGE.LAST_FETCH);
   const pendingRestore = await getPendingRestore();
   let extensionVersion = "";
@@ -1248,13 +1348,17 @@ async function getStateForPopup() {
   );
   const pendingFirstPopupRefresh = !!pendingData[STORAGE.PENDING_FIRST_POPUP_REFRESH];
   const gh = await getGithubSettings();
+  const ghPathForFolder = await getGithubPathForFolder(currentKey);
   const ghErr = await chrome.storage.local.get(STORAGE.GITHUB_SYNC_LAST_ERROR);
   const ghOk = await chrome.storage.local.get(STORAGE.GITHUB_SYNC_LAST_OK);
   return {
     scripts,
     scriptSourceUrl: sourceUrl,
     extraScriptUrls: extra.join("\n"),
-    sessions: Object.keys(sessions).sort(),
+    sessions: sessionNames,
+    currentSessionFolder: currentKey,
+    sessionFolders: folderList,
+    folderGithubRelativePaths: folderGithubRel,
     lastScriptFetch: last[STORAGE.LAST_FETCH] || null,
     pendingRestoreSession: pendingRestore,
     loginUrls: LOGIN_WINDOW_URLS,
@@ -1266,6 +1370,7 @@ async function getStateForPopup() {
     githubRepo: gh.repo,
     githubBranch: gh.branch,
     githubPath: gh.path,
+    githubEffectiveSessionFilePath: ghPathForFolder.path,
     githubTokenConfigured: !!gh.token,
     githubBakedIn: !!String(
       (self.BAKED_GITHUB_DEFAULTS && self.BAKED_GITHUB_DEFAULTS.token) || ""
@@ -1320,20 +1425,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           sendResponse({ ok: true });
           break;
         }
-        case "OPEN_POPUP_AND_QUEUE_FIRST_REFRESH": {
+        case "QUEUE_FIRST_POPUP_REFRESH": {
           await chrome.storage.local.set({
             [STORAGE.PENDING_FIRST_POPUP_REFRESH]: true,
           });
-          let opened = false;
-          try {
-            if (chrome.action && typeof chrome.action.openPopup === "function") {
-              await chrome.action.openPopup();
-              opened = true;
-            }
-          } catch (e) {
-            logWarn("openPopup failed", e);
-          }
-          sendResponse({ ok: true, opened });
+          sendResponse({ ok: true });
           break;
         }
         case "OPEN_EXTENSIONS_PAGE_FOR_PIN": {
@@ -1449,8 +1545,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         }
         case "SAVE_SESSION": {
           await saveSession(message.name);
-          const sessionsData = await chrome.storage.sync.get(STORAGE.SESSIONS);
-          const sessions = Object.keys(sessionsData[STORAGE.SESSIONS] || {}).sort();
+          const fk = await getCurrentSessionFolderKey();
+          const sessions = Object.keys(await getSessionsMapForFolder(fk)).sort();
           sendResponse({ ok: true, sessions });
           break;
         }
@@ -1482,16 +1578,114 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         }
         case "SAVE_SESSION_DATA": {
           await saveSessionData(message.name, message.snapshot);
-          const sessionsData = await chrome.storage.sync.get(STORAGE.SESSIONS);
-          const sessions = Object.keys(sessionsData[STORAGE.SESSIONS] || {}).sort();
+          const fk = await getCurrentSessionFolderKey();
+          const sessions = Object.keys(await getSessionsMapForFolder(fk)).sort();
           sendResponse({ ok: true, sessions });
           break;
         }
         case "DELETE_SESSION": {
           await deleteSession(message.name);
-          const sessionsData = await chrome.storage.sync.get(STORAGE.SESSIONS);
-          const sessions = Object.keys(sessionsData[STORAGE.SESSIONS] || {}).sort();
+          const fk = await getCurrentSessionFolderKey();
+          const sessions = Object.keys(await getSessionsMapForFolder(fk)).sort();
           sendResponse({ ok: true, sessions });
+          break;
+        }
+        case "SET_CURRENT_SESSION_FOLDER": {
+          const key = normalizeFolderKey(message.folderKey);
+          await getSessionFoldersState();
+          const d = await chrome.storage.sync.get(STORAGE.SESSION_FOLDERS_V2);
+          let folders = d[STORAGE.SESSION_FOLDERS_V2] || {};
+          if (!folders[key]) folders[key] = { sessions: {} };
+          await chrome.storage.sync.set({
+            [STORAGE.CURRENT_SESSION_FOLDER]: key,
+            [STORAGE.SESSION_FOLDERS_V2]: folders,
+          });
+          const st = await getStateForPopup();
+          sendResponse({ ok: true, ...st });
+          break;
+        }
+        case "ADD_SESSION_FOLDER": {
+          const key = normalizeFolderKey(message.folderKey);
+          if (key === DEFAULT_SESSION_FOLDER) throw new Error("Use a non-default folder name");
+          const { folders } = await getSessionFoldersState();
+          if (folders[key]) throw new Error("Folder already exists");
+          folders[key] = {
+            sessions: {},
+            githubRelativePath: (message.githubRelativePath || "").trim(),
+          };
+          await chrome.storage.sync.set({
+            [STORAGE.SESSION_FOLDERS_V2]: folders,
+            [STORAGE.CURRENT_SESSION_FOLDER]: key,
+          });
+          const st = await getStateForPopup();
+          sendResponse({ ok: true, ...st });
+          break;
+        }
+        case "SET_SESSION_FOLDER_GITHUB_PATH": {
+          const key = normalizeFolderKey(message.folderKey);
+          const { folders } = await getSessionFoldersState();
+          if (!folders[key]) throw new Error("Unknown folder");
+          folders[key].githubRelativePath = (message.githubRelativePath || "").trim();
+          await chrome.storage.sync.set({ [STORAGE.SESSION_FOLDERS_V2]: folders });
+          const st = await getStateForPopup();
+          sendResponse({ ok: true, ...st });
+          break;
+        }
+        case "GET_SESSION_FOLDERS_TREE": {
+          const { folders, currentKey } = await getSessionFoldersState();
+          const tree = {};
+          for (const k of Object.keys(folders)) {
+            const s = (folders[k] && folders[k].sessions) || {};
+            tree[k] = {
+              githubRelativePath: (folders[k] && folders[k].githubRelativePath) || "",
+              sessionNames: Object.keys(s).sort(),
+              sessionCount: Object.keys(s).length,
+            };
+          }
+          const gh = await getGithubSettings();
+          sendResponse({
+            ok: true,
+            tree,
+            currentFolder: currentKey,
+            githubBasePath: gh.path,
+          });
+          break;
+        }
+        case "GITHUB_LIST_REPO_CONTENTS": {
+          const prefix = ((message.pathPrefix || "") + "").trim().replace(/^\/+/, "");
+          const settings = await getGithubSettings();
+          if (!settings.token || !settings.owner || !settings.repo) {
+            throw new Error("Configure GitHub in Settings first.");
+          }
+          const contentsPath = prefix
+            ? "/contents/" +
+              prefix.split("/").map((p) => encodeURIComponent(p)).join("/")
+            : "/contents";
+          const apiPath =
+            "/repos/" +
+            encodeURIComponent(settings.owner) +
+            "/" +
+            encodeURIComponent(settings.repo) +
+            contentsPath +
+            "?ref=" +
+            encodeURIComponent(settings.branch);
+          const json = await githubApiRequest(apiPath, { method: "GET" }, settings.token);
+          const items = Array.isArray(json) ? json : [];
+          sendResponse({
+            ok: true,
+            path: prefix,
+            items: items.map((it) => ({
+              name: it.name,
+              path: it.path,
+              type: it.type,
+            })),
+          });
+          break;
+        }
+        case "OPEN_SETTINGS_TAB": {
+          const url = chrome.runtime.getURL("settings.html");
+          await chrome.tabs.create({ url });
+          sendResponse({ ok: true });
           break;
         }
         case "GM_XHR": {

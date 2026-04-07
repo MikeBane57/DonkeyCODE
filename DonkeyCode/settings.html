@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DonkeyCode — Settings</title>
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="page-head">
+        <div class="brand">
+          <img src="icons/icon48.png" alt="" width="48" height="48" class="brand-icon" />
+          <div>
+            <h1>DonkeyCode settings</h1>
+            <p class="lead">Script sources, GitHub session sync, and repository folders.</p>
+          </div>
+        </div>
+      </header>
+
+      <section class="card" aria-labelledby="h-access">
+        <h2 id="h-access">Website access</h2>
+        <p class="muted">
+          User scripts inject on <strong>http</strong> and <strong>https</strong> pages only after you grant this optional permission.
+        </p>
+        <p id="host-access-line" class="status-line"></p>
+        <button type="button" id="btn-host-access" class="btn primary">Allow website access</button>
+      </section>
+
+      <section class="card" aria-labelledby="h-scripts">
+        <h2 id="h-scripts">Script sources</h2>
+        <p class="muted">
+          Main listing URL (often a GitHub API <code>contents</code> URL). Optional extra raw script URLs, one per line.
+        </p>
+        <label for="field-script-source">Main script source URL</label>
+        <input id="field-script-source" type="url" spellcheck="false" autocomplete="off" />
+        <label for="field-extra-urls">Extra script URLs</label>
+        <textarea id="field-extra-urls" rows="5" spellcheck="false" placeholder="https://…"></textarea>
+        <div class="btn-row">
+          <button type="button" id="btn-save-scripts" class="btn primary">Save script sources</button>
+          <button type="button" id="btn-refresh-scripts" class="btn secondary">Refresh scripts now</button>
+        </div>
+        <p id="scripts-status" class="inline-status" role="status"></p>
+      </section>
+
+      <section class="card" aria-labelledby="h-github">
+        <h2 id="h-github">GitHub session sync</h2>
+        <p class="muted">
+          Sessions for the <strong>active folder</strong> in the popup sync to one JSON file in your repo (see folder table below).
+        </p>
+        <div class="grid2">
+          <div>
+            <label for="field-gh-owner">Owner</label>
+            <input id="field-gh-owner" type="text" autocomplete="off" />
+          </div>
+          <div>
+            <label for="field-gh-repo">Repository</label>
+            <input id="field-gh-repo" type="text" autocomplete="off" />
+          </div>
+          <div>
+            <label for="field-gh-branch">Branch</label>
+            <input id="field-gh-branch" type="text" autocomplete="off" />
+          </div>
+          <div>
+            <label for="field-gh-path">Base file path in repo</label>
+            <input id="field-gh-path" type="text" spellcheck="false" placeholder="sessions/donkeycode-sessions.json" />
+          </div>
+        </div>
+        <label for="field-gh-token">Personal access token (optional if baked into build)</label>
+        <input id="field-gh-token" type="password" autocomplete="off" placeholder="Leave blank to keep stored token" />
+        <div class="btn-row">
+          <button type="button" id="btn-save-github" class="btn primary">Save GitHub settings</button>
+          <button type="button" id="btn-remove-token" class="btn danger secondary">Remove stored token</button>
+        </div>
+        <div class="btn-row">
+          <button type="button" id="btn-gh-pull" class="btn secondary">Pull from GitHub</button>
+          <button type="button" id="btn-gh-push" class="btn secondary">Push to GitHub</button>
+        </div>
+        <p id="github-status" class="inline-status" role="status"></p>
+        <p class="muted small">
+          Token status: <span id="github-token-hint"></span>
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="h-folders">
+        <h2 id="h-folders">Session folders</h2>
+        <p class="muted">
+          Each folder keeps its own saved sessions. The <strong>GitHub subfolder</strong> is appended under the base file path above (per-folder JSON file).
+        </p>
+        <p class="muted small">Active folder in popup: <strong id="active-folder-label">—</strong></p>
+        <p id="repo-browse-base" class="muted small"></p>
+        <div class="table-wrap">
+          <table class="data-table" id="folders-table">
+            <thead>
+              <tr>
+                <th>Folder</th>
+                <th>Sessions</th>
+                <th>GitHub subfolder</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="folders-tbody"></tbody>
+          </table>
+        </div>
+        <p id="folders-status" class="inline-status" role="status"></p>
+      </section>
+
+      <section class="card" aria-labelledby="h-repo">
+        <h2 id="h-repo">Repository browser</h2>
+        <p class="muted">Browse directories in the configured repo (requires token and owner/repo).</p>
+        <nav class="breadcrumb" id="repo-breadcrumb" aria-label="Path"></nav>
+        <ul id="repo-list" class="repo-list"></ul>
+        <p id="repo-status" class="inline-status" role="status"></p>
+      </section>
+
+      <p class="footer-links">
+        <a href="https://github.com/MikeBane57/DonkeyCODE/blob/main/DonkeyCode/PRIVACY.md" target="_blank" rel="noopener noreferrer">Privacy policy</a>
+      </p>
+    </div>
+    <script src="settings.js"></script>
+  </body>
+</html>

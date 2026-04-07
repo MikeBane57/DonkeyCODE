@@ -191,6 +191,30 @@ body {
   white-space: nowrap;
 }
 
+.session-folder-row {
+  margin-bottom: 12px;
+}
+
+.session-folder-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#session-folder-select {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid #c5cad3;
+  border-radius: 6px;
+  font: inherit;
+}
+
+#session-folder-github-hint {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
 .section-title {
   margin: 12px 0 8px;
   font-size: 12px;

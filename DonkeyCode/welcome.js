@@ -56,7 +56,7 @@ document.getElementById("btn-allow").addEventListener("click", async function ()
       setAccessStatus(true, "Done. Website access is on.");
       btn.textContent = "Access granted";
     } else {
-      setAccessStatus(false, "Permission was not granted. You can try again from the popup → Settings.");
+      setAccessStatus(false, "Permission was not granted. You can try again from the DonkeyCode popup → Settings.");
       btn.disabled = false;
     }
   } catch (e) {
@@ -65,39 +65,35 @@ document.getElementById("btn-allow").addEventListener("click", async function ()
   }
 });
 
-document.getElementById("btn-pin-extension").addEventListener("click", async function () {
-  const hint = document.getElementById("pin-hint");
-  try {
-    await send("OPEN_EXTENSIONS_PAGE_FOR_PIN", {});
-    if (hint) {
-      hint.textContent =
-        "On that page, use Pin to toolbar (or the pin icon) next to DonkeyCode, then come back here.";
-    }
-  } catch (e) {
-    if (hint) hint.textContent = String(e.message || e);
-  }
-});
-
 document.getElementById("btn-get-started").addEventListener("click", async function () {
   const hint = document.getElementById("get-started-hint");
   const btn = this;
   btn.disabled = true;
+  let opened = false;
   try {
-    const res = await send("OPEN_POPUP_AND_QUEUE_FIRST_REFRESH", {});
+    if (chrome.action && typeof chrome.action.openPopup === "function") {
+      try {
+        await chrome.action.openPopup();
+        opened = true;
+      } catch (e) {
+        console.warn("[DonkeyCode:welcome] openPopup", e);
+      }
+    }
+    await send("QUEUE_FIRST_POPUP_REFRESH", {});
     if (hint) {
-      if (res.opened) {
-        hint.textContent = "Check the toolbar popup — scripts will load automatically.";
+      if (opened) {
+        hint.textContent =
+          "The DonkeyCode popup should be open — scripts will load automatically. You can leave or close this tab.";
       } else {
         hint.textContent =
-          "Click the DonkeyCode icon in the toolbar — scripts will refresh on first open.";
+          "Click the DonkeyCode icon in the toolbar (use the puzzle piece in step 2 if you don’t see it). Scripts refresh on first open.";
       }
     }
     try {
-      chrome.tabs.getCurrent(function (tab) {
-        if (tab && tab.id != null) {
-          chrome.tabs.remove(tab.id);
-        }
-      });
+      const w = await chrome.windows.getCurrent();
+      if (w && w.id != null) {
+        await chrome.windows.update(w.id, { focused: true });
+      }
     } catch (e) {
       /* ignore */
     }
