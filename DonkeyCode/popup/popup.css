@@ -358,6 +358,19 @@ textarea {
   margin-bottom: 8px;
 }
 
+.github-sync-row.secondary-row {
+  margin-top: -4px;
+}
+
+button.primary {
+  background: #1b5e20;
+  font-weight: 600;
+}
+
+button.primary:hover {
+  background: #2e7d32;
+}
+
 button {
   padding: 8px 12px;
   border: none;

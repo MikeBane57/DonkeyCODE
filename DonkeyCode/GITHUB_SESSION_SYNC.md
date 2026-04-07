@@ -21,7 +21,13 @@ Run **`npm run build`** at the repo root with **`DONKEYCODE_*` environment varia
 1. Open the extension popup → **Settings** (gear).
 2. Fill **Owner**, **Repository**, **Branch** (e.g. `main`), **Sessions root directory**.
 3. Paste your **token** → **Save GitHub settings**.
-4. **Pull from GitHub** fetches **each local folder’s** `donkeycode-sessions.json` under that root (using the folder name, or the optional **GitHub path override** in Settings) and merges into **that folder only**. **Push** uploads **only the active folder’s** merged file. Adding a folder from the popup can **create** an empty JSON file on GitHub so the directory exists; **Remove…** in Settings can optionally **delete** that remote file.
+4. **Pull all** lists subdirectories under the sessions root on GitHub; any that contain `donkeycode-sessions.json` become local folders (if missing), then each folder is merged from its remote file. **Push all** uploads **every** local folder. **Sync all folders** runs discover → pull all → push all (popup and Settings).
+
+5. **Push current folder only** (Settings) still uploads just the folder selected in the popup.
+
+Adding a folder from the popup can **create** an empty JSON on GitHub; **Remove…** in Settings can optionally **delete** that remote file.
+
+**Note:** GitHub’s API cannot delete an empty directory; removing the JSON file removes the session data path. Empty dirs may remain until removed in Git.
 
 ### Auto-sync on save
 

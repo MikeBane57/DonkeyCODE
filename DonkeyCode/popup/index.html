@@ -67,7 +67,9 @@
         </div>
         <p id="session-folder-github-hint" class="hint"></p>
         <p class="hint small-hint">
-          <strong>+ Folder</strong> asks once: name, or <code>name, github-subfolder</code> for sync path.
+          <strong>Sync all</strong> scans your <strong>sessions root</strong> on GitHub for subfolders with
+          <code>donkeycode-sessions.json</code>, adds them here, pulls, then pushes every folder.
+          <strong>+ Folder</strong>: name, or <code>name, path/override</code> for a custom Git path.
         </p>
       </div>
 
@@ -75,10 +77,18 @@
         <label for="session-name">Session name</label>
         <input id="session-name" type="text" placeholder="e.g. Morning ops" autocomplete="off" />
       </div>
-      <div class="btn-row">
+      <div class="btn-row github-sync-row">
         <button type="button" id="btn-save-session">Save current layout</button>
-        <button type="button" id="btn-pull-sessions-github" class="secondary" title="Merge latest sessions from the repo into this folder">
-          Pull from GitHub
+        <button type="button" id="btn-sync-all-sessions-github" class="primary" title="Discover folders on GitHub, pull every folder, then push every folder">
+          Sync all (GitHub)
+        </button>
+      </div>
+      <div class="btn-row github-sync-row secondary-row">
+        <button type="button" id="btn-pull-sessions-github" class="small secondary" title="Discover remote folders, then merge repo into each local folder">
+          Pull all
+        </button>
+        <button type="button" id="btn-push-all-sessions-github" class="small secondary" title="Upload every local folder to its GitHub file (creates new files on Git)">
+          Push all
         </button>
       </div>
       <h2 class="section-title">Saved sessions</h2>
