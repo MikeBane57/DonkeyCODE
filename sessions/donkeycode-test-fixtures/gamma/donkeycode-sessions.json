@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "updatedAt": 1712000004000,
+  "sessions": {
+    "DC-Test-Gamma": {
+      "windows": [
+        {
+          "id": "fixture-w-gamma",
+          "left": 260,
+          "top": 160,
+          "width": 840,
+          "height": 640,
+          "state": "normal",
+          "focused": true,
+          "tabs": [
+            {
+              "url": "https://www.example.com/?dc=test-gamma",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ]
+        }
+      ],
+      "_meta": { "updatedAt": 1712000004000 }
+    }
+  }
+}

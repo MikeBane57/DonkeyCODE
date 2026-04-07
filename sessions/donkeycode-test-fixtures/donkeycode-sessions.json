@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "updatedAt": 1712000001000,
+  "sessions": {
+    "DC-Test-Default": {
+      "windows": [
+        {
+          "id": "fixture-w-default",
+          "left": 80,
+          "top": 100,
+          "width": 920,
+          "height": 720,
+          "state": "normal",
+          "focused": true,
+          "tabs": [
+            {
+              "url": "https://www.example.com/?dc=test-default",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ]
+        }
+      ],
+      "_meta": { "updatedAt": 1712000001000 }
+    }
+  }
+}

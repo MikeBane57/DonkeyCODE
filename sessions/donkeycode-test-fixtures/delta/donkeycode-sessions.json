@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "updatedAt": 1712000005000,
+  "sessions": {
+    "DC-Test-Delta": {
+      "windows": [
+        {
+          "id": "fixture-w-delta",
+          "left": 320,
+          "top": 180,
+          "width": 820,
+          "height": 620,
+          "state": "normal",
+          "focused": true,
+          "tabs": [
+            {
+              "url": "https://www.example.com/?dc=test-delta",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ]
+        }
+      ],
+      "_meta": { "updatedAt": 1712000005000 }
+    }
+  }
+}

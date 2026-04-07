@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "updatedAt": 1712000002000,
+  "sessions": {
+    "DC-Test-Alpha": {
+      "windows": [
+        {
+          "id": "fixture-w-alpha",
+          "left": 140,
+          "top": 120,
+          "width": 880,
+          "height": 680,
+          "state": "normal",
+          "focused": true,
+          "tabs": [
+            {
+              "url": "https://www.example.com/?dc=test-alpha",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ]
+        }
+      ],
+      "_meta": { "updatedAt": 1712000002000 }
+    }
+  }
+}
