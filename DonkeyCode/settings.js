@@ -329,14 +329,11 @@ $("btn-gh-pull").addEventListener("click", async function () {
     const res = await send("GITHUB_SESSIONS_PULL", {});
     if (res.ok === false) throw new Error(res.error || "Pull failed");
     const names = res.sessions || [];
-    const w = res.pullWarnings || [];
-    const warnSuffix = w.length ? " — warnings: " + w.join(" ") : "";
     setInlineStatus(
       $("github-status"),
       "Pull complete. Sessions: " +
-        (names.length ? names.join(", ") : "(none)") +
-        warnSuffix,
-      !!w.length
+        (names.length ? names.join(", ") : "(none)"),
+      false
     );
     await refreshFoldersOnly();
   } catch (e) {
