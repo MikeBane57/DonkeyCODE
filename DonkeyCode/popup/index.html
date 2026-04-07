@@ -55,9 +55,14 @@
       </div>
 
       <div class="row session-folder-row">
-        <label for="session-folder-select">Session folder</label>
+        <span class="session-folder-label">Session folder</span>
         <div class="session-folder-controls">
-          <select id="session-folder-select" aria-label="Active session folder"></select>
+          <div
+            id="session-folder-chips"
+            class="session-folder-chips"
+            role="group"
+            aria-label="Session folder"
+          ></div>
           <button type="button" id="btn-add-session-folder" class="small secondary" title="Add folder">+ Folder</button>
         </div>
         <p id="session-folder-github-hint" class="hint"></p>
@@ -101,6 +106,22 @@
     </section>
 
     <p id="status" class="status" role="status"></p>
+
+    <div id="worksheet-order-overlay" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal worksheet-order-modal" role="dialog" aria-labelledby="worksheet-order-title">
+        <h2 id="worksheet-order-title" class="modal-title">Worksheet load order</h2>
+        <p class="hint modal-hint">
+          These windows contain OpsSuite worksheets. Top opens first when you launch this session. Use ↑ ↓ to reorder.
+        </p>
+        <ol id="worksheet-order-list" class="worksheet-order-list"></ol>
+        <label for="worksheet-stagger-ms" class="worksheet-stagger-label">Delay between windows (ms)</label>
+        <input id="worksheet-stagger-ms" type="number" min="0" step="100" value="800" class="worksheet-stagger-input" />
+        <div class="btn-row modal-actions">
+          <button type="button" id="worksheet-order-save">Save session</button>
+          <button type="button" id="worksheet-order-cancel" class="secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
 
     <div id="session-editor-overlay" class="modal-overlay hidden" aria-hidden="true">
       <div class="modal" role="dialog" aria-labelledby="session-editor-title">

@@ -170,9 +170,6 @@ function openWorksheetOrderModal(name, snapshot, worksheetWindowIndices) {
   const list = $("worksheet-order-list");
   const ov = $("worksheet-order-overlay");
   if (!list || !ov) {
-    console.warn(
-      "[DonkeyCode:popup] worksheet order UI missing — save without reorder modal"
-    );
     return false;
   }
   saveSessionPendingName = name;
@@ -333,23 +330,42 @@ function syncLoginFirstSelect(names) {
   if (prev && names.includes(prev)) sel.value = prev;
 }
 
+async function switchSessionFolder(folderKey) {
+  const v = (folderKey || "").trim();
+  if (!v) return;
+  setStatus("Switching folder…");
+  try {
+    const res = await send("SET_CURRENT_SESSION_FOLDER", { folderKey: v });
+    fillSessionFolderUI(res);
+    renderSessions(res.sessions || []);
+    syncLoginFirstSelect(res.sessions || []);
+    setStatus('Folder: "' + (v === "__default__" ? "Default" : v) + '".');
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+    await loadState();
+  }
+}
+
 function fillSessionFolderUI(state) {
-  const sel = $("session-folder-select");
+  const chips = $("session-folder-chips");
   const hint = $("session-folder-github-hint");
-  if (!sel) return;
+  if (!chips) return;
   const folders = state.sessionFolders || ["__default__"];
   const cur = state.currentSessionFolder || "__default__";
-  sel.innerHTML = "";
+  chips.innerHTML = "";
   for (const fk of folders) {
-    const opt = document.createElement("option");
-    opt.value = fk;
-    opt.textContent =
-      fk === "__default__" ? "Default" : fk;
-    if (fk === cur) opt.selected = true;
-    sel.appendChild(opt);
-  }
-  if (folders.includes(cur)) {
-    sel.value = cur;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "session-folder-chip" + (fk === cur ? " active" : "");
+    btn.textContent = fk === "__default__" ? "Default" : fk;
+    btn.title = fk === "__default__" ? "Default folder" : fk;
+    btn.dataset.folderKey = fk;
+    btn.addEventListener("click", function () {
+      if (fk === cur) return;
+      switchSessionFolder(fk);
+    });
+    chips.appendChild(btn);
   }
   if (hint) {
     const rel = (state.folderGithubRelativePaths && state.folderGithubRelativePaths[cur]) || "";
@@ -871,23 +887,6 @@ bindClick("btn-pull-sessions-github", pullSessionsFromGithub);
 bindClick("btn-refresh-scripts", refreshScripts);
 bindClick("btn-open-settings", openSettingsTab);
 
-bindChange("session-folder-select", async function () {
-  const sel = $("session-folder-select");
-  const v = sel ? sel.value : "";
-  setStatus("Switching folder…");
-  try {
-    const res = await send("SET_CURRENT_SESSION_FOLDER", { folderKey: v });
-    fillSessionFolderUI(res);
-    renderSessions(res.sessions || []);
-    syncLoginFirstSelect(res.sessions || []);
-    setStatus("");
-  } catch (e) {
-    console.error("[DonkeyCode:popup]", e);
-    setStatus(String(e.message || e), true);
-    await loadState();
-  }
-});
-
 bindClick("btn-add-session-folder", async function () {
   const name = window.prompt(
     "New folder name (e.g. team-a or ops/daily). Optional GitHub subfolder: add a comma then the subfolder (e.g. team-a, team-a)."
@@ -910,7 +909,6 @@ bindClick("btn-add-session-folder", async function () {
     fillSessionFolderUI(res);
     renderSessions(res.sessions || []);
     syncLoginFirstSelect(res.sessions || []);
-    $("session-folder-select").value = res.currentSessionFolder || folderKey;
     setStatus("Folder added.");
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);

@@ -195,19 +195,53 @@ body {
   margin-bottom: 12px;
 }
 
+.session-folder-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #333;
+}
+
 .session-folder-controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
 
-#session-folder-select {
+.session-folder-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   flex: 1;
   min-width: 0;
-  padding: 6px 8px;
+  align-items: center;
+}
+
+.session-folder-chip {
+  padding: 5px 10px;
   border: 1px solid #c5cad3;
-  border-radius: 6px;
+  border-radius: 999px;
+  background: #fff;
   font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  color: #37474f;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-folder-chip:hover {
+  background: #f0f2f5;
+}
+
+.session-folder-chip.active {
+  border-color: #0d47a1;
+  background: #e3f2fd;
+  color: #0d47a1;
+  font-weight: 600;
 }
 
 #session-folder-github-hint {
