@@ -11,8 +11,20 @@ function $(id) {
   return document.getElementById(id);
 }
 
+/** Avoid crashing the whole popup if HTML is missing nodes (stale unpack, edited HTML). */
+function bindClick(id, handler) {
+  const el = $(id);
+  if (el) el.addEventListener("click", handler);
+}
+
+function bindChange(id, handler) {
+  const el = $(id);
+  if (el) el.addEventListener("change", handler);
+}
+
 function setStatus(text, isError) {
   const el = $("status");
+  if (!el) return;
   el.textContent = text || "";
   el.classList.toggle("error", !!isError);
 }
@@ -781,27 +793,33 @@ document.querySelectorAll(".tab").forEach((btn) => {
   btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
 
-$("btn-save-session").addEventListener("click", saveSession);
+bindClick("btn-save-session", saveSession);
 
-$("worksheet-order-save").addEventListener("click", function () {
+bindClick("worksheet-order-save", function () {
   confirmWorksheetOrderSave();
 });
-$("worksheet-order-cancel").addEventListener("click", function () {
+bindClick("worksheet-order-cancel", function () {
   closeWorksheetOrderModal();
   setStatus("Save cancelled.");
 });
-$("worksheet-order-overlay").addEventListener("click", function (ev) {
-  if (ev.target === $("worksheet-order-overlay")) {
-    closeWorksheetOrderModal();
-    setStatus("Save cancelled.");
-  }
-});
-$("btn-pull-sessions-github").addEventListener("click", pullSessionsFromGithub);
-$("btn-refresh-scripts").addEventListener("click", refreshScripts);
-$("btn-open-settings").addEventListener("click", openSettingsTab);
+(function () {
+  const ov = $("worksheet-order-overlay");
+  if (!ov) return;
+  ov.addEventListener("click", function (ev) {
+    if (ev.target === ov) {
+      closeWorksheetOrderModal();
+      setStatus("Save cancelled.");
+    }
+  });
+})();
 
-$("session-folder-select").addEventListener("change", async function () {
-  const v = this.value;
+bindClick("btn-pull-sessions-github", pullSessionsFromGithub);
+bindClick("btn-refresh-scripts", refreshScripts);
+bindClick("btn-open-settings", openSettingsTab);
+
+bindChange("session-folder-select", async function () {
+  const sel = $("session-folder-select");
+  const v = sel ? sel.value : "";
   setStatus("Switching folder…");
   try {
     const res = await send("SET_CURRENT_SESSION_FOLDER", { folderKey: v });
@@ -816,7 +834,7 @@ $("session-folder-select").addEventListener("change", async function () {
   }
 });
 
-$("btn-add-session-folder").addEventListener("click", async function () {
+bindClick("btn-add-session-folder", async function () {
   const name = window.prompt(
     "New folder name (e.g. team-a or ops/daily). Optional GitHub subfolder: add a comma then the subfolder (e.g. team-a, team-a)."
   );
@@ -846,7 +864,7 @@ $("btn-add-session-folder").addEventListener("click", async function () {
   }
 });
 
-$("btn-setup-allow").addEventListener("click", async function () {
+bindClick("btn-setup-allow", async function () {
   setStatus("Requesting permission…");
   try {
     const res = await send("REQUEST_HOST_ACCESS", {});
@@ -860,7 +878,7 @@ $("btn-setup-allow").addEventListener("click", async function () {
   }
 });
 
-$("btn-setup-welcome").addEventListener("click", async function () {
+bindClick("btn-setup-welcome", async function () {
   try {
     await send("OPEN_WELCOME_TAB", {});
   } catch (e) {
@@ -869,7 +887,7 @@ $("btn-setup-welcome").addEventListener("click", async function () {
   }
 });
 
-$("btn-setup-dismiss").addEventListener("click", async function () {
+bindClick("btn-setup-dismiss", async function () {
   try {
     await send("DISMISS_SETUP_BANNER", {});
     const st = await send("GET_STATE", {});
@@ -879,15 +897,19 @@ $("btn-setup-dismiss").addEventListener("click", async function () {
   }
 });
 
-$("btn-complete-pending").addEventListener("click", completePendingRestore);
-$("btn-cancel-pending").addEventListener("click", cancelPendingRestore);
-$("btn-login-first").addEventListener("click", loginFirst);
+bindClick("btn-complete-pending", completePendingRestore);
+bindClick("btn-cancel-pending", cancelPendingRestore);
+bindClick("btn-login-first", loginFirst);
 
-$("session-editor-save").addEventListener("click", saveSessionEditor);
-$("session-editor-cancel").addEventListener("click", closeSessionEditor);
-$("session-editor-overlay").addEventListener("click", function (ev) {
-  if (ev.target === $("session-editor-overlay")) closeSessionEditor();
-});
+bindClick("session-editor-save", saveSessionEditor);
+bindClick("session-editor-cancel", closeSessionEditor);
+(function () {
+  const ov = $("session-editor-overlay");
+  if (!ov) return;
+  ov.addEventListener("click", function (ev) {
+    if (ev.target === ov) closeSessionEditor();
+  });
+})();
 
 let visibilityReloadTimer = null;
 function scheduleReloadOnVisible() {
