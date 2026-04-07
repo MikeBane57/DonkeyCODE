@@ -577,9 +577,17 @@ async function toggleScript(scriptId, enabled) {
 async function pullSessionsFromGithub() {
   setStatus("Pulling sessions from GitHub…");
   try {
-    await send("GITHUB_SESSIONS_PULL", {});
+    const res = await send("GITHUB_SESSIONS_PULL", {});
     await loadState();
-    setStatus("Sessions synced from GitHub.");
+    const w = (res && res.pullWarnings) || [];
+    if (w.length) {
+      setStatus(
+        "Sessions synced with warnings: " + w.join(" ") + " (check Settings for details.)",
+        true
+      );
+    } else {
+      setStatus("Sessions synced from GitHub.");
+    }
   } catch (e) {
     console.error("[DonkeyCode:popup] GitHub pull", e);
     setStatus(String(e.message || e), true);

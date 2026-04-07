@@ -1181,8 +1181,8 @@ async function putGithubSessionsFile(settings, bodyObj, shaOrNull) {
 
 /**
  * Pull merges each GitHub JSON file into the **local folder(s)** that map to that file path.
- * Previously only the current folder was updated — sessions from other repo paths never appeared
- * in their folders. We group by resolved repo path and fetch once per path.
+ * Each distinct repo path is fetched once. A failed fetch for one path (403, typo, etc.) only
+ * affects folders that use that path — other paths still merge. Warnings are returned for UI.
  */
 async function githubSyncPull() {
   const gh = await getGithubSettings();
@@ -1199,15 +1199,26 @@ async function githubSyncPull() {
     pathToFolderKeys.get(p).push(fk);
   }
 
+  const pullWarnings = [];
+  const pathCount = pathToFolderKeys.size;
+
   for (const [repoPath, fks] of pathToFolderKeys) {
     const settings = await getGithubPathForFolder(fks[0]);
     let remoteSessions = {};
-    const file = await fetchGithubSessionsFile(settings);
-    if (!file) {
-      log("GitHub pull: no file at path", repoPath, "— folders", fks.join(", "));
-    } else {
-      remoteSessions = file.sessions || {};
+    try {
+      const file = await fetchGithubSessionsFile(settings);
+      if (!file) {
+        log("GitHub pull: no file at path", repoPath, "— folders", fks.join(", "));
+      } else {
+        remoteSessions = file.sessions || {};
+      }
+    } catch (e) {
+      const msg = String(e && e.message ? e.message : e);
+      pullWarnings.push(repoPath + ": " + msg);
+      logWarn("GitHub pull failed for path", repoPath, e);
+      remoteSessions = {};
     }
+
     for (const fk of fks) {
       const local = await getSessionsMapForFolder(fk);
       const merged = mergeSessionsByTimestamp(local, remoteSessions);
@@ -1224,13 +1235,24 @@ async function githubSyncPull() {
   }
 
   await chrome.storage.local.set({
-    [STORAGE.GITHUB_SYNC_LAST_ERROR]: "",
+    [STORAGE.GITHUB_SYNC_LAST_ERROR]: pullWarnings.length ? pullWarnings.join(" | ") : "",
     [STORAGE.GITHUB_SYNC_LAST_OK]: Date.now(),
   });
+  if (pullWarnings.length) {
+    logWarn("GitHub pull finished with warnings", pullWarnings);
+  }
+  if (pathCount > 0 && pullWarnings.length === pathCount) {
+    const msg = pullWarnings.join(" | ");
+    await chrome.storage.local.set({
+      [STORAGE.GITHUB_SYNC_LAST_ERROR]: msg,
+    });
+    throw new Error("GitHub pull failed for every session file path: " + msg);
+  }
+
   const curFk = await getCurrentSessionFolderKey();
   const curSessions = Object.keys(await getSessionsMapForFolder(curFk)).sort();
   log("GitHub pull done; current folder", curFk, "session count", curSessions.length);
-  return { sessions: curSessions };
+  return { sessions: curSessions, pullWarnings };
 }
 
 async function githubSyncPush() {
@@ -1664,6 +1686,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             sendResponse({
               ok: true,
               sessions: result.sessions,
+              pullWarnings: result.pullWarnings || [],
             });
           } catch (e) {
             await chrome.storage.local.set({
