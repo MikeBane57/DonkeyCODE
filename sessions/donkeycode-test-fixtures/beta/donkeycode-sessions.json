@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": 1712000003000,
+  "updatedAt": 1775584095065,
   "sessions": {
     "DC-Test-Beta": {
       "windows": [
@@ -22,7 +22,9 @@
           ]
         }
       ],
-      "_meta": { "updatedAt": 1712000003000 }
+      "_meta": {
+        "updatedAt": 1712000003000
+      }
     }
   }
 }
