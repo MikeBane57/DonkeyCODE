@@ -45,6 +45,8 @@ const STORAGE = {
   GITHUB_PATH: "donkeycode_github_path",
   GITHUB_SYNC_LAST_ERROR: "donkeycode_github_sync_last_error",
   GITHUB_SYNC_LAST_OK: "donkeycode_github_sync_last_ok",
+  /** Set on first install; cleared after popup runs one GitHub session pull when configured */
+  PENDING_INITIAL_SESSION_PULL: "donkeycode_pending_initial_session_pull",
 };
 
 /** Default URLs opened before restoring a session (user signs in, then continues). */
@@ -655,6 +657,11 @@ chrome.runtime.onInstalled.addListener((details) => {
       logError("install refresh failed", e);
       updateInstallBadge();
     });
+  if (details.reason === "install" || details.reason === "update") {
+    chrome.storage.local
+      .set({ [STORAGE.PENDING_INITIAL_SESSION_PULL]: true })
+      .catch((e) => logWarn("pending initial session pull", e));
+  }
   if (details.reason === "install") {
     const url = chrome.runtime.getURL("welcome.html");
     chrome.tabs.create({ url }).catch((e) => logWarn("welcome tab", e));
@@ -1516,10 +1523,12 @@ async function getStateForPopup() {
     const hasHostAccess = await hasOptionalHostAccess();
     const setupData = await chrome.storage.local.get(STORAGE.SETUP_DISMISSED);
     const setupDismissed = !!setupData[STORAGE.SETUP_DISMISSED];
-    const pendingData = await chrome.storage.local.get(
-      STORAGE.PENDING_FIRST_POPUP_REFRESH
-    );
+    const pendingData = await chrome.storage.local.get([
+      STORAGE.PENDING_FIRST_POPUP_REFRESH,
+      STORAGE.PENDING_INITIAL_SESSION_PULL,
+    ]);
     const pendingFirstPopupRefresh = !!pendingData[STORAGE.PENDING_FIRST_POPUP_REFRESH];
+    const pendingInitialSessionPull = !!pendingData[STORAGE.PENDING_INITIAL_SESSION_PULL];
     const gh = await getGithubSettings();
     const ghPathForFolder = await getGithubPathForFolder(currentKey);
     const ghErr = await chrome.storage.local.get(STORAGE.GITHUB_SYNC_LAST_ERROR);
@@ -1538,8 +1547,9 @@ async function getStateForPopup() {
       extensionVersion,
       hasHostAccess,
       setupDismissed,
-      pendingFirstPopupRefresh,
-      githubOwner: gh.owner,
+    pendingFirstPopupRefresh,
+    pendingInitialSessionPull,
+    githubOwner: gh.owner,
       githubRepo: gh.repo,
       githubBranch: gh.branch,
       githubPath: gh.path,
@@ -1575,6 +1585,7 @@ async function getStateForPopup() {
       hasHostAccess: false,
       setupDismissed: false,
       pendingFirstPopupRefresh: false,
+      pendingInitialSessionPull: false,
       githubOwner: "",
       githubRepo: "",
       githubBranch: "main",
@@ -1631,6 +1642,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         }
         case "POPUP_CONSUMED_FIRST_REFRESH": {
           await chrome.storage.local.remove(STORAGE.PENDING_FIRST_POPUP_REFRESH);
+          sendResponse({ ok: true });
+          break;
+        }
+        case "CONSUMED_INITIAL_SESSION_PULL": {
+          await chrome.storage.local.remove(STORAGE.PENDING_INITIAL_SESSION_PULL);
           sendResponse({ ok: true });
           break;
         }

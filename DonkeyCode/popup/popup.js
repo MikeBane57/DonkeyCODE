@@ -167,12 +167,19 @@ function applyWorksheetOrderToSnapshot(snapshot, userOrderedIndices) {
 }
 
 function openWorksheetOrderModal(name, snapshot, worksheetWindowIndices) {
+  const list = $("worksheet-order-list");
+  const ov = $("worksheet-order-overlay");
+  if (!list || !ov) {
+    console.warn(
+      "[DonkeyCode:popup] worksheet order UI missing — save without reorder modal"
+    );
+    return false;
+  }
   saveSessionPendingName = name;
   saveSessionPendingSnapshot = snapshot;
   worksheetOrderIndices = worksheetWindowIndices.slice();
-  const list = $("worksheet-order-list");
   const prevStagger =
-    list && list.children.length > 0 && $("worksheet-stagger-ms")
+    list.children.length > 0 && $("worksheet-stagger-ms")
       ? $("worksheet-stagger-ms").value
       : null;
   list.innerHTML = "";
@@ -222,9 +229,9 @@ function openWorksheetOrderModal(name, snapshot, worksheetWindowIndices) {
         typeof m === "number" && Number.isFinite(m) ? String(m) : "800";
     }
   }
-  const ov = $("worksheet-order-overlay");
   ov.classList.remove("hidden");
   ov.setAttribute("aria-hidden", "false");
+  return true;
 }
 
 function closeWorksheetOrderModal() {
@@ -353,6 +360,45 @@ function fillSessionFolderUI(state) {
   }
 }
 
+async function maybeInitialGithubSessionPull(state) {
+  if (!state || !state.pendingInitialSessionPull) return;
+  const hasGh =
+    (state.githubOwner && String(state.githubOwner).trim()) &&
+    (state.githubRepo && String(state.githubRepo).trim()) &&
+    (state.githubTokenConfigured || state.githubBakedIn);
+  if (!hasGh) {
+    try {
+      await send("CONSUMED_INITIAL_SESSION_PULL", {});
+    } catch (e) {
+      /* ignore */
+    }
+    return;
+  }
+  setStatus("Syncing sessions from GitHub…");
+  try {
+    await send("GITHUB_SESSIONS_PULL", {});
+    try {
+      await send("CONSUMED_INITIAL_SESSION_PULL", {});
+    } catch (e2) {
+      /* ignore */
+    }
+    const st2 = await send("GET_STATE", {});
+    fillSessionFolderUI(st2);
+    renderSessions(st2.sessions || []);
+    syncLoginFirstSelect(st2.sessions || []);
+    updatePendingBanner(st2);
+    setStatus("Sessions loaded from GitHub.");
+  } catch (e) {
+    console.error("[DonkeyCode:popup] initial session pull", e);
+    try {
+      await send("CONSUMED_INITIAL_SESSION_PULL", {});
+    } catch (e3) {
+      /* ignore */
+    }
+    setStatus(String(e.message || e), true);
+  }
+}
+
 async function loadState() {
   setStatus("Loading…");
   try {
@@ -363,9 +409,12 @@ async function loadState() {
         true
       );
     }
-    $("last-fetch").textContent = state.lastScriptFetch
-      ? "Last fetch: " + formatTime(state.lastScriptFetch)
-      : "No fetch yet — open settings (gear) and refresh.";
+    const lf = $("last-fetch");
+    if (lf) {
+      lf.textContent = state.lastScriptFetch
+        ? "Last fetch: " + formatTime(state.lastScriptFetch)
+        : "No fetch yet — open settings (gear) and refresh.";
+    }
 
     setTabVersions(state.extensionVersion || "");
     updateSetupBanner(state);
@@ -377,6 +426,7 @@ async function loadState() {
     if (!state.stateLoadError) setStatus("");
 
     await runFirstPopupRefreshIfNeeded();
+    await maybeInitialGithubSessionPull(state);
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
     setStatus(String(e.message || e), true);
@@ -441,12 +491,13 @@ if (chrome.storage && chrome.storage.onChanged) {
 function renderSessions(names) {
   const ul = $("session-list");
   const empty = $("sessions-empty");
+  if (!ul) return;
   ul.innerHTML = "";
   if (!names.length) {
-    empty.classList.remove("hidden");
+    if (empty) empty.classList.remove("hidden");
     return;
   }
-  empty.classList.add("hidden");
+  if (empty) empty.classList.add("hidden");
   for (const name of names) {
     const li = document.createElement("li");
     li.className = "session-item";
@@ -505,12 +556,13 @@ function renderScripts(scripts) {
   const list = Array.isArray(scripts) ? scripts : [];
   const ul = $("script-list");
   const empty = $("scripts-empty");
+  if (!ul) return;
   ul.innerHTML = "";
   if (!list.length) {
-    empty.classList.remove("hidden");
+    if (empty) empty.classList.remove("hidden");
     return;
   }
-  empty.classList.add("hidden");
+  if (empty) empty.classList.add("hidden");
 
   const cmp = function (a, b) {
     return scriptDisplayName(a).localeCompare(scriptDisplayName(b), undefined, {
@@ -638,9 +690,11 @@ async function saveSession() {
     const preview = await send("PREVIEW_SESSION_CAPTURE", {});
     const wsIdx = preview.worksheetWindowIndices || [];
     if (wsIdx.length > 0) {
-      openWorksheetOrderModal(name, preview.snapshot, wsIdx);
-      setStatus("Set worksheet order, then Save session.");
-      return;
+      const opened = openWorksheetOrderModal(name, preview.snapshot, wsIdx);
+      if (opened) {
+        setStatus("Set worksheet order, then Save session.");
+        return;
+      }
     }
     const res = await send("SAVE_SESSION", { name });
     $("session-name").value = "";
