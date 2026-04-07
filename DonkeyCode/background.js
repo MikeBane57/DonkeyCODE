@@ -763,6 +763,69 @@ async function toggleScript(scriptId, enabled) {
   updateInstallBadge().catch(() => {});
 }
 
+/** OpsSuite worksheet tabs — stable restore order + stagger helps server-side numbering. */
+const WORKSHEET_HOST = "opssuitemain.swacorp.com";
+const WORKSHEET_PATH_MARK = "/widgets/worksheet";
+
+function isOpsSuiteWorksheetUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  try {
+    const u = new URL(url);
+    return (
+      u.hostname === WORKSHEET_HOST &&
+      u.pathname.toLowerCase().indexOf(WORKSHEET_PATH_MARK) !== -1
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
+function sessionHasWorksheetTabs(snap) {
+  if (!snap || !Array.isArray(snap.windows)) return false;
+  for (const w of snap.windows) {
+    for (const t of w.tabs || []) {
+      if (isOpsSuiteWorksheetUrl(t.url)) return true;
+    }
+  }
+  return false;
+}
+
+function worksheetPrimaryUrlForWindow(w) {
+  for (const t of w.tabs || []) {
+    if (isOpsSuiteWorksheetUrl(t.url)) return String(t.url);
+  }
+  return "";
+}
+
+/**
+ * Deterministic order: optional `restoreOrder` (lower first), then worksheet URL,
+ * then original index. Edit JSON to set per-window `restoreOrder` if needed.
+ */
+function sortWindowsForRestore(windows) {
+  return windows
+    .map((w, i) => ({ w, i }))
+    .sort((A, B) => {
+      const a = A.w;
+      const b = B.w;
+      const roA = typeof a.restoreOrder === "number" ? a.restoreOrder : 1e9;
+      const roB = typeof b.restoreOrder === "number" ? b.restoreOrder : 1e9;
+      if (roA !== roB) return roA - roB;
+      const wa = worksheetPrimaryUrlForWindow(a);
+      const wb = worksheetPrimaryUrlForWindow(b);
+      if (wa && wb && wa !== wb) return wa.localeCompare(wb);
+      if (wa && !wb) return -1;
+      if (!wa && wb) return 1;
+      return A.i - B.i;
+    })
+    .map((x) => x.w);
+}
+
+function delayMs(ms) {
+  return new Promise(function (resolve) {
+    setTimeout(resolve, ms);
+  });
+}
+
 function normalizeSessionSnapshot(snap) {
   if (!snap || !Array.isArray(snap.windows)) {
     const empty = { windows: [], _meta: { updatedAt: 0 } };
@@ -770,6 +833,9 @@ function normalizeSessionSnapshot(snap) {
       empty._meta = {
         updatedAt: Number(snap._meta.updatedAt) || 0,
       };
+      if (typeof snap._meta.worksheetStaggerMs === "number") {
+        empty._meta.worksheetStaggerMs = snap._meta.worksheetStaggerMs;
+      }
     }
     return empty;
   }
@@ -784,7 +850,7 @@ function normalizeSessionSnapshot(snap) {
       index: typeof t.index === "number" ? t.index : ti,
       pinned: !!t.pinned,
     }));
-    return {
+    const win = {
       id,
       left: w.left,
       top: w.top,
@@ -794,10 +860,15 @@ function normalizeSessionSnapshot(snap) {
       focused: w.focused,
       tabs,
     };
+    if (typeof w.restoreOrder === "number") win.restoreOrder = w.restoreOrder;
+    return win;
   });
   const out = { windows };
   if (snap._meta && typeof snap._meta === "object") {
     out._meta = { updatedAt: Number(snap._meta.updatedAt) || 0 };
+    if (typeof snap._meta.worksheetStaggerMs === "number") {
+      out._meta.worksheetStaggerMs = snap._meta.worksheetStaggerMs;
+    }
   } else {
     out._meta = { updatedAt: 0 };
   }
@@ -806,7 +877,8 @@ function normalizeSessionSnapshot(snap) {
 
 function touchSessionMeta(snap) {
   const n = normalizeSessionSnapshot(snap);
-  n._meta = { updatedAt: Date.now() };
+  const prev = n._meta && typeof n._meta === "object" ? n._meta : {};
+  n._meta = { ...prev, updatedAt: Date.now() };
   return n;
 }
 
@@ -1231,7 +1303,23 @@ async function restoreSessionInternal(name) {
   const snap = normalizeSessionSnapshot(sessions[trimmed]);
   if (!snap.windows.length) throw new Error("Session not found");
 
-  for (const w of snap.windows) {
+  const ordered = sortWindowsForRestore(snap.windows);
+  const hasWs = sessionHasWorksheetTabs(snap);
+  let stagger = 0;
+  if (hasWs) {
+    if (snap._meta && typeof snap._meta.worksheetStaggerMs === "number") {
+      stagger = Math.max(0, snap._meta.worksheetStaggerMs);
+    } else {
+      stagger = 800;
+    }
+  }
+
+  for (let wi = 0; wi < ordered.length; wi++) {
+    const w = ordered[wi];
+    if (wi > 0 && stagger > 0) {
+      log("worksheet stagger delay", stagger, "ms before window", wi + 1);
+      await delayMs(stagger);
+    }
     const urls = (w.tabs || [])
       .sort((a, b) => (a.index || 0) - (b.index || 0))
       .map((t) => t.url)
@@ -1265,7 +1353,7 @@ async function restoreSessionInternal(name) {
       }
     }
   }
-  log("session restored", trimmed);
+  log("session restored", trimmed, "windows", ordered.length, "staggerMs", stagger);
 }
 
 async function restoreSession(name) {

@@ -106,8 +106,10 @@
       <div class="modal" role="dialog" aria-labelledby="session-editor-title">
         <h2 id="session-editor-title" class="modal-title">Edit session</h2>
         <p class="hint modal-hint">
-          Edit the JSON below. Each window has <code>left</code>, <code>top</code>, <code>width</code>, <code>height</code>, and
-          <code>tabs</code> with <code>url</code> per tab. Save replaces the stored session.
+          Each window: <code>left</code>, <code>top</code>, <code>width</code>, <code>height</code>, <code>tabs</code> (<code>url</code> per tab).
+          Optional per-window <code>restoreOrder</code> (number, lower opens first). OpsSuite worksheets
+          (<code>opssuitemain.swacorp.com/.../worksheet...</code>) open in stable URL order with a delay between windows; set
+          <code>"_meta": { "worksheetStaggerMs": 800 }</code> to tune delay (omit for default 800ms).
         </p>
         <textarea id="session-editor-json" class="session-json" spellcheck="false" rows="18"></textarea>
         <div class="btn-row modal-actions">

@@ -488,7 +488,11 @@ async function openSessionEditor(name) {
   setStatus("Loading session…");
   try {
     const res = await send("GET_SESSION_DETAIL", { name });
-    const payload = { windows: res.snapshot.windows };
+    const snap = res.snapshot;
+    const payload = { windows: snap.windows };
+    if (snap._meta && typeof snap._meta === "object") {
+      payload._meta = snap._meta;
+    }
     $("session-editor-json").value = JSON.stringify(payload, null, 2);
     $("session-editor-title").textContent = 'Edit session: "' + name + '"';
     $("session-editor-overlay").classList.remove("hidden");
@@ -526,7 +530,7 @@ async function saveSessionEditor() {
     return;
   }
   if (!parsed || !Array.isArray(parsed.windows)) {
-    setStatus('JSON must be an object with a "windows" array.', true);
+    setStatus('JSON must be an object with a "windows" array (optional "_meta").', true);
     return;
   }
   setStatus("Saving session…");
