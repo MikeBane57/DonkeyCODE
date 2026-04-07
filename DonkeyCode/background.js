@@ -86,6 +86,8 @@ const STORAGE = {
   GITHUB_SYNC_LAST_OK: "donkeycode_github_sync_last_ok",
   /** Set on first install; cleared after popup runs one GitHub session pull when configured */
   PENDING_INITIAL_SESSION_PULL: "donkeycode_pending_initial_session_pull",
+  /** Cleared after popup runs one GitHub folder discover when configured */
+  PENDING_INITIAL_FOLDER_DISCOVER: "donkeycode_pending_initial_folder_discover",
 };
 
 /** Default URLs opened before restoring a session (user signs in, then continues). */
@@ -256,6 +258,8 @@ function parseUserScript(fullText) {
   const grants = [];
   const connects = [];
   let userScriptName = "";
+  let userScriptVersion = "";
+  let userScriptDescription = "";
   const lines = metaText.split(/\r?\n/);
   for (const line of lines) {
     const m = line.match(/^\s*\/\/\s*@(\S+)\s+(.*)$/);
@@ -267,11 +271,22 @@ function parseUserScript(fullText) {
     else if (key === "grant") grants.push(val);
     else if (key === "connect") connects.push(val);
     else if (key === "name" && val) userScriptName = val;
+    else if (key === "version" && val) userScriptVersion = val;
+    else if (key === "description" && val) userScriptDescription = val;
   }
 
   if (matches.length === 0) matches.push("*://*/*");
 
-  return { matches, excludes, grants, connects, userScriptName, body };
+  return {
+    matches,
+    excludes,
+    grants,
+    connects,
+    userScriptName,
+    userScriptVersion,
+    userScriptDescription,
+    body,
+  };
 }
 
 /**
@@ -550,7 +565,18 @@ function forgetAllInjections() {
 async function getStoredScripts() {
   const data = await chrome.storage.local.get(STORAGE.SCRIPTS);
   const raw = data[STORAGE.SCRIPTS];
-  return Array.isArray(raw) ? raw : [];
+  if (!Array.isArray(raw)) return [];
+  return raw.map((s) => ({
+    ...s,
+    userScriptVersion:
+      s && s.userScriptVersion != null && String(s.userScriptVersion).trim() !== ""
+        ? String(s.userScriptVersion).trim()
+        : "",
+    userScriptDescription:
+      s && s.userScriptDescription != null && String(s.userScriptDescription).trim() !== ""
+        ? String(s.userScriptDescription).trim()
+        : "",
+  }));
 }
 
 async function saveScripts(scripts) {
@@ -659,11 +685,21 @@ async function loadScriptsFromRemote() {
       meta.userScriptName ||
       (prevRow && prevRow.userScriptName) ||
       "";
+    const userScriptVersion =
+      (meta.userScriptVersion && String(meta.userScriptVersion).trim()) ||
+      (prevRow && prevRow.userScriptVersion) ||
+      "";
+    const userScriptDescription =
+      (meta.userScriptDescription && String(meta.userScriptDescription).trim()) ||
+      (prevRow && prevRow.userScriptDescription) ||
+      "";
     next.push({
       id,
       url: e.url,
       name: e.name,
       userScriptName,
+      userScriptVersion,
+      userScriptDescription,
       enabled: prevRow ? prevRow.enabled !== false : false,
       matches: meta.matches,
       excludes: meta.excludes,
@@ -722,8 +758,11 @@ chrome.runtime.onInstalled.addListener((details) => {
     });
   if (details.reason === "install" || details.reason === "update") {
     chrome.storage.local
-      .set({ [STORAGE.PENDING_INITIAL_SESSION_PULL]: true })
-      .catch((e) => logWarn("pending initial session pull", e));
+      .set({
+        [STORAGE.PENDING_INITIAL_SESSION_PULL]: true,
+        [STORAGE.PENDING_INITIAL_FOLDER_DISCOVER]: true,
+      })
+      .catch((e) => logWarn("pending initial session sync flags", e));
   }
   if (details.reason === "install") {
     const url = chrome.runtime.getURL("welcome.html");
@@ -1955,9 +1994,11 @@ async function getStateForPopup() {
     const pendingData = await chrome.storage.local.get([
       STORAGE.PENDING_FIRST_POPUP_REFRESH,
       STORAGE.PENDING_INITIAL_SESSION_PULL,
+      STORAGE.PENDING_INITIAL_FOLDER_DISCOVER,
     ]);
     const pendingFirstPopupRefresh = !!pendingData[STORAGE.PENDING_FIRST_POPUP_REFRESH];
     const pendingInitialSessionPull = !!pendingData[STORAGE.PENDING_INITIAL_SESSION_PULL];
+    const pendingInitialFolderDiscover = !!pendingData[STORAGE.PENDING_INITIAL_FOLDER_DISCOVER];
     const gh = await getGithubSettings();
     const ghPathForFolder = await getGithubPathForFolder(currentKey);
     const ghErr = await chrome.storage.local.get(STORAGE.GITHUB_SYNC_LAST_ERROR);
@@ -1976,9 +2017,10 @@ async function getStateForPopup() {
       extensionVersion,
       hasHostAccess,
       setupDismissed,
-    pendingFirstPopupRefresh,
-    pendingInitialSessionPull,
-    githubOwner: gh.owner,
+      pendingFirstPopupRefresh,
+      pendingInitialSessionPull,
+      pendingInitialFolderDiscover,
+      githubOwner: gh.owner,
       githubRepo: gh.repo,
       githubBranch: gh.branch,
       githubPath: gh.path,
@@ -2016,6 +2058,7 @@ async function getStateForPopup() {
       setupDismissed: false,
       pendingFirstPopupRefresh: false,
       pendingInitialSessionPull: false,
+      pendingInitialFolderDiscover: false,
       githubOwner: "",
       githubRepo: "",
       githubBranch: "main",
@@ -2078,6 +2121,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         }
         case "CONSUMED_INITIAL_SESSION_PULL": {
           await chrome.storage.local.remove(STORAGE.PENDING_INITIAL_SESSION_PULL);
+          sendResponse({ ok: true });
+          break;
+        }
+        case "CONSUMED_INITIAL_FOLDER_DISCOVER": {
+          await chrome.storage.local.remove(STORAGE.PENDING_INITIAL_FOLDER_DISCOVER);
           sendResponse({ ok: true });
           break;
         }

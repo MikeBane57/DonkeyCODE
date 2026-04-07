@@ -650,6 +650,53 @@ function openFolderPickerModal() {
   }
 }
 
+async function maybeInitialGithubFolderDiscover(state) {
+  if (!state || !state.pendingInitialFolderDiscover) return;
+  const hasGh =
+    (state.githubOwner && String(state.githubOwner).trim()) &&
+    (state.githubRepo && String(state.githubRepo).trim()) &&
+    (state.githubTokenConfigured || state.githubBakedIn);
+  if (!hasGh) {
+    try {
+      await send("CONSUMED_INITIAL_FOLDER_DISCOVER", {});
+    } catch (e) {
+      /* ignore */
+    }
+    return;
+  }
+  const prevStatus = $("status") ? $("status").textContent : "";
+  setStatus("Discovering session folders from GitHub…");
+  try {
+    const discRes = await send("GITHUB_DISCOVER_SESSION_FOLDERS", {});
+    try {
+      await send("CONSUMED_INITIAL_FOLDER_DISCOVER", {});
+    } catch (e2) {
+      /* ignore */
+    }
+    const st2 = await send("GET_STATE", {});
+    fillSessionFolderUI(st2);
+    renderSessions(st2.sessions || []);
+    syncLoginFirstSelect(st2.sessions || []);
+    updatePendingBanner(st2);
+    const nf = (discRes && discRes.newLocalFolders) || [];
+    if (nf.length) {
+      setStatus("Added folders from GitHub: " + nf.join(", ") + ".");
+    } else if (prevStatus && !state.stateLoadError) {
+      setStatus(prevStatus);
+    } else if (!state.stateLoadError) {
+      setStatus("");
+    }
+  } catch (e) {
+    console.error("[DonkeyCode:popup] initial folder discover", e);
+    try {
+      await send("CONSUMED_INITIAL_FOLDER_DISCOVER", {});
+    } catch (e3) {
+      /* ignore */
+    }
+    if (!state.stateLoadError) setStatus(prevStatus || "");
+  }
+}
+
 async function maybeInitialGithubSessionPull(state) {
   if (!state || !state.pendingInitialSessionPull) return;
   const hasGh =
@@ -717,6 +764,7 @@ async function loadState() {
     if (!state.stateLoadError) setStatus("");
 
     await runFirstPopupRefreshIfNeeded();
+    await maybeInitialGithubFolderDiscover(state);
     await maybeInitialGithubSessionPull(state);
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
@@ -843,6 +891,13 @@ function scriptDisplayName(s) {
   );
 }
 
+function scriptRowTooltip(s) {
+  const desc = s && s.userScriptDescription && String(s.userScriptDescription).trim();
+  if (desc) return desc;
+  const u = s && s.url ? String(s.url) : "";
+  return u ? "Source: " + u : "";
+}
+
 function renderScripts(scripts) {
   const list = Array.isArray(scripts) ? scripts : [];
   const ul = $("script-list");
@@ -873,13 +928,24 @@ function renderScripts(scripts) {
 
   function appendScriptRow(s) {
     const li = document.createElement("li");
+    li.className = "script-row";
 
     const displayName = scriptDisplayName(s);
+    const tip = scriptRowTooltip(s);
+    const ver =
+      s.userScriptVersion && String(s.userScriptVersion).trim()
+        ? String(s.userScriptVersion).trim()
+        : "—";
 
     const labelSpan = document.createElement("span");
     labelSpan.className = "script-row-label";
     labelSpan.textContent = displayName;
-    labelSpan.title = s.url || displayName;
+    labelSpan.title = tip || displayName;
+
+    const verSpan = document.createElement("span");
+    verSpan.className = "script-row-version";
+    verSpan.textContent = ver;
+    verSpan.title = tip || ver;
 
     const toggleLabel = document.createElement("label");
     toggleLabel.className = "toggle toggle--sm";
@@ -902,20 +968,27 @@ function renderScripts(scripts) {
 
     li.appendChild(toggleLabel);
     li.appendChild(labelSpan);
+    li.appendChild(verSpan);
     ul.appendChild(li);
   }
 
   if (enabledList.length) {
     const head = document.createElement("li");
-    head.className = "script-section-heading";
-    head.textContent = "Enabled";
+    head.className = "script-section-heading script-section-heading--scripts";
+    head.innerHTML =
+      '<span class="script-col-toggle"></span>' +
+      '<span class="script-col-name">Script</span>' +
+      '<span class="script-col-ver">Ver</span>';
     ul.appendChild(head);
     enabledList.forEach(appendScriptRow);
   }
   if (inactiveList.length) {
     const head = document.createElement("li");
-    head.className = "script-section-heading";
-    head.textContent = "Inactive";
+    head.className = "script-section-heading script-section-heading--scripts";
+    head.innerHTML =
+      '<span class="script-col-toggle"></span>' +
+      '<span class="script-col-name">Script</span>' +
+      '<span class="script-col-ver">Ver</span>';
     ul.appendChild(head);
     inactiveList.forEach(appendScriptRow);
   }
