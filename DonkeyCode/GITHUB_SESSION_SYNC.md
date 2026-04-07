@@ -21,7 +21,7 @@ Run **`npm run build`** at the repo root with **`DONKEYCODE_*` environment varia
 1. Open the extension popup → **Settings** (gear).
 2. Fill **Owner**, **Repository**, **Branch** (e.g. `main`), **Sessions root directory**.
 3. Paste your **token** → **Save GitHub settings**.
-4. **Pull all** walks the **sessions root** recursively on GitHub; any directory that contains `donkeycode-sessions.json` becomes a local folder (path relative to root, e.g. `team/a/b`), then each folder is merged from its remote file. **Push all** uploads **every** local folder. **Sync all folders** runs discover → pull all → push all (popup and Settings). Pushes **retry on SHA conflicts** (concurrent edits) by refetching, merging, and writing again.
+4. **Pull all** walks the **sessions root** recursively on GitHub; any directory that contains `donkeycode-sessions.json` becomes a local folder (path relative to root, e.g. `team/a/b`), then each folder is merged from its remote file. **Push all** uploads **every** local folder. **Sync all folders** runs discover → **push all** → **pull all** so pushes are not invalidated by an earlier pull in the same run; push also **retries on blob SHA conflicts** (refetch, merge, write again).
 
 5. **Push current folder only** (Settings) still uploads just the folder selected in the popup.
 

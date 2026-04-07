@@ -349,6 +349,8 @@ async function switchSessionFolder(folderKey) {
 
 /** Updated on each loadState for folder browser modal */
 let lastFolderPickerState = null;
+/** Paths like "a/b" expanded in folder tree (disclosure open) */
+const folderPickerExpandedPaths = new Set();
 
 function fillSessionFolderUI(state) {
   lastFolderPickerState = state;
@@ -385,6 +387,77 @@ function closeFolderPickerModal() {
   }
 }
 
+function folderPathSort(a, b) {
+  if (a === "__default__") return -1;
+  if (b === "__default__") return 1;
+  return a.localeCompare(b, undefined, { sensitivity: "base" });
+}
+
+function folderKeyMatchesFilter(fk, relMap, q) {
+  if (!q) return true;
+  const hay = (fk + " " + (relMap[fk] || "")).toLowerCase();
+  return hay.indexOf(q) !== -1;
+}
+
+function buildSessionFolderTree(folderKeys) {
+  const root = { children: {} };
+  for (const fk of folderKeys) {
+    if (fk === "__default__") continue;
+    const parts = fk.split("/").filter(Boolean);
+    let parent = root;
+    for (let i = 0; i < parts.length; i++) {
+      const seg = parts[i];
+      if (!parent.children[seg]) {
+        parent.children[seg] = { segment: seg, folderKey: null, children: {} };
+      }
+      const cur = parent.children[seg];
+      if (i === parts.length - 1) {
+        cur.folderKey = fk;
+      }
+      parent = cur;
+    }
+  }
+  return root;
+}
+
+function subtreeMatchesFilter(node, pathPrefix, relMap, q) {
+  if (!q) return true;
+  if (node.folderKey && folderKeyMatchesFilter(node.folderKey, relMap, q)) {
+    return true;
+  }
+  const keys = Object.keys(node.children);
+  for (const seg of keys) {
+    const child = node.children[seg];
+    const fp = pathPrefix ? pathPrefix + "/" + seg : seg;
+    if (folderKeyMatchesFilter(fp, relMap, q)) return true;
+    if (subtreeMatchesFilter(child, fp, relMap, q)) return true;
+  }
+  return false;
+}
+
+function expandAncestorsForFilter(node, pathPrefix, relMap, q) {
+  if (!q) return;
+  const keys = Object.keys(node.children);
+  for (const seg of keys) {
+    const child = node.children[seg];
+    const fp = pathPrefix ? pathPrefix + "/" + seg : seg;
+    if (subtreeMatchesFilter(child, fp, relMap, q)) {
+      folderPickerExpandedPaths.add(fp);
+    }
+    expandAncestorsForFilter(child, fp, relMap, q);
+  }
+}
+
+function expandAncestorsOfCurrentFolder(cur) {
+  if (!cur || cur === "__default__") return;
+  const parts = cur.split("/").filter(Boolean);
+  let acc = "";
+  for (let i = 0; i < parts.length - 1; i++) {
+    acc = acc ? acc + "/" + parts[i] : parts[i];
+    folderPickerExpandedPaths.add(acc);
+  }
+}
+
 function renderFolderPickerList(filterText) {
   const ul = $("folder-picker-list");
   const state = lastFolderPickerState;
@@ -394,35 +467,47 @@ function renderFolderPickerList(filterText) {
   const relMap = state.folderGithubRelativePaths || {};
   const q = (filterText || "").trim().toLowerCase();
   ul.innerHTML = "";
-  for (const fk of folders) {
-    const display = fk === "__default__" ? "Default" : fk;
-    const searchHay = (fk + " " + (relMap[fk] || "")).toLowerCase();
-    if (q && searchHay.indexOf(q) === -1) continue;
+
+  const defaultMatches = folderKeyMatchesFilter("__default__", relMap, q);
+  const tree = buildSessionFolderTree(folders);
+  if (q) {
+    expandAncestorsForFilter(tree, "", relMap, q);
+  } else {
+    expandAncestorsOfCurrentFolder(cur);
+  }
+
+  let anyShown = false;
+
+  if (defaultMatches) {
+    anyShown = true;
     const li = document.createElement("li");
-    li.setAttribute("role", "presentation");
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "folder-picker-item" + (fk === cur ? " active" : "");
-    btn.dataset.folderKey = fk;
-    const pathSpan = document.createElement("span");
-    pathSpan.className = "folder-picker-path";
-    pathSpan.textContent = display;
-    btn.appendChild(pathSpan);
-    const override = (relMap[fk] || "").trim();
-    if (override && fk !== "__default__") {
-      const meta = document.createElement("span");
-      meta.className = "folder-picker-meta";
-      meta.textContent = "Git override: " + override;
-      btn.appendChild(meta);
-    }
-    btn.addEventListener("click", async function () {
-      closeFolderPickerModal();
-      if (fk !== cur) await switchSessionFolder(fk);
-    });
-    li.appendChild(btn);
+    li.className = "folder-picker-tree-li";
+    li.appendChild(
+      makeFolderPickerRow({
+        folderKey: "__default__",
+        label: "Default",
+        depth: 0,
+        hasChildren: false,
+        expanded: false,
+        cur,
+        relMap,
+        onToggle: function () {},
+      })
+    );
     ul.appendChild(li);
   }
-  if (!ul.children.length) {
+
+  const childKeys = Object.keys(tree.children).sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" })
+  );
+  for (const seg of childKeys) {
+    const child = tree.children[seg];
+    if (!subtreeMatchesFilter(child, seg, relMap, q)) continue;
+    anyShown = true;
+    renderFolderTreeBranch(ul, child, seg, cur, relMap, q, 0);
+  }
+
+  if (!anyShown) {
     const li = document.createElement("li");
     const empty = document.createElement("p");
     empty.className = "hint";
@@ -433,10 +518,123 @@ function renderFolderPickerList(filterText) {
   }
 }
 
-function folderPathSort(a, b) {
-  if (a === "__default__") return -1;
-  if (b === "__default__") return 1;
-  return a.localeCompare(b, undefined, { sensitivity: "base" });
+function makeFolderPickerRow(opts) {
+  const {
+    folderKey,
+    label,
+    depth,
+    hasChildren,
+    expanded,
+    cur,
+    relMap,
+    onToggle,
+  } = opts;
+  const row = document.createElement("div");
+  row.className = "folder-tree-row";
+  row.style.paddingLeft = 4 + depth * 14 + "px";
+
+  if (hasChildren) {
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "folder-tree-toggle";
+    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    toggle.setAttribute("aria-label", expanded ? "Collapse" : "Expand");
+    toggle.textContent = expanded ? "\u25BC" : "\u25B6";
+    toggle.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      onToggle();
+    });
+    row.appendChild(toggle);
+  } else {
+    const sp = document.createElement("span");
+    sp.className = "folder-tree-toggle-spacer";
+    sp.setAttribute("aria-hidden", "true");
+    row.appendChild(sp);
+  }
+
+  const selectWrap = document.createElement("div");
+  selectWrap.className = "folder-tree-select-wrap";
+
+  if (folderKey) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "folder-picker-item folder-tree-select" + (folderKey === cur ? " active" : "");
+    btn.dataset.folderKey = folderKey;
+    const pathSpan = document.createElement("span");
+    pathSpan.className = "folder-picker-path";
+    pathSpan.textContent = label;
+    btn.appendChild(pathSpan);
+    const override = (relMap[folderKey] || "").trim();
+    if (override && folderKey !== "__default__") {
+      const meta = document.createElement("span");
+      meta.className = "folder-picker-meta";
+      meta.textContent = "Git: " + override;
+      btn.appendChild(meta);
+    }
+    btn.addEventListener("click", async function () {
+      closeFolderPickerModal();
+      if (folderKey !== cur) await switchSessionFolder(folderKey);
+    });
+    selectWrap.appendChild(btn);
+  } else {
+    const span = document.createElement("span");
+    span.className = "folder-tree-label-only";
+    span.textContent = label;
+    selectWrap.appendChild(span);
+  }
+
+  row.appendChild(selectWrap);
+  return row;
+}
+
+function renderFolderTreeBranch(ul, node, pathPrefix, cur, relMap, q, depth) {
+  const childSegKeys = Object.keys(node.children);
+  const hasChildren = childSegKeys.length > 0;
+  const expanded = folderPickerExpandedPaths.has(pathPrefix);
+  const canSelect = !!node.folderKey;
+
+  const li = document.createElement("li");
+  li.className = "folder-picker-tree-li";
+
+  li.appendChild(
+    makeFolderPickerRow({
+      folderKey: canSelect ? node.folderKey : null,
+      label: node.segment,
+      depth,
+      hasChildren,
+      expanded,
+      cur,
+      relMap,
+      onToggle: function () {
+        if (folderPickerExpandedPaths.has(pathPrefix)) {
+          folderPickerExpandedPaths.delete(pathPrefix);
+        } else {
+          folderPickerExpandedPaths.add(pathPrefix);
+        }
+        const inp = $("folder-picker-filter");
+        renderFolderPickerList(inp ? inp.value : "");
+      },
+    })
+  );
+
+  if (hasChildren && expanded) {
+    const subUl = document.createElement("ul");
+    subUl.className = "folder-picker-subtree";
+    const sorted = childSegKeys.sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base" })
+    );
+    for (const seg of sorted) {
+      const child = node.children[seg];
+      const fp = pathPrefix + "/" + seg;
+      if (!subtreeMatchesFilter(child, fp, relMap, q)) continue;
+      renderFolderTreeBranch(subUl, child, fp, cur, relMap, q, depth + 1);
+    }
+    if (subUl.children.length) {
+      li.appendChild(subUl);
+    }
+  }
+
+  ul.appendChild(li);
 }
 
 function openFolderPickerModal() {
@@ -746,8 +944,8 @@ function formatGithubSyncStatus(prefix, res) {
   }
   const pe = (res && res.pullErrors) || [];
   const psh = (res && res.pushErrors) || [];
-  if (pe.length) parts.push("Pull issues: " + pe.join(" "));
   if (psh.length) parts.push("Push issues: " + psh.join(" "));
+  if (pe.length) parts.push("Pull issues: " + pe.join(" "));
   const isErr = pe.length || psh.length;
   return { text: parts.join(" "), isErr };
 }
@@ -793,7 +991,7 @@ async function pushAllSessionsToGithub() {
 }
 
 async function syncAllSessionsWithGithub() {
-  setStatus("Full sync: discover → pull all → push all…");
+  setStatus("Full sync: discover → push all → pull all…");
   try {
     const res = await send("GITHUB_SESSIONS_SYNC_ALL", {});
     await loadState();

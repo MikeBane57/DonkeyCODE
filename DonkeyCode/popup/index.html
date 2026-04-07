@@ -72,8 +72,8 @@
         </div>
         <p id="session-folder-github-hint" class="hint"></p>
         <p class="hint small-hint">
-          <strong>Sync all</strong> scans your <strong>sessions root</strong> on GitHub for subfolders with
-          <code>donkeycode-sessions.json</code>, adds them here, pulls, then pushes every folder.
+          <strong>Sync all</strong> scans your <strong>sessions root</strong> on GitHub, adds missing folders, then
+          <strong>pushes every folder</strong> and <strong>pulls</strong> so remotes stay merged.
           <strong>+ Folder</strong>: name, or <code>name, path/override</code> for a custom Git path.
         </p>
       </div>
@@ -84,7 +84,7 @@
       </div>
       <div class="btn-row github-sync-row">
         <button type="button" id="btn-save-session">Save current layout</button>
-        <button type="button" id="btn-sync-all-sessions-github" class="primary" title="Discover folders on GitHub, pull every folder, then push every folder">
+        <button type="button" id="btn-sync-all-sessions-github" class="primary" title="Discover folders, push all folders to GitHub, then pull all (merge)">
           Sync all (GitHub)
         </button>
       </div>

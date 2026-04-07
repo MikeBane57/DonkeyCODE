@@ -439,7 +439,7 @@ $("btn-gh-push-all").addEventListener("click", async function () {
 });
 
 $("btn-gh-sync-all").addEventListener("click", async function () {
-  setInlineStatus($("github-status"), "Sync all (discover → pull → push)…", false);
+  setInlineStatus($("github-status"), "Sync all (discover → push → pull)…", false);
   try {
     const res = await send("GITHUB_SESSIONS_SYNC_ALL", {});
     if (res.ok === false) throw new Error(res.error || "Sync failed");
@@ -451,8 +451,8 @@ $("btn-gh-sync-all").addEventListener("click", async function () {
       "Sync all done. Current folder: " +
       (names.length ? names.join(", ") : "(none)");
     if (nf.length) msg += " — new from repo: " + nf.join(", ");
-    if (pe.length) msg += " — pull issues: " + pe.join(" ");
     if (psh.length) msg += " — push issues: " + psh.join(" ");
+    if (pe.length) msg += " — pull issues: " + pe.join(" ");
     setInlineStatus($("github-status"), msg, !!(pe.length || psh.length));
     await refreshFoldersOnly();
   } catch (e) {

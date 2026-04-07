@@ -1283,9 +1283,13 @@ async function putGithubSessionsFile(settings, bodyObj, shaOrNull) {
   );
 }
 
+/**
+ * GitHub returns e.g. "…donkeycode-sessions.json does not match <40-char sha>"
+ * (message often does not include the word "sha").
+ */
 function isGithubShaConflictError(e) {
-  const msg = String(e && e.message ? e.message : e).toLowerCase();
-  return msg.includes("does not match") && msg.includes("sha");
+  const msg = String(e && e.message ? e.message : e);
+  return /does not match/i.test(msg) && /\b[0-9a-f]{40}\b/i.test(msg);
 }
 
 /**
@@ -1293,7 +1297,7 @@ function isGithubShaConflictError(e) {
  */
 async function putGithubSessionsMergedWithRetry(settings, folderKey, maxAttempts) {
   const fk = normalizeFolderKey(folderKey);
-  const attempts = Math.max(1, Math.min(Number(maxAttempts) || 4, 8));
+  const attempts = Math.max(1, Math.min(Number(maxAttempts) || 6, 12));
   let lastErr = null;
   for (let i = 0; i < attempts; i++) {
     const local = await getSessionsMapForFolder(fk);
@@ -1562,7 +1566,7 @@ async function githubPushSingleFolder(folderKey) {
   if (!settings.token || !settings.owner || !settings.repo) {
     throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
   }
-  const { mergedCount } = await putGithubSessionsMergedWithRetry(settings, fk, 5);
+  const { mergedCount } = await putGithubSessionsMergedWithRetry(settings, fk, 8);
   const mergedKeys = Object.keys(await getSessionsMapForFolder(fk)).sort();
   log("GitHub push ok", mergedCount, "sessions", "folder", fk, settings.path);
   return { folderKey: fk, sessions: mergedKeys };
@@ -1607,7 +1611,8 @@ async function githubSyncPushAll() {
 }
 
 /**
- * Discover remote folders, pull merge all, then push all (uploads new empty JSONs too).
+ * Discover remote folders, **push all** then **pull all** so each file’s SHA is not
+ * invalidated by an earlier pull in the same run (reduces “does not match” failures).
  */
 async function githubSyncAll() {
   const gh = await getGithubSettings();
@@ -1626,12 +1631,12 @@ async function githubSyncAll() {
       discoveryError: String(e && e.message ? e.message : e),
     };
   }
+  const pushRes = await githubSyncPushAll();
   const pullErrors = await githubPullAllFoldersMerge();
   if (discovery.discoveryError) {
     pullErrors.unshift("(discovery) " + discovery.discoveryError);
   }
-  const pushRes = await githubSyncPushAll();
-  const allErrors = pullErrors.concat(pushRes.pushErrors || []);
+  const allErrors = (pushRes.pushErrors || []).concat(pullErrors);
   await chrome.storage.local.set({
     [STORAGE.GITHUB_SYNC_LAST_ERROR]: allErrors.length ? allErrors.join(" | ") : "",
     [STORAGE.GITHUB_SYNC_LAST_OK]: Date.now(),
