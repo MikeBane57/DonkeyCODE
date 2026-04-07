@@ -1175,13 +1175,33 @@ async function githubApiRequest(path, options, token) {
     json = null;
   }
   if (!res.ok) {
-    const err = new Error(
-      (json && json.message) || text || "HTTP " + res.status
-    );
+    let msg = (json && json.message) || text || "HTTP " + res.status;
+    if (json && Array.isArray(json.errors) && json.errors.length) {
+      const parts = json.errors
+        .map((er) => (er && (er.message || String(er.code || ""))) || "")
+        .filter(Boolean);
+      if (parts.length) {
+        msg = msg + (/\.\s*$/.test(msg) ? " " : ". ") + parts.join("; ");
+      }
+    }
+    const err = new Error(msg);
     err.status = res.status;
+    err.githubJson = json;
     throw err;
   }
   return json;
+}
+
+/** Full text for matching (top-level message + errors[].message on 422). */
+function githubApiErrorFullText(e) {
+  let s = String(e && e.message ? e.message : e);
+  const j = e && e.githubJson;
+  if (j && Array.isArray(j.errors)) {
+    for (const er of j.errors) {
+      if (er && er.message) s += " " + er.message;
+    }
+  }
+  return s;
 }
 
 async function getGithubSettings() {
@@ -1284,12 +1304,14 @@ async function putGithubSessionsFile(settings, bodyObj, shaOrNull) {
 }
 
 /**
- * GitHub returns e.g. "…donkeycode-sessions.json does not match <40-char sha>"
- * (message often does not include the word "sha").
+ * Blob update conflict: wrong sha (message may be only in json.errors on 422).
  */
 function isGithubShaConflictError(e) {
-  const msg = String(e && e.message ? e.message : e);
-  return /does not match/i.test(msg) && /\b[0-9a-f]{40}\b/i.test(msg);
+  const msg = githubApiErrorFullText(e);
+  if (/does not match/i.test(msg) && /\b[0-9a-f]{40}\b/i.test(msg)) return true;
+  if (e && e.status === 409) return true;
+  if (e && e.status === 422 && /sha|does not match|blob/i.test(msg)) return true;
+  return false;
 }
 
 /**
@@ -1297,7 +1319,7 @@ function isGithubShaConflictError(e) {
  */
 async function putGithubSessionsMergedWithRetry(settings, folderKey, maxAttempts) {
   const fk = normalizeFolderKey(folderKey);
-  const attempts = Math.max(1, Math.min(Number(maxAttempts) || 6, 12));
+  const attempts = Math.max(1, Math.min(Number(maxAttempts) || 8, 16));
   let lastErr = null;
   for (let i = 0; i < attempts; i++) {
     const local = await getSessionsMapForFolder(fk);
@@ -1566,7 +1588,7 @@ async function githubPushSingleFolder(folderKey) {
   if (!settings.token || !settings.owner || !settings.repo) {
     throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
   }
-  const { mergedCount } = await putGithubSessionsMergedWithRetry(settings, fk, 8);
+  const { mergedCount } = await putGithubSessionsMergedWithRetry(settings, fk, 12);
   const mergedKeys = Object.keys(await getSessionsMapForFolder(fk)).sort();
   log("GitHub push ok", mergedCount, "sessions", "folder", fk, settings.path);
   return { folderKey: fk, sessions: mergedKeys };
