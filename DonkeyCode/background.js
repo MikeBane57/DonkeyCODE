@@ -1205,7 +1205,8 @@ async function githubApiRequest(path, options, token) {
     ...(options.headers || {}),
   };
   if (token) headers.Authorization = "Bearer " + token;
-  const res = await fetch(url, { ...options, headers });
+  /** Avoid stale cached responses (wrong blob sha on GET → "does not match" on PUT). */
+  const res = await fetch(url, { ...options, headers, cache: "no-store" });
   const text = await res.text();
   let json = null;
   try {
@@ -1347,9 +1348,9 @@ async function putGithubSessionsFile(settings, bodyObj, shaOrNull) {
  */
 function isGithubShaConflictError(e) {
   const msg = githubApiErrorFullText(e);
-  if (/does not match/i.test(msg) && /\b[0-9a-f]{40}\b/i.test(msg)) return true;
+  if (/does not match/i.test(msg)) return true;
   if (e && e.status === 409) return true;
-  if (e && e.status === 422 && /sha|does not match|blob/i.test(msg)) return true;
+  if (e && e.status === 422 && /sha|does not match|blob|content/i.test(msg)) return true;
   return false;
 }
 
@@ -1367,10 +1368,10 @@ function isGithubPushRetryableError(e) {
 
 async function putGithubSessionsMergedWithRetry(settings, folderKey, maxAttempts) {
   const fk = normalizeFolderKey(folderKey);
-  const attempts = Math.max(1, Math.min(Number(maxAttempts) || 8, 16));
+  const attempts = Math.max(1, Math.min(Number(maxAttempts) || 8, 20));
   let lastErr = null;
   for (let i = 0; i < attempts; i++) {
-    if (i > 0) await delayMs(60 + i * 50);
+    if (i > 0) await delayMs(120 + i * 80);
     const local = await getSessionsMapForFolder(fk);
     let sha = null;
     let remoteSessions = {};
