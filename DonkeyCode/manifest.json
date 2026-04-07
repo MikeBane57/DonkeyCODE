@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
   "name": "DonkeyCode",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "Lightweight user-script loader with session management for Chrome and Edge.",
   "permissions": ["scripting", "tabs", "storage", "alarms", "windows"],
+  "host_permissions": ["https://api.github.com/*"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "background.js"

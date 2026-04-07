@@ -471,6 +471,33 @@ function closeSessionEditor() {
   $("session-editor-overlay").setAttribute("aria-hidden", "true");
 }
 
+function fillGithubSettings(st) {
+  if (!st) return;
+  const o = $("gh-owner");
+  const r = $("gh-repo");
+  const b = $("gh-branch");
+  const p = $("gh-path");
+  const t = $("gh-token");
+  const status = $("gh-status");
+  if (o) o.value = st.githubOwner || "";
+  if (r) r.value = st.githubRepo || "";
+  if (b) b.value = st.githubBranch || "main";
+  if (p) p.value = st.githubPath || "sessions/donkeycode-sessions.json";
+  if (t) t.value = "";
+  if (status) {
+    let msg = "";
+    if (st.githubTokenConfigured) msg += "Token saved on this device. ";
+    else msg += "No token saved. ";
+    if (st.githubSyncLastOk) {
+      msg += "Last sync: " + formatTime(st.githubSyncLastOk) + ". ";
+    }
+    if (st.githubSyncLastError) {
+      msg += "Error: " + st.githubSyncLastError;
+    }
+    status.textContent = msg.trim();
+  }
+}
+
 async function openSettings() {
   const el = $("settings-overlay");
   if (!el) return;
@@ -478,6 +505,7 @@ async function openSettings() {
     const st = await send("GET_STATE", {});
     updateHostAccessUI(!!st.hasHostAccess);
     updateSetupBanner(st);
+    fillGithubSettings(st);
   } catch (e) {
     /* ignore */
   }
@@ -602,6 +630,87 @@ $("btn-request-host-access").addEventListener("click", async function () {
 $("settings-overlay").addEventListener("click", function (ev) {
   if (ev.target === $("settings-overlay")) closeSettings();
 });
+
+$("btn-gh-save").addEventListener("click", async function () {
+  setStatus("Saving GitHub settings…");
+  try {
+    await send("SET_GITHUB_SYNC_SETTINGS", {
+      payload: {
+        owner: $("gh-owner").value,
+        repo: $("gh-repo").value,
+        branch: $("gh-branch").value,
+        path: $("gh-path").value,
+        token: $("gh-token").value,
+      },
+    });
+    const st = await send("GET_STATE", {});
+    fillGithubSettings(st);
+    setStatus("GitHub settings saved.");
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+  }
+});
+
+$("btn-gh-remove-token").addEventListener("click", async function () {
+  try {
+    await send("REMOVE_GITHUB_TOKEN", {});
+    $("gh-token").value = "";
+    const st = await send("GET_STATE", {});
+    fillGithubSettings(st);
+    setStatus("GitHub token removed from this device.");
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+  }
+});
+
+$("btn-gh-pull").addEventListener("click", async function () {
+  setStatus("Pulling sessions from GitHub…");
+  try {
+    const res = await send("GITHUB_SESSIONS_PULL", {});
+    if (!res.ok) {
+      setStatus(res.error || "Pull failed", true);
+      const st = await send("GET_STATE", {});
+      fillGithubSettings(st);
+      renderSessions(st.sessions || []);
+      syncLoginFirstSelect(st.sessions || []);
+      return;
+    }
+    renderSessions(res.sessions || []);
+    syncLoginFirstSelect(res.sessions || []);
+    const st = await send("GET_STATE", {});
+    fillGithubSettings(st);
+    setStatus("Sessions merged from GitHub.");
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+  }
+});
+
+$("btn-gh-push").addEventListener("click", async function () {
+  setStatus("Pushing sessions to GitHub…");
+  try {
+    const res = await send("GITHUB_SESSIONS_PUSH", {});
+    if (!res.ok) {
+      setStatus(res.error || "Push failed", true);
+      const st = await send("GET_STATE", {});
+      fillGithubSettings(st);
+      renderSessions(st.sessions || []);
+      syncLoginFirstSelect(st.sessions || []);
+      return;
+    }
+    renderSessions(res.sessions || []);
+    syncLoginFirstSelect(res.sessions || []);
+    const st = await send("GET_STATE", {});
+    fillGithubSettings(st);
+    setStatus("Sessions pushed to GitHub.");
+  } catch (e) {
+    console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+  }
+});
+
 $("btn-complete-pending").addEventListener("click", completePendingRestore);
 $("btn-cancel-pending").addEventListener("click", cancelPendingRestore);
 $("btn-login-first").addEventListener("click", loginFirst);

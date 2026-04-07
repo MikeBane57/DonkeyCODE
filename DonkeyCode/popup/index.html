@@ -128,6 +128,35 @@
         <div class="btn-row">
           <button type="button" id="btn-refresh-scripts-settings" class="secondary">Refresh scripts</button>
         </div>
+
+        <div class="row github-sync-block">
+          <p class="settings-perm-title">GitHub session sync (team)</p>
+          <p class="hint">
+            Store sessions in a JSON file in your repo. Everyone uses the same owner/repo/path and a
+            <strong>personal access token</strong> with <code>repo</code> scope (private repos) or
+            <code>contents: write</code> on a fine-grained token. See
+            <code>DonkeyCode/GITHUB_SESSION_SYNC.md</code> in the repo for setup.
+          </p>
+          <label for="gh-owner">Owner</label>
+          <input id="gh-owner" type="text" autocomplete="off" placeholder="e.g. MikeBane57" />
+          <label for="gh-repo">Repository</label>
+          <input id="gh-repo" type="text" autocomplete="off" placeholder="e.g. DonkeyCODE" />
+          <label for="gh-branch">Branch</label>
+          <input id="gh-branch" type="text" autocomplete="off" placeholder="main" />
+          <label for="gh-path">File path in repo</label>
+          <input id="gh-path" type="text" spellcheck="false" placeholder="sessions/donkeycode-sessions.json" />
+          <label for="gh-token">Personal access token (stored only on this device)</label>
+          <input id="gh-token" type="password" autocomplete="off" placeholder="ghp_… or fine-grained token" />
+          <div class="btn-row">
+            <button type="button" id="btn-gh-save" class="small">Save GitHub settings</button>
+            <button type="button" id="btn-gh-remove-token" class="small secondary">Remove token</button>
+          </div>
+          <p id="gh-status" class="hint"></p>
+          <div class="btn-row">
+            <button type="button" id="btn-gh-pull" class="secondary">Pull from GitHub</button>
+            <button type="button" id="btn-gh-push" class="secondary">Push to GitHub</button>
+          </div>
+        </div>
       </div>
     </div>
 

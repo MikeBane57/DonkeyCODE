@@ -16,6 +16,13 @@ const STORAGE = {
   PENDING_RESTORE: "donkeycode_pending_restore_session",
   SETUP_DISMISSED: "donkeycode_setup_banner_dismissed",
   PENDING_FIRST_POPUP_REFRESH: "donkeycode_pending_first_popup_refresh",
+  GITHUB_PAT: "donkeycode_github_pat",
+  GITHUB_OWNER: "donkeycode_github_owner",
+  GITHUB_REPO: "donkeycode_github_repo",
+  GITHUB_BRANCH: "donkeycode_github_branch",
+  GITHUB_PATH: "donkeycode_github_path",
+  GITHUB_SYNC_LAST_ERROR: "donkeycode_github_sync_last_error",
+  GITHUB_SYNC_LAST_OK: "donkeycode_github_sync_last_ok",
 };
 
 /** Default URLs opened before restoring a session (user signs in, then continues). */
@@ -735,7 +742,15 @@ async function toggleScript(scriptId, enabled) {
 }
 
 function normalizeSessionSnapshot(snap) {
-  if (!snap || !Array.isArray(snap.windows)) return { windows: [] };
+  if (!snap || !Array.isArray(snap.windows)) {
+    const empty = { windows: [], _meta: { updatedAt: 0 } };
+    if (snap && snap._meta && typeof snap._meta === "object") {
+      empty._meta = {
+        updatedAt: Number(snap._meta.updatedAt) || 0,
+      };
+    }
+    return empty;
+  }
   const windows = snap.windows.map((w, wi) => {
     const id =
       w.id && String(w.id).trim()
@@ -758,7 +773,236 @@ function normalizeSessionSnapshot(snap) {
       tabs,
     };
   });
-  return { windows };
+  const out = { windows };
+  if (snap._meta && typeof snap._meta === "object") {
+    out._meta = { updatedAt: Number(snap._meta.updatedAt) || 0 };
+  } else {
+    out._meta = { updatedAt: 0 };
+  }
+  return out;
+}
+
+function touchSessionMeta(snap) {
+  const n = normalizeSessionSnapshot(snap);
+  n._meta = { updatedAt: Date.now() };
+  return n;
+}
+
+async function getSessionsMap() {
+  const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
+  const raw = data[STORAGE.SESSIONS] || {};
+  const out = {};
+  for (const k of Object.keys(raw)) {
+    out[k] = normalizeSessionSnapshot(raw[k]);
+  }
+  return out;
+}
+
+async function setSessionsMap(sessionsObj) {
+  await chrome.storage.sync.set({ [STORAGE.SESSIONS]: sessionsObj });
+}
+
+function mergeSessionsByTimestamp(localMap, remoteMap) {
+  const names = new Set([
+    ...Object.keys(localMap || {}),
+    ...Object.keys(remoteMap || {}),
+  ]);
+  const merged = {};
+  for (const name of names) {
+    const L = localMap[name];
+    const R = remoteMap[name];
+    const tL = L && L._meta ? Number(L._meta.updatedAt) || 0 : 0;
+    const tR = R && R._meta ? Number(R._meta.updatedAt) || 0 : 0;
+    if (!L) merged[name] = normalizeSessionSnapshot(R);
+    else if (!R) merged[name] = normalizeSessionSnapshot(L);
+    else if (tR > tL) merged[name] = normalizeSessionSnapshot(R);
+    else merged[name] = normalizeSessionSnapshot(L);
+  }
+  return merged;
+}
+
+function sessionsToGithubFilePayload(sessionsMap) {
+  return {
+    version: 1,
+    updatedAt: Date.now(),
+    sessions: sessionsMap,
+  };
+}
+
+function sessionsFromGithubFilePayload(parsed) {
+  if (!parsed || typeof parsed !== "object") return {};
+  if (parsed.sessions && typeof parsed.sessions === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(parsed.sessions)) {
+      out[k] = normalizeSessionSnapshot(v);
+    }
+    return out;
+  }
+  return {};
+}
+
+function utf8ToBase64(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+
+function base64ToUtf8(b64) {
+  return decodeURIComponent(escape(atob(b64)));
+}
+
+async function githubApiRequest(path, options, token) {
+  const url = path.startsWith("http") ? path : "https://api.github.com" + path;
+  const headers = {
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    ...(options.headers || {}),
+  };
+  if (token) headers.Authorization = "Bearer " + token;
+  const res = await fetch(url, { ...options, headers });
+  const text = await res.text();
+  let json = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch (e) {
+    json = null;
+  }
+  if (!res.ok) {
+    const err = new Error(
+      (json && json.message) || text || "HTTP " + res.status
+    );
+    err.status = res.status;
+    throw err;
+  }
+  return json;
+}
+
+async function getGithubSettings() {
+  const data = await chrome.storage.local.get([
+    STORAGE.GITHUB_PAT,
+    STORAGE.GITHUB_OWNER,
+    STORAGE.GITHUB_REPO,
+    STORAGE.GITHUB_BRANCH,
+    STORAGE.GITHUB_PATH,
+  ]);
+  return {
+    token: (data[STORAGE.GITHUB_PAT] || "").trim(),
+    owner: (data[STORAGE.GITHUB_OWNER] || "").trim(),
+    repo: (data[STORAGE.GITHUB_REPO] || "").trim(),
+    branch: (data[STORAGE.GITHUB_BRANCH] || "main").trim() || "main",
+    path: (data[STORAGE.GITHUB_PATH] || "sessions/donkeycode-sessions.json")
+      .trim()
+      .replace(/^\/+/, ""),
+  };
+}
+
+async function fetchGithubSessionsFile(settings) {
+  const { token, owner, repo, branch, path } = settings;
+  if (!token || !owner || !repo) throw new Error("GitHub owner, repo, and token required");
+  const pathSeg = path
+    .split("/")
+    .map((p) => encodeURIComponent(p))
+    .join("/");
+  const apiPath =
+    "/repos/" +
+    encodeURIComponent(owner) +
+    "/" +
+    encodeURIComponent(repo) +
+    "/contents/" +
+    pathSeg +
+    "?ref=" +
+    encodeURIComponent(branch);
+  let json;
+  try {
+    json = await githubApiRequest(apiPath, { method: "GET" }, token);
+  } catch (e) {
+    if (e && e.status === 404) return null;
+    throw e;
+  }
+  if (!json || json.type !== "file" || !json.content) {
+    throw new Error("Unexpected GitHub API response for file");
+  }
+  const raw = base64ToUtf8(json.content.replace(/\s/g, ""));
+  const parsed = JSON.parse(raw);
+  return { sha: json.sha, sessions: sessionsFromGithubFilePayload(parsed) };
+}
+
+async function putGithubSessionsFile(settings, bodyObj, shaOrNull) {
+  const { token, owner, repo, branch, path } = settings;
+  const pathSeg = path
+    .split("/")
+    .map((p) => encodeURIComponent(p))
+    .join("/");
+  const apiPath =
+    "/repos/" +
+    encodeURIComponent(owner) +
+    "/" +
+    encodeURIComponent(repo) +
+    "/contents/" +
+    pathSeg;
+  const content = utf8ToBase64(JSON.stringify(bodyObj, null, 2));
+  const payload = {
+    message: "DonkeyCode: sync sessions",
+    content,
+    branch,
+  };
+  if (shaOrNull) payload.sha = shaOrNull;
+  await githubApiRequest(
+    apiPath,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    token
+  );
+}
+
+async function githubSyncPull() {
+  const settings = await getGithubSettings();
+  if (!settings.token || !settings.owner || !settings.repo) {
+    throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
+  }
+  let remoteSessions = {};
+  const file = await fetchGithubSessionsFile(settings);
+  if (!file) {
+    log("GitHub sessions file not found — pull leaves local only");
+    remoteSessions = {};
+  } else {
+    remoteSessions = file.sessions || {};
+  }
+  const local = await getSessionsMap();
+  const merged = mergeSessionsByTimestamp(local, remoteSessions);
+  await setSessionsMap(merged);
+  await chrome.storage.local.set({
+    [STORAGE.GITHUB_SYNC_LAST_ERROR]: "",
+    [STORAGE.GITHUB_SYNC_LAST_OK]: Date.now(),
+  });
+  log("GitHub pull merged", Object.keys(merged).length, "sessions");
+  return { sessions: Object.keys(merged).sort() };
+}
+
+async function githubSyncPush() {
+  const settings = await getGithubSettings();
+  if (!settings.token || !settings.owner || !settings.repo) {
+    throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
+  }
+  const local = await getSessionsMap();
+  let sha = null;
+  let remoteSessions = {};
+  const file = await fetchGithubSessionsFile(settings);
+  if (file) {
+    remoteSessions = file.sessions || {};
+    sha = file.sha;
+  }
+  const merged = mergeSessionsByTimestamp(local, remoteSessions);
+  await setSessionsMap(merged);
+  const payload = sessionsToGithubFilePayload(merged);
+  await putGithubSessionsFile(settings, payload, sha);
+  await chrome.storage.local.set({
+    [STORAGE.GITHUB_SYNC_LAST_ERROR]: "",
+    [STORAGE.GITHUB_SYNC_LAST_OK]: Date.now(),
+  });
+  log("GitHub push ok", Object.keys(merged).length, "sessions");
+  return { sessions: Object.keys(merged).sort() };
 }
 
 async function captureSessionSnapshot() {
@@ -789,7 +1033,7 @@ async function saveSession(name) {
   const snap = await captureSessionSnapshot();
   const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
   const sessions = data[STORAGE.SESSIONS] || {};
-  sessions[trimmed] = normalizeSessionSnapshot(snap);
+  sessions[trimmed] = touchSessionMeta(snap);
   try {
     await chrome.storage.sync.set({ [STORAGE.SESSIONS]: sessions });
   } catch (e) {
@@ -928,7 +1172,7 @@ async function getSessionDetail(name) {
 async function saveSessionData(name, snapshot) {
   const trimmed = (name || "").trim();
   if (!trimmed) throw new Error("Session name required");
-  const snap = normalizeSessionSnapshot(snapshot);
+  const snap = touchSessionMeta(normalizeSessionSnapshot(snapshot));
   if (!snap.windows.length) throw new Error("Session needs at least one window");
   const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
   const sessions = data[STORAGE.SESSIONS] || {};
@@ -976,6 +1220,9 @@ async function getStateForPopup() {
     STORAGE.PENDING_FIRST_POPUP_REFRESH
   );
   const pendingFirstPopupRefresh = !!pendingData[STORAGE.PENDING_FIRST_POPUP_REFRESH];
+  const gh = await getGithubSettings();
+  const ghErr = await chrome.storage.local.get(STORAGE.GITHUB_SYNC_LAST_ERROR);
+  const ghOk = await chrome.storage.local.get(STORAGE.GITHUB_SYNC_LAST_OK);
   return {
     scripts,
     scriptSourceUrl: sourceUrl,
@@ -988,6 +1235,13 @@ async function getStateForPopup() {
     hasHostAccess,
     setupDismissed,
     pendingFirstPopupRefresh,
+    githubOwner: gh.owner,
+    githubRepo: gh.repo,
+    githubBranch: gh.branch,
+    githubPath: gh.path,
+    githubTokenConfigured: !!gh.token,
+    githubSyncLastOk: ghOk[STORAGE.GITHUB_SYNC_LAST_OK] || null,
+    githubSyncLastError: ghErr[STORAGE.GITHUB_SYNC_LAST_ERROR] || "",
   };
 }
 
@@ -1062,6 +1316,69 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           const url = scheme + "extensions/?id=" + encodeURIComponent(id);
           await chrome.tabs.create({ url });
           sendResponse({ ok: true });
+          break;
+        }
+        case "SET_GITHUB_SYNC_SETTINGS": {
+          const payload = message.payload || {};
+          const patch = {
+            [STORAGE.GITHUB_OWNER]: (payload.owner || "").trim(),
+            [STORAGE.GITHUB_REPO]: (payload.repo || "").trim(),
+            [STORAGE.GITHUB_BRANCH]: (payload.branch || "main").trim() || "main",
+            [STORAGE.GITHUB_PATH]:
+              (payload.path || "sessions/donkeycode-sessions.json").trim() ||
+              "sessions/donkeycode-sessions.json",
+          };
+          const tok = (payload.token || "").trim();
+          if (tok) patch[STORAGE.GITHUB_PAT] = tok;
+          await chrome.storage.local.set(patch);
+          log("GitHub sync settings saved");
+          sendResponse({ ok: true });
+          break;
+        }
+        case "REMOVE_GITHUB_TOKEN": {
+          await chrome.storage.local.remove(STORAGE.GITHUB_PAT);
+          log("GitHub token removed");
+          sendResponse({ ok: true });
+          break;
+        }
+        case "GITHUB_SESSIONS_PULL": {
+          try {
+            const result = await githubSyncPull();
+            sendResponse({
+              ok: true,
+              sessions: result.sessions,
+            });
+          } catch (e) {
+            await chrome.storage.local.set({
+              [STORAGE.GITHUB_SYNC_LAST_ERROR]: String(
+                e && e.message ? e.message : e
+              ),
+            });
+            sendResponse({
+              ok: false,
+              error: String(e && e.message ? e.message : e),
+            });
+          }
+          break;
+        }
+        case "GITHUB_SESSIONS_PUSH": {
+          try {
+            const result = await githubSyncPush();
+            sendResponse({
+              ok: true,
+              sessions: result.sessions,
+            });
+          } catch (e) {
+            await chrome.storage.local.set({
+              [STORAGE.GITHUB_SYNC_LAST_ERROR]: String(
+                e && e.message ? e.message : e
+              ),
+            });
+            sendResponse({
+              ok: false,
+              error: String(e && e.message ? e.message : e),
+            });
+          }
           break;
         }
         case "REFRESH_SCRIPTS": {

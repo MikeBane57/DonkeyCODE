@@ -18,6 +18,10 @@ This policy describes how the **DonkeyCode** browser extension (“the extension
 
 We do **not** operate our own servers for your data. Synced data is subject to **Google Chrome sync** or **Microsoft Edge sync** when you are signed in and sync is enabled—see your browser’s privacy settings.
 
+## GitHub session sync (optional)
+
+If you enable **GitHub session sync** in Settings, the extension sends your **personal access token** only to **`api.github.com`** to read and write the session JSON file you configure. The token is stored **locally** in `chrome.storage.local` on that device only.
+
 ## Data sent over the network
 
 The extension only fetches from the network when **you** configure sources or when **your scripts** request URLs:
