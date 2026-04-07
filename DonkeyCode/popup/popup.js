@@ -555,23 +555,27 @@ $("session-folder-select").addEventListener("change", async function () {
 
 $("btn-add-session-folder").addEventListener("click", async function () {
   const name = window.prompt(
-    "New folder name (relative path, e.g. team-a or ops/daily):"
+    "New folder name (e.g. team-a or ops/daily). Optional GitHub subfolder: add a comma then the subfolder (e.g. team-a, team-a)."
   );
   if (!name || !name.trim()) return;
-  const ghRel = window.prompt(
-    "GitHub subfolder under the base path (optional, e.g. team-a):",
-    ""
-  );
+  let folderKey = name.trim();
+  let githubRelativePath = "";
+  const comma = folderKey.indexOf(",");
+  if (comma !== -1) {
+    githubRelativePath = folderKey.slice(comma + 1).trim();
+    folderKey = folderKey.slice(0, comma).trim();
+  }
+  if (!folderKey) return;
   setStatus("Adding folder…");
   try {
     const res = await send("ADD_SESSION_FOLDER", {
-      folderKey: name.trim(),
-      githubRelativePath: (ghRel || "").trim(),
+      folderKey,
+      githubRelativePath,
     });
     fillSessionFolderUI(res);
     renderSessions(res.sessions || []);
     syncLoginFirstSelect(res.sessions || []);
-    $("session-folder-select").value = res.currentSessionFolder || name.trim();
+    $("session-folder-select").value = res.currentSessionFolder || folderKey;
     setStatus("Folder added.");
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
@@ -655,3 +659,10 @@ $("session-editor-overlay").addEventListener("click", function (ev) {
 });
 
 document.addEventListener("DOMContentLoaded", loadState);
+
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState !== "visible") return;
+  loadState().catch(function (e) {
+    console.error("[DonkeyCode:popup] visibility reload", e);
+  });
+});

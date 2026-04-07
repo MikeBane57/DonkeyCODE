@@ -30,7 +30,10 @@ const STORAGE = {
   SESSIONS: "donkeycode_sessions",
   SESSION_FOLDERS_V2: "donkeycode_session_folders_v2",
   CURRENT_SESSION_FOLDER: "donkeycode_current_session_folder",
+  /** Legacy: flat sessions in sync before folder model */
   SESSIONS_LEGACY_MIGRATED: "donkeycode_sessions_legacy_migrated",
+  /** v3: session blobs moved from sync (8KB/item limit) to chrome.storage.local */
+  SESSION_STORAGE_MIGRATED: "donkeycode_sessions_storage_migrated_v3",
   LAST_FETCH: "donkeycode_last_script_fetch_ms",
   PENDING_RESTORE: "donkeycode_pending_restore_session",
   SETUP_DISMISSED: "donkeycode_setup_banner_dismissed",
@@ -825,32 +828,62 @@ function combineRepoPath(baseFilePath, folderRel) {
   return (baseDir ? baseDir + "/" : "") + fr + "/" + fileName;
 }
 
-async function migrateLegacySessionsIfNeeded() {
-  const flag = await chrome.storage.sync.get(STORAGE.SESSIONS_LEGACY_MIGRATED);
-  if (flag[STORAGE.SESSIONS_LEGACY_MIGRATED]) return;
-  const data = await chrome.storage.sync.get(STORAGE.SESSIONS);
-  const legacy = data[STORAGE.SESSIONS];
-  const v2data = await chrome.storage.sync.get(STORAGE.SESSION_FOLDERS_V2);
-  let folders = v2data[STORAGE.SESSION_FOLDERS_V2];
+/**
+ * Session snapshots are large; chrome.storage.sync limits each key to ~8KB.
+ * Store session folder data in chrome.storage.local (much higher per-item limits).
+ * One-time migration from sync (and legacy flat SESSIONS) into local.
+ */
+async function migrateSessionStorageToLocalIfNeeded() {
+  const done = await chrome.storage.local.get(STORAGE.SESSION_STORAGE_MIGRATED);
+  if (done[STORAGE.SESSION_STORAGE_MIGRATED]) return;
+
+  const syncPack = await chrome.storage.sync.get([
+    STORAGE.SESSION_FOLDERS_V2,
+    STORAGE.CURRENT_SESSION_FOLDER,
+    STORAGE.SESSIONS,
+  ]);
+  let folders = syncPack[STORAGE.SESSION_FOLDERS_V2];
   if (!folders || typeof folders !== "object") folders = {};
+
+  const legacy = syncPack[STORAGE.SESSIONS];
   if (legacy && typeof legacy === "object" && Object.keys(legacy).length) {
     if (!folders[DEFAULT_SESSION_FOLDER]) folders[DEFAULT_SESSION_FOLDER] = { sessions: {} };
     const existing = folders[DEFAULT_SESSION_FOLDER].sessions || {};
     folders[DEFAULT_SESSION_FOLDER].sessions = { ...legacy, ...existing };
-    await chrome.storage.sync.set({
-      [STORAGE.SESSION_FOLDERS_V2]: folders,
-      [STORAGE.SESSIONS]: {},
-      [STORAGE.SESSIONS_LEGACY_MIGRATED]: true,
-    });
-    log("migrated legacy sessions to folder", DEFAULT_SESSION_FOLDER);
-  } else {
-    await chrome.storage.sync.set({ [STORAGE.SESSIONS_LEGACY_MIGRATED]: true });
+    log("migration: merged legacy flat sessions into", DEFAULT_SESSION_FOLDER);
   }
+
+  if (!folders[DEFAULT_SESSION_FOLDER]) {
+    folders[DEFAULT_SESSION_FOLDER] = { sessions: {} };
+  }
+
+  let cur = (syncPack[STORAGE.CURRENT_SESSION_FOLDER] || "").trim() || DEFAULT_SESSION_FOLDER;
+  cur = normalizeFolderKey(cur);
+  if (!folders[cur]) folders[cur] = { sessions: {} };
+
+  await chrome.storage.local.set({
+    [STORAGE.SESSION_FOLDERS_V2]: folders,
+    [STORAGE.CURRENT_SESSION_FOLDER]: cur,
+    [STORAGE.SESSION_STORAGE_MIGRATED]: true,
+  });
+
+  try {
+    await chrome.storage.sync.remove([
+      STORAGE.SESSION_FOLDERS_V2,
+      STORAGE.CURRENT_SESSION_FOLDER,
+      STORAGE.SESSIONS,
+      STORAGE.SESSIONS_LEGACY_MIGRATED,
+    ]);
+  } catch (e) {
+    logWarn("migration: could not remove old sync session keys", e);
+  }
+
+  log("sessions storage migrated to chrome.storage.local");
 }
 
 async function getSessionFoldersState() {
-  await migrateLegacySessionsIfNeeded();
-  const d = await chrome.storage.sync.get([
+  await migrateSessionStorageToLocalIfNeeded();
+  const d = await chrome.storage.local.get([
     STORAGE.SESSION_FOLDERS_V2,
     STORAGE.CURRENT_SESSION_FOLDER,
   ]);
@@ -887,7 +920,7 @@ async function setSessionsMapForFolder(folderKey, sessionsObj) {
   const fk = normalizeFolderKey(folderKey);
   if (!folders[fk]) folders[fk] = { sessions: {} };
   folders[fk].sessions = sessionsObj;
-  await chrome.storage.sync.set({ [STORAGE.SESSION_FOLDERS_V2]: folders });
+  await chrome.storage.local.set({ [STORAGE.SESSION_FOLDERS_V2]: folders });
 }
 
 async function getGithubPathForFolder(folderKey) {
@@ -1586,10 +1619,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         case "SET_CURRENT_SESSION_FOLDER": {
           const key = normalizeFolderKey(message.folderKey);
           await getSessionFoldersState();
-          const d = await chrome.storage.sync.get(STORAGE.SESSION_FOLDERS_V2);
+          const d = await chrome.storage.local.get(STORAGE.SESSION_FOLDERS_V2);
           let folders = d[STORAGE.SESSION_FOLDERS_V2] || {};
           if (!folders[key]) folders[key] = { sessions: {} };
-          await chrome.storage.sync.set({
+          await chrome.storage.local.set({
             [STORAGE.CURRENT_SESSION_FOLDER]: key,
             [STORAGE.SESSION_FOLDERS_V2]: folders,
           });
@@ -1606,7 +1639,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             sessions: {},
             githubRelativePath: (message.githubRelativePath || "").trim(),
           };
-          await chrome.storage.sync.set({
+          await chrome.storage.local.set({
             [STORAGE.SESSION_FOLDERS_V2]: folders,
             [STORAGE.CURRENT_SESSION_FOLDER]: key,
           });
@@ -1619,7 +1652,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           const { folders } = await getSessionFoldersState();
           if (!folders[key]) throw new Error("Unknown folder");
           folders[key].githubRelativePath = (message.githubRelativePath || "").trim();
-          await chrome.storage.sync.set({ [STORAGE.SESSION_FOLDERS_V2]: folders });
+          await chrome.storage.local.set({ [STORAGE.SESSION_FOLDERS_V2]: folders });
           const st = await getStateForPopup();
           sendResponse({ ok: true, ...st });
           break;

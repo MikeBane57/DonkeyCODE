@@ -13,7 +13,7 @@ This policy describes how the **DonkeyCode** browser extension (“the extension
 
 ## Data stored on your device
 
-- **Settings and sessions:** Stored with `chrome.storage.sync` and/or `chrome.storage.local` (browser-managed). Session data includes URLs and window geometry you have saved.
+- **Settings:** Script source URLs may use `chrome.storage.sync` (small settings). **Saved sessions and session folders** use `chrome.storage.local` (session snapshots can be large). Session data includes URLs and window geometry you have saved.
 - **Cached script bodies:** Stored locally so scripts can be reloaded and toggled offline when possible.
 
 We do **not** operate our own servers for your data. Synced data is subject to **Google Chrome sync** or **Microsoft Edge sync** when you are signed in and sync is enabled—see your browser’s privacy settings.
