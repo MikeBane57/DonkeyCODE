@@ -7,6 +7,19 @@ const LOG_PREFIX = "[DonkeyCode:background]";
 const DEFAULT_SCRIPT_SOURCE_URL =
   "https://api.github.com/repos/MikeBane57/Wolf2.0/contents/?ref=main";
 
+/**
+ * Optional baked-in GitHub defaults for a private/custom build (one token for all machines).
+ * Fill token/owner/repo for your team build. Leave "" to use only Settings / chrome.storage.
+ * Do not commit real tokens to a public repository.
+ */
+const BAKED_GITHUB_DEFAULTS = {
+  token: "",
+  owner: "",
+  repo: "",
+  branch: "main",
+  path: "sessions/donkeycode-sessions.json",
+};
+
 const STORAGE = {
   SCRIPT_SOURCE: "donkeycode_script_source_url",
   EXTRA_URLS: "donkeycode_extra_script_urls",
@@ -883,15 +896,26 @@ async function getGithubSettings() {
     STORAGE.GITHUB_BRANCH,
     STORAGE.GITHUB_PATH,
   ]);
-  return {
-    token: (data[STORAGE.GITHUB_PAT] || "").trim(),
-    owner: (data[STORAGE.GITHUB_OWNER] || "").trim(),
-    repo: (data[STORAGE.GITHUB_REPO] || "").trim(),
-    branch: (data[STORAGE.GITHUB_BRANCH] || "main").trim() || "main",
-    path: (data[STORAGE.GITHUB_PATH] || "sessions/donkeycode-sessions.json")
-      .trim()
-      .replace(/^\/+/, ""),
-  };
+  const baked = BAKED_GITHUB_DEFAULTS || {};
+  const token =
+    (data[STORAGE.GITHUB_PAT] || "").trim() || String(baked.token || "").trim();
+  const owner =
+    (data[STORAGE.GITHUB_OWNER] || "").trim() || String(baked.owner || "").trim();
+  const repo =
+    (data[STORAGE.GITHUB_REPO] || "").trim() || String(baked.repo || "").trim();
+  const branchRaw =
+    (data[STORAGE.GITHUB_BRANCH] || "").trim() ||
+    String(baked.branch || "main").trim() ||
+    "main";
+  const branch = branchRaw || "main";
+  const pathRaw =
+    (data[STORAGE.GITHUB_PATH] || "").trim() ||
+    String(baked.path || "sessions/donkeycode-sessions.json").trim();
+  const path = (pathRaw || "sessions/donkeycode-sessions.json").replace(
+    /^\/+/,
+    ""
+  );
+  return { token, owner, repo, branch, path };
 }
 
 async function fetchGithubSessionsFile(settings) {
@@ -1240,6 +1264,7 @@ async function getStateForPopup() {
     githubBranch: gh.branch,
     githubPath: gh.path,
     githubTokenConfigured: !!gh.token,
+    githubBakedIn: !!String(BAKED_GITHUB_DEFAULTS.token || "").trim(),
     githubSyncLastOk: ghOk[STORAGE.GITHUB_SYNC_LAST_OK] || null,
     githubSyncLastError: ghErr[STORAGE.GITHUB_SYNC_LAST_ERROR] || "",
   };

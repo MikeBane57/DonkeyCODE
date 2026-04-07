@@ -12,6 +12,10 @@ DonkeyCode can read and write a **JSON file in a Git repository** using the **Gi
 
 Tokens are **only stored in the browser** (`chrome.storage.local` on that device), not sent to us.
 
+### Baked-in defaults (one token for all machines)
+
+For a **private** or internal build, you can set `BAKED_GITHUB_DEFAULTS` in `background.js` (token, owner, repo, branch, path). Those values apply when storage is empty and override missing fields. **Never commit a real token to a public repo.** Anyone with the `.crx` or unpacked folder can extract the token from the source.
+
 ## Configure in DonkeyCode
 
 1. Open the extension popup → **Settings** (gear).

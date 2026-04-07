@@ -486,7 +486,8 @@ function fillGithubSettings(st) {
   if (t) t.value = "";
   if (status) {
     let msg = "";
-    if (st.githubTokenConfigured) msg += "Token saved on this device. ";
+    if (st.githubBakedIn) msg += "Token baked into this build. ";
+    else if (st.githubTokenConfigured) msg += "Token saved on this device. ";
     else msg += "No token saved. ";
     if (st.githubSyncLastOk) {
       msg += "Last sync: " + formatTime(st.githubSyncLastOk) + ". ";
