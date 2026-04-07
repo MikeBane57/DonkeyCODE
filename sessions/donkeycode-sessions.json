@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "updatedAt": 1775574096719,
+  "updatedAt": 1775575950584,
   "sessions": {
     "test": {
       "windows": [
         {
-          "id": "w_0_mnoqz1a3",
+          "id": "w_0_mnos28na",
           "left": -2130,
           "top": 758,
           "width": 2130,
@@ -20,7 +20,7 @@
               "pinned": false
             },
             {
-              "url": "https://rvr.data.faa.gov/cgi-bin/rvr-details.pl?content=table&airport=BUR&rrate=medium&layout=2x2&gifsize=large&fontsize=large&fs=lg&cache_this=ct1775574019",
+              "url": "https://rvr.data.faa.gov/cgi-bin/rvr-details.pl?content=table&airport=BUR&rrate=medium&layout=2x2&gifsize=large&fontsize=large&fs=lg&cache_this=ct1775575833",
               "active": false,
               "index": 1,
               "pinned": false
@@ -45,7 +45,7 @@
             },
             {
               "url": "https://cursor.com/agents/bc-3ed29d99-8b40-42f6-9111-483a7ee161d3?branch=cursor%2Fdonkeycode-extension-foundation-9e8b",
-              "active": true,
+              "active": false,
               "index": 5,
               "pinned": false
             },
@@ -54,11 +54,18 @@
               "active": false,
               "index": 6,
               "pinned": false
+            },
+            {
+              "url": "https://www.google.com/search?q=iphone+unable+to+connect+to+any+bluetooth&rlz=1C1GCCA_enUS1209US1209&oq=iphone+unable+to+connect+to+any+bluetooth&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIKCAEQABgKGBYYHjIICAIQABgWGB4yCAgDEAAYFhgeMgoIBBAAGAoYFhgeMggIBRAAGBYYHjIICAYQABgWGB4yCAgHEAAYFhgeMg0ICBAAGIYDGIAEGIoFMg0ICRAAGIYDGIAEGIoF0gEJMTE3MjhqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8",
+              "active": true,
+              "index": 7,
+              "pinned": false
             }
-          ]
+          ],
+          "restoreOrder": 0
         },
         {
-          "id": "w_1_mnoqz1a3",
+          "id": "w_1_mnos28na",
           "left": -3847,
           "top": 1069,
           "width": 926,
@@ -72,10 +79,11 @@
               "index": 0,
               "pinned": false
             }
-          ]
+          ],
+          "restoreOrder": 1
         },
         {
-          "id": "w_2_mnoqz1a3",
+          "id": "w_2_mnos28na",
           "left": -905,
           "top": 0,
           "width": 909,
@@ -101,73 +109,11 @@
               "index": 2,
               "pinned": false
             }
-          ]
+          ],
+          "restoreOrder": 2
         },
         {
-          "id": "w_3_mnoqz1a3",
-          "left": 663,
-          "top": 646,
-          "width": 2264,
-          "height": 1473,
-          "state": "normal",
-          "focused": false,
-          "tabs": [
-            {
-              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
-              "active": false,
-              "index": 0,
-              "pinned": false
-            },
-            {
-              "url": "chrome://extensions/",
-              "active": true,
-              "index": 1,
-              "pinned": false
-            }
-          ]
-        },
-        {
-          "id": "w_4_mnoqz1a3",
-          "left": 2207,
-          "top": 1,
-          "width": 1633,
-          "height": 1017,
-          "state": "normal",
-          "focused": false,
-          "tabs": [
-            {
-              "url": "https://opssuitemain.swacorp.com/go-turns/BUR/20251103",
-              "active": true,
-              "index": 0,
-              "pinned": false
-            }
-          ]
-        },
-        {
-          "id": "w_5_mnoqz1a3",
-          "left": 0,
-          "top": 623,
-          "width": 1561,
-          "height": 1489,
-          "state": "normal",
-          "focused": false,
-          "tabs": [
-            {
-              "url": "https://opssuitemain.swacorp.com/schedule",
-              "active": false,
-              "index": 0,
-              "pinned": false
-            },
-            {
-              "url": "https://github.com/MikeBane57/DonkeyCODE/actions/runs/24088258910",
-              "active": true,
-              "index": 1,
-              "pinned": false
-            }
-          ]
-        },
-        {
-          "id": "w_6_mnoqz1a3",
+          "id": "w_6_mnos28na",
           "left": 1349,
           "top": 4,
           "width": 1582,
@@ -193,10 +139,77 @@
               "index": 2,
               "pinned": false
             }
-          ]
+          ],
+          "restoreOrder": 3
         },
         {
-          "id": "w_7_mnoqz1a3",
+          "id": "w_4_mnos28na",
+          "left": 2207,
+          "top": 1,
+          "width": 1633,
+          "height": 1017,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/go-turns/BUR/20251103",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 4
+        },
+        {
+          "id": "w_5_mnos28na",
+          "left": 0,
+          "top": 623,
+          "width": 1561,
+          "height": 1489,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/schedule",
+              "active": false,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://github.com/MikeBane57/DonkeyCODE/actions/runs/24088643010",
+              "active": true,
+              "index": 1,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 5
+        },
+        {
+          "id": "w_3_mnos28na",
+          "left": 663,
+          "top": 646,
+          "width": 2264,
+          "height": 1473,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "chrome://extensions/",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 6
+        },
+        {
+          "id": "w_7_mnos28na",
           "left": -2033,
           "top": 2,
           "width": 1377,
@@ -210,10 +223,11 @@
               "index": 0,
               "pinned": false
             }
-          ]
+          ],
+          "restoreOrder": 7
         },
         {
-          "id": "w_8_mnoqz1a3",
+          "id": "w_8_mnos28na",
           "left": 3324,
           "top": 636,
           "width": 516,
@@ -227,10 +241,11 @@
               "index": 0,
               "pinned": false
             }
-          ]
+          ],
+          "restoreOrder": 8
         },
         {
-          "id": "w_9_mnoqz1a3",
+          "id": "w_9_mnos28na",
           "left": 0,
           "top": 1,
           "width": 1561,
@@ -250,11 +265,13 @@
               "index": 1,
               "pinned": false
             }
-          ]
+          ],
+          "restoreOrder": 9
         }
       ],
       "_meta": {
-        "updatedAt": 1775574096699
+        "updatedAt": 1775575950308,
+        "worksheetStaggerMs": 800
       }
     },
     "Mark 1.0": {
