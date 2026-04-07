@@ -392,7 +392,7 @@ async function maybeInitialGithubSessionPull(state) {
   }
   setStatus("Syncing sessions from GitHub…");
   try {
-    await send("GITHUB_SESSIONS_PULL", {});
+    const pullRes = await send("GITHUB_SESSIONS_PULL", {});
     try {
       await send("CONSUMED_INITIAL_SESSION_PULL", {});
     } catch (e2) {
@@ -403,7 +403,12 @@ async function maybeInitialGithubSessionPull(state) {
     renderSessions(st2.sessions || []);
     syncLoginFirstSelect(st2.sessions || []);
     updatePendingBanner(st2);
-    setStatus("Sessions loaded from GitHub.");
+    const pe = (pullRes && pullRes.pullErrors) || [];
+    if (pe.length) {
+      setStatus("Sessions synced; some paths failed: " + pe.join(" "), true);
+    } else {
+      setStatus("All folders synced from GitHub.");
+    }
   } catch (e) {
     console.error("[DonkeyCode:popup] initial session pull", e);
     try {
@@ -664,9 +669,14 @@ async function toggleScript(scriptId, enabled) {
 async function pullSessionsFromGithub() {
   setStatus("Pulling sessions from GitHub…");
   try {
-    await send("GITHUB_SESSIONS_PULL", {});
+    const res = await send("GITHUB_SESSIONS_PULL", {});
     await loadState();
-    setStatus("Sessions synced from GitHub.");
+    const err = (res && res.pullErrors) || [];
+    if (err.length) {
+      setStatus("Synced with some errors: " + err.join(" "), true);
+    } else {
+      setStatus("All session folders synced from GitHub.");
+    }
   } catch (e) {
     console.error("[DonkeyCode:popup] GitHub pull", e);
     setStatus(String(e.message || e), true);

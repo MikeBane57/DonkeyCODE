@@ -1202,32 +1202,80 @@ async function putGithubSessionsFile(settings, bodyObj, shaOrNull) {
 }
 
 /**
- * Pull: fetch the GitHub JSON for the **currently selected** session folder and merge into it.
- * (Same behavior as before multi-folder path iteration — avoids regressions when several folders share paths.)
+ * If base path looks like the bundled test fixtures layout, ensure local folders
+ * alpha…epsilon exist with matching GitHub subfolders so each remote file has a target.
+ */
+async function ensureTestFixtureFoldersIfNeeded() {
+  const gh = await getGithubSettings();
+  const p = (gh.path || "").toLowerCase();
+  if (p.indexOf("donkeycode-test-fixtures") === -1) return;
+  const { folders } = await getSessionFoldersState();
+  const testNames = ["alpha", "beta", "gamma", "delta", "epsilon"];
+  let changed = false;
+  for (const name of testNames) {
+    if (!folders[name]) {
+      folders[name] = { sessions: {}, githubRelativePath: name };
+      changed = true;
+    }
+  }
+  if (changed) {
+    await chrome.storage.local.set({ [STORAGE.SESSION_FOLDERS_V2]: folders });
+    log("ensureTestFixtureFolders: created folders", testNames.join(", "));
+  }
+}
+
+/**
+ * Pull: for **each** local session folder, fetch that folder’s GitHub JSON path and merge
+ * into that folder only. First-load and “Pull from GitHub” both use this so navigating
+ * folders shows the right sessions without re-pulling per chip.
  */
 async function githubSyncPull() {
-  const fk = await getCurrentSessionFolderKey();
-  const settings = await getGithubPathForFolder(fk);
-  if (!settings.token || !settings.owner || !settings.repo) {
+  const gh = await getGithubSettings();
+  if (!gh.token || !gh.owner || !gh.repo) {
     throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
   }
-  let remoteSessions = {};
-  const file = await fetchGithubSessionsFile(settings);
-  if (!file) {
-    log("GitHub sessions file not found — pull leaves local only");
-    remoteSessions = {};
-  } else {
-    remoteSessions = file.sessions || {};
+  await ensureTestFixtureFoldersIfNeeded();
+  const { folders } = await getSessionFoldersState();
+  const folderKeys = Object.keys(folders).sort();
+  const errors = [];
+
+  for (const fk of folderKeys) {
+    try {
+      const settings = await getGithubPathForFolder(fk);
+      let remoteSessions = {};
+      const file = await fetchGithubSessionsFile(settings);
+      if (!file) {
+        log("GitHub pull: no file for folder", fk, "path", settings.path);
+      } else {
+        remoteSessions = file.sessions || {};
+      }
+      const local = await getSessionsMapForFolder(fk);
+      const merged = mergeSessionsByTimestamp(local, remoteSessions);
+      await setSessionsMapForFolder(fk, merged);
+      log(
+        "GitHub pull merged folder",
+        fk,
+        Object.keys(merged).length,
+        "sessions",
+        "path",
+        settings.path
+      );
+    } catch (e) {
+      const msg = String(e && e.message ? e.message : e);
+      errors.push(fk + ": " + msg);
+      logWarn("GitHub pull failed for folder", fk, e);
+    }
   }
-  const local = await getSessionsMapForFolder(fk);
-  const merged = mergeSessionsByTimestamp(local, remoteSessions);
-  await setSessionsMapForFolder(fk, merged);
+
   await chrome.storage.local.set({
-    [STORAGE.GITHUB_SYNC_LAST_ERROR]: "",
+    [STORAGE.GITHUB_SYNC_LAST_ERROR]: errors.length ? errors.join(" | ") : "",
     [STORAGE.GITHUB_SYNC_LAST_OK]: Date.now(),
   });
-  log("GitHub pull merged", Object.keys(merged).length, "sessions", "folder", fk);
-  return { sessions: Object.keys(merged).sort() };
+
+  const curFk = await getCurrentSessionFolderKey();
+  const curSessions = Object.keys(await getSessionsMapForFolder(curFk)).sort();
+  log("GitHub pull all folders done; current", curFk, "count", curSessions.length);
+  return { sessions: curSessions, pullErrors: errors };
 }
 
 async function githubSyncPush() {
@@ -1712,6 +1760,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             sendResponse({
               ok: true,
               sessions: result.sessions,
+              pullErrors: result.pullErrors || [],
             });
           } catch (e) {
             await chrome.storage.local.set({

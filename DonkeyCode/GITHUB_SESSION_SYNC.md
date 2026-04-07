@@ -21,7 +21,7 @@ Run **`npm run build`** at the repo root with **`DONKEYCODE_*` environment varia
 1. Open the extension popup → **Settings** (gear).
 2. Fill **Owner**, **Repository**, **Branch** (e.g. `main`), **File path in repo**.
 3. Paste your **token** → **Save GitHub settings**.
-4. In the popup **Sessions** tab, **Pull from GitHub** merges the remote JSON for the **currently selected session folder** (base path + that folder’s GitHub subfolder) into local storage. Switch folders and pull again to sync another file. The full **Settings** page still has **Pull** / **Push** as well.
+4. **Pull from GitHub** (popup or Settings) fetches **each local session folder’s** JSON file (base path + that folder’s GitHub subfolder) and merges into **that folder only**. Switch **folder chips** in the popup to browse sessions per folder. **Push** still uploads **only the currently selected** folder’s merged data to its file.
 
 ### Auto-sync on save
 

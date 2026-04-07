@@ -26,8 +26,13 @@ Use these JSON files to verify **per-folder GitHub paths**: each folder should p
 | delta    | `.../delta/...` (**DC-Test-Delta**) |
 | epsilon  | `.../epsilon/...` (**DC-Test-Epsilon**) |
 
-Select a folder → **Pull from GitHub** → you should see **only** the sessions for that file. Each saved layout uses one window at a different screen position (and `example.com` with a query tag) so you can tell them apart after **Launch**.
+With **base path** containing `donkeycode-test-fixtures`, DonkeyCode **creates** the alpha–epsilon folders (with correct GitHub subfolders) on pull if they are missing.
 
-## If everything lands in Default
+**Pull from GitHub** (and first-load sync) fetches **every** folder’s file in one go, then you switch **folder chips** to see each folder’s sessions only.
 
-Then every folder’s **GitHub subfolder** is empty or wrong, so they all resolve to the **same** path as Default. Re-check subfolders in full Settings (folder table) or recreate folders with the `name, subfolder` prompt.
+Each saved layout uses one window at a different screen position (and `example.com` with a query tag) so you can tell them apart after **Launch**.
+
+## If everything still lands in one folder
+
+- Confirm these JSON files exist on **GitHub** at the paths above (same **owner/repo/branch** as in Settings).
+- **Base file path** must be exactly: `sessions/donkeycode-test-fixtures/donkeycode-sessions.json` (or your repo’s equivalent).
