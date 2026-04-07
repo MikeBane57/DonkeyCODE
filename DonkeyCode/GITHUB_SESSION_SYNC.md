@@ -21,7 +21,7 @@ Run **`npm run build`** at the repo root with **`DONKEYCODE_*` environment varia
 1. Open the extension popup → **Settings** (gear).
 2. Fill **Owner**, **Repository**, **Branch** (e.g. `main`), **File path in repo**.
 3. Paste your **token** → **Save GitHub settings**.
-4. Use **Pull from GitHub** to merge remote sessions into this browser. **Push to GitHub** is still available for a manual upload.
+4. In the popup **Sessions** tab, **Pull from GitHub** merges the latest sessions from the repo into the current folder (replaces the old “reload list” button). The full **Settings** page still has **Pull** / **Push** as well.
 
 ### Auto-sync on save
 

@@ -362,6 +362,23 @@ async function toggleScript(scriptId, enabled) {
   }
 }
 
+async function pullSessionsFromGithub() {
+  setStatus("Pulling sessions from GitHub…");
+  try {
+    await send("GITHUB_SESSIONS_PULL", {});
+    await loadState();
+    setStatus("Sessions synced from GitHub.");
+  } catch (e) {
+    console.error("[DonkeyCode:popup] GitHub pull", e);
+    setStatus(String(e.message || e), true);
+    try {
+      await loadState();
+    } catch (e2) {
+      /* ignore */
+    }
+  }
+}
+
 async function refreshScripts() {
   setStatus("Refreshing scripts from GitHub…");
   try {
@@ -535,7 +552,7 @@ document.querySelectorAll(".tab").forEach((btn) => {
 });
 
 $("btn-save-session").addEventListener("click", saveSession);
-$("btn-refresh-sessions").addEventListener("click", loadState);
+$("btn-pull-sessions-github").addEventListener("click", pullSessionsFromGithub);
 $("btn-refresh-scripts").addEventListener("click", refreshScripts);
 $("btn-open-settings").addEventListener("click", openSettingsTab);
 
