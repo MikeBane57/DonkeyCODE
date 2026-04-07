@@ -59,7 +59,21 @@ function fillGithubForm(state) {
   $("field-gh-owner").value = state.githubOwner || "";
   $("field-gh-repo").value = state.githubRepo || "";
   $("field-gh-branch").value = state.githubBranch || "main";
-  $("field-gh-path").value = state.githubPath || "";
+  const root =
+    state.githubSessionsRoot != null && String(state.githubSessionsRoot).trim() !== ""
+      ? String(state.githubSessionsRoot).trim()
+      : "";
+  if (root) {
+    $("field-gh-path").value = root;
+  } else {
+    const p = (state.githubPath || "").trim();
+    if (/\.json$/i.test(p)) {
+      const i = p.lastIndexOf("/");
+      $("field-gh-path").value = i === -1 ? "" : p.slice(0, i);
+    } else {
+      $("field-gh-path").value = p || "sessions";
+    }
+  }
   $("field-gh-token").value = "";
   const hint = $("github-token-hint");
   if (hint) {
@@ -75,13 +89,16 @@ function fillScriptsForm(state) {
   $("field-extra-urls").value = state.extraScriptUrls || "";
 }
 
-function renderFolders(tree, currentFolder, githubBasePath) {
+function renderFolders(tree, currentFolder, githubBasePath, defaultFilePath) {
   const tbody = $("folders-tbody");
   const active = $("active-folder-label");
   const baseLine = $("repo-browse-base");
   if (baseLine) {
     baseLine.textContent =
-      "Base path for sync file: " + (githubBasePath || "(not set)");
+      "Sessions root: " +
+      (githubBasePath || "(not set)") +
+      " — default file: " +
+      (defaultFilePath || joinSessionsRootFile(githubBasePath));
   }
   if (active) {
     active.textContent =
@@ -106,8 +123,8 @@ function renderFolders(tree, currentFolder, githubBasePath) {
     inp.type = "text";
     inp.dataset.folderKey = key;
     inp.value = row.githubRelativePath || "";
-    inp.placeholder = "e.g. team-a";
-    inp.setAttribute("aria-label", "GitHub subfolder for " + key);
+    inp.placeholder = "e.g. team-a (optional override)";
+    inp.setAttribute("aria-label", "GitHub path override for " + key);
     tdPath.appendChild(inp);
 
     const tdGo = document.createElement("td");
@@ -130,17 +147,75 @@ function renderFolders(tree, currentFolder, githubBasePath) {
     });
     tdGo.appendChild(btn);
 
+    const tdRemove = document.createElement("td");
+    if (key !== "__default__") {
+      const rm = document.createElement("button");
+      rm.type = "button";
+      rm.className = "btn small danger secondary";
+      rm.textContent = "Remove…";
+      rm.addEventListener("click", async function () {
+        const label = key;
+        if (
+          !window.confirm(
+            'Remove folder "' +
+              label +
+              '" from this browser? Sessions stored only in this folder here will be deleted.'
+          )
+        ) {
+          return;
+        }
+        const alsoRemote = window.confirm(
+          "Also delete this folder's donkeycode-sessions.json file on GitHub?\n\n" +
+            "OK = remove the file from the repo\n" +
+            "Cancel = keep the file on GitHub"
+        );
+        setInlineStatus($("folders-status"), "Removing…", false);
+        try {
+          const delRes = await send("DELETE_SESSION_FOLDER", {
+            folderKey: key,
+            deleteRemote: alsoRemote,
+          });
+          let msg = "Folder removed.";
+          if (alsoRemote) {
+            if (delRes.remoteDeleted) msg += " Remote file deleted.";
+            else if (delRes.remoteError)
+              msg += " GitHub: " + delRes.remoteError;
+            else msg += " No remote file (already absent).";
+          }
+          setInlineStatus($("folders-status"), msg, !!(alsoRemote && delRes.remoteError));
+          fillGithubForm(await send("GET_STATE", {}));
+          await refreshFoldersOnly();
+        } catch (e) {
+          setInlineStatus($("folders-status"), String(e.message || e), true);
+        }
+      });
+      tdRemove.appendChild(rm);
+    } else {
+      tdRemove.textContent = "—";
+    }
+
     tr.appendChild(tdName);
     tr.appendChild(tdCount);
     tr.appendChild(tdPath);
     tr.appendChild(tdGo);
+    tr.appendChild(tdRemove);
     tbody.appendChild(tr);
   }
 }
 
+function joinSessionsRootFile(root) {
+  const r = (root || "").replace(/^\/+|\/+$/g, "");
+  return r ? r + "/donkeycode-sessions.json" : "donkeycode-sessions.json";
+}
+
 async function refreshFoldersOnly() {
   const res = await send("GET_SESSION_FOLDERS_TREE", {});
-  renderFolders(res.tree, res.currentFolder, res.githubBasePath);
+  renderFolders(
+    res.tree,
+    res.currentFolder,
+    res.githubBasePath,
+    res.githubDefaultFilePath
+  );
 }
 
 function renderRepoList(res) {
@@ -297,7 +372,7 @@ $("btn-save-github").addEventListener("click", async function () {
         owner: $("field-gh-owner").value.trim(),
         repo: $("field-gh-repo").value.trim(),
         branch: $("field-gh-branch").value.trim() || "main",
-        path: $("field-gh-path").value.trim(),
+        sessionsRoot: $("field-gh-path").value.trim(),
         token: $("field-gh-token").value.trim(),
       },
     });

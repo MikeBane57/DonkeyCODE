@@ -46,7 +46,9 @@
       <section class="card" aria-labelledby="h-github">
         <h2 id="h-github">GitHub session sync</h2>
         <p class="muted">
-          Sessions for the <strong>active folder</strong> in the popup sync to one JSON file in your repo (see folder table below).
+          Set a <strong>sessions root directory</strong> in the repo. The <strong>Default</strong> folder uses
+          <code>…/donkeycode-sessions.json</code> at that root; other folders use
+          <code>…/&lt;folder path&gt;/donkeycode-sessions.json</code> (real directories on Git).
         </p>
         <div class="grid2">
           <div>
@@ -62,8 +64,8 @@
             <input id="field-gh-branch" type="text" autocomplete="off" />
           </div>
           <div>
-            <label for="field-gh-path">Base file path in repo</label>
-            <input id="field-gh-path" type="text" spellcheck="false" placeholder="sessions/donkeycode-sessions.json" />
+            <label for="field-gh-path">Sessions root directory</label>
+            <input id="field-gh-path" type="text" spellcheck="false" placeholder="sessions" />
           </div>
         </div>
         <label for="field-gh-token">Personal access token (optional if baked into build)</label>
@@ -85,7 +87,7 @@
       <section class="card" aria-labelledby="h-folders">
         <h2 id="h-folders">Session folders</h2>
         <p class="muted">
-          Each folder keeps its own saved sessions. The <strong>GitHub subfolder</strong> is appended under the base file path above (per-folder JSON file).
+          Each folder keeps its own saved sessions. Optional <strong>GitHub path override</strong> replaces the folder name when building the path under the sessions root.
         </p>
         <p class="muted small">Active folder in popup: <strong id="active-folder-label">—</strong></p>
         <p id="repo-browse-base" class="muted small"></p>
@@ -95,7 +97,8 @@
               <tr>
                 <th>Folder</th>
                 <th>Sessions</th>
-                <th>GitHub subfolder</th>
+                <th>GitHub path override</th>
+                <th></th>
                 <th></th>
               </tr>
             </thead>

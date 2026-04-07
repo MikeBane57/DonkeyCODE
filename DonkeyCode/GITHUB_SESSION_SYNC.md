@@ -1,11 +1,11 @@
 # GitHub session sync
 
-DonkeyCode can read and write a **JSON file in a Git repository** using the **GitHub REST API**. Everyone on the team configures the same **owner**, **repository**, **branch**, and **file path**, and uses their own **personal access token** (PAT) on each machine.
+DonkeyCode can read and write **JSON session files in a Git repository** using the **GitHub REST API**. Everyone on the team configures the same **owner**, **repository**, **branch**, and **sessions root directory**, and uses their own **personal access token** (PAT) on each machine.
 
 ## What you need on GitHub
 
 1. A **repository** you can push to (org or user repo).
-2. A **folder path** for the file, e.g. `sessions/donkeycode-sessions.json`. The folder does not need to exist before the first **Push**; GitHub creates it when the file is added.
+2. A **sessions root directory** in the repo, e.g. `sessions` or `sessions/donkeycode-test-fixtures`. The extension stores **`donkeycode-sessions.json`** at that root for the **Default** folder, and under **`<root>/<folder>/donkeycode-sessions.json`** for other folders (real directories on Git). Parent directories are created when the first file is added.
 3. A **personal access token** for each user:
    - **Classic token:** enable scope **`repo`** (full control of private repositories) if the repo is private; for public repos, **`public_repo`** may be enough for write access.
    - **Fine-grained token:** grant **Contents: Read and write** on the target repository.
@@ -19,9 +19,9 @@ Run **`npm run build`** at the repo root with **`DONKEYCODE_*` environment varia
 ## Configure in DonkeyCode
 
 1. Open the extension popup → **Settings** (gear).
-2. Fill **Owner**, **Repository**, **Branch** (e.g. `main`), **File path in repo**.
+2. Fill **Owner**, **Repository**, **Branch** (e.g. `main`), **Sessions root directory**.
 3. Paste your **token** → **Save GitHub settings**.
-4. **Pull from GitHub** (popup or Settings) fetches **each local session folder’s** JSON file (base path + that folder’s GitHub subfolder) and merges into **that folder only**. Switch **folder chips** in the popup to browse sessions per folder. **Push** still uploads **only the currently selected** folder’s merged data to its file.
+4. **Pull from GitHub** fetches **each local folder’s** `donkeycode-sessions.json` under that root (using the folder name, or the optional **GitHub path override** in Settings) and merges into **that folder only**. **Push** uploads **only the active folder’s** merged file. Adding a folder from the popup can **create** an empty JSON file on GitHub so the directory exists; **Remove…** in Settings can optionally **delete** that remote file.
 
 ### Auto-sync on save
 

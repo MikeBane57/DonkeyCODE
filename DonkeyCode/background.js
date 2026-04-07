@@ -23,6 +23,44 @@ try {
   };
 }
 
+const SESSION_JSON_FILENAME = "donkeycode-sessions.json";
+
+function joinGithubRepoPath(rootDir, ...segments) {
+  const parts = [];
+  const r = (rootDir || "").trim().replace(/^\/+|\/+$/g, "").replace(/\\/g, "/");
+  if (r) parts.push(r);
+  for (const seg of segments) {
+    const s = (seg || "").trim().replace(/^\/+|\/+$/g, "").replace(/\\/g, "/");
+    if (s) parts.push(s);
+  }
+  return parts.join("/");
+}
+
+function defaultSessionFilePathForRoot(sessionsRoot) {
+  return joinGithubRepoPath(sessionsRoot, SESSION_JSON_FILENAME);
+}
+
+/** User may enter a directory (e.g. sessions) or legacy path ending in .json */
+function normalizeUserSessionsRootInput(input) {
+  const t = (input || "").trim().replace(/^\/+/, "").replace(/\/+$/g, "");
+  if (!t) return "sessions";
+  if (/\.json$/i.test(t)) {
+    const i = t.lastIndexOf("/");
+    return i === -1 ? "" : t.slice(0, i);
+  }
+  return t;
+}
+
+function deriveSessionsRootFromLegacyPath(raw) {
+  const path = (raw || "").trim().replace(/^\/+/, "");
+  if (!path) return "sessions";
+  if (/\.json$/i.test(path)) {
+    const i = path.lastIndexOf("/");
+    return i === -1 ? "" : path.slice(0, i);
+  }
+  return path.replace(/\/+$/, "");
+}
+
 const STORAGE = {
   SCRIPT_SOURCE: "donkeycode_script_source_url",
   EXTRA_URLS: "donkeycode_extra_script_urls",
@@ -43,6 +81,7 @@ const STORAGE = {
   GITHUB_REPO: "donkeycode_github_repo",
   GITHUB_BRANCH: "donkeycode_github_branch",
   GITHUB_PATH: "donkeycode_github_path",
+  GITHUB_SESSIONS_ROOT: "donkeycode_github_sessions_root",
   GITHUB_SYNC_LAST_ERROR: "donkeycode_github_sync_last_error",
   GITHUB_SYNC_LAST_OK: "donkeycode_github_sync_last_ok",
   /** Set on first install; cleared after popup runs one GitHub session pull when configured */
@@ -164,6 +203,30 @@ function logWarn(...args) {
 
 function logError(...args) {
   console.error(LOG_PREFIX, ...args);
+}
+
+/**
+ * One-time: derive sessions root from stored GITHUB_PATH and/or baked path.
+ */
+async function migrateGithubSessionsRootIfNeeded() {
+  const d = await chrome.storage.local.get([
+    STORAGE.GITHUB_SESSIONS_ROOT,
+    STORAGE.GITHUB_PATH,
+  ]);
+  if (
+    Object.prototype.hasOwnProperty.call(d, STORAGE.GITHUB_SESSIONS_ROOT) &&
+    d[STORAGE.GITHUB_SESSIONS_ROOT] !== undefined &&
+    d[STORAGE.GITHUB_SESSIONS_ROOT] !== null
+  ) {
+    return;
+  }
+  const baked = self.BAKED_GITHUB_DEFAULTS || {};
+  const rawFromStorage = (d[STORAGE.GITHUB_PATH] || "").trim();
+  const rawFromBaked = String(baked.path || "").trim();
+  const raw = rawFromStorage || rawFromBaked;
+  const root = deriveSessionsRootFromLegacyPath(raw);
+  await chrome.storage.local.set({ [STORAGE.GITHUB_SESSIONS_ROOT]: root });
+  log("GitHub sessions root migrated:", root, "from", raw || "(default)");
 }
 
 function scriptIdFromUrl(url) {
@@ -899,14 +962,25 @@ function normalizeFolderKey(name) {
   return t.replace(/^\/+|\/+$/g, "") || DEFAULT_SESSION_FOLDER;
 }
 
-function combineRepoPath(baseFilePath, folderRel) {
-  const fr = (folderRel || "").trim().replace(/^\/+|\/+$/g, "").replace(/\\/g, "/");
-  const base = (baseFilePath || "sessions/donkeycode-sessions.json").replace(/^\/+/, "");
-  if (!fr || fr === DEFAULT_SESSION_FOLDER) return base;
-  const parts = base.split("/");
-  const fileName = parts.length ? parts.pop() : "donkeycode-sessions.json";
-  const baseDir = parts.join("/");
-  return (baseDir ? baseDir + "/" : "") + fr + "/" + fileName;
+function folderGithubSegments(folderEntry, folderKey) {
+  const fk = normalizeFolderKey(folderKey);
+  const manual = (folderEntry && folderEntry.githubRelativePath
+    ? String(folderEntry.githubRelativePath)
+    : ""
+  )
+    .trim()
+    .replace(/\\/g, "/");
+  if (manual) {
+    return manual
+      .split("/")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  if (fk === DEFAULT_SESSION_FOLDER) return [];
+  return fk
+    .split("/")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 /**
@@ -1021,8 +1095,9 @@ async function getGithubPathForFolder(folderKey) {
   const base = await getGithubSettings();
   const { folders } = await getSessionFoldersState();
   const fk = normalizeFolderKey(folderKey);
-  const rel = (folders[fk] && folders[fk].githubRelativePath) || "";
-  const path = combineRepoPath(base.path, rel);
+  const entry = folders[fk] || {};
+  const segs = folderGithubSegments(entry, fk);
+  const path = joinGithubRepoPath(base.sessionsRoot, ...segs, SESSION_JSON_FILENAME);
   return { ...base, path };
 }
 
@@ -1110,12 +1185,14 @@ async function githubApiRequest(path, options, token) {
 }
 
 async function getGithubSettings() {
+  await migrateGithubSessionsRootIfNeeded();
   const data = await chrome.storage.local.get([
     STORAGE.GITHUB_PAT,
     STORAGE.GITHUB_OWNER,
     STORAGE.GITHUB_REPO,
     STORAGE.GITHUB_BRANCH,
     STORAGE.GITHUB_PATH,
+    STORAGE.GITHUB_SESSIONS_ROOT,
   ]);
   const baked = self.BAKED_GITHUB_DEFAULTS || {};
   const token =
@@ -1132,11 +1209,16 @@ async function getGithubSettings() {
   const pathRaw =
     (data[STORAGE.GITHUB_PATH] || "").trim() ||
     String(baked.path || "sessions/donkeycode-sessions.json").trim();
-  const path = (pathRaw || "sessions/donkeycode-sessions.json").replace(
+  const legacyPath = (pathRaw || "sessions/donkeycode-sessions.json").replace(
     /^\/+/,
     ""
   );
-  return { token, owner, repo, branch, path };
+  let sessionsRoot = (data[STORAGE.GITHUB_SESSIONS_ROOT] || "").trim();
+  if (!sessionsRoot) {
+    sessionsRoot = deriveSessionsRootFromLegacyPath(legacyPath);
+  }
+  const path = defaultSessionFilePathForRoot(sessionsRoot);
+  return { token, owner, repo, branch, path, sessionsRoot };
 }
 
 async function fetchGithubSessionsFile(settings) {
@@ -1201,13 +1283,58 @@ async function putGithubSessionsFile(settings, bodyObj, shaOrNull) {
   );
 }
 
+async function githubDeleteRepoFile(settings, sha) {
+  const { token, owner, repo, branch, path } = settings;
+  if (!sha) throw new Error("Missing file sha for GitHub delete");
+  const pathSeg = path
+    .split("/")
+    .map((p) => encodeURIComponent(p))
+    .join("/");
+  const apiPath =
+    "/repos/" +
+    encodeURIComponent(owner) +
+    "/" +
+    encodeURIComponent(repo) +
+    "/contents/" +
+    pathSeg;
+  await githubApiRequest(
+    apiPath,
+    {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "DonkeyCode: remove session folder file",
+        sha,
+        branch,
+      }),
+    },
+    token
+  );
+}
+
+/**
+ * Create an empty sessions JSON on GitHub if missing (so the folder path exists in the repo).
+ */
+async function ensureGithubSessionsPlaceholderForFolder(folderKey) {
+  const settings = await getGithubPathForFolder(folderKey);
+  if (!settings.token || !settings.owner || !settings.repo) {
+    return { skipped: true };
+  }
+  const existing = await fetchGithubSessionsFile(settings);
+  if (existing) return { skipped: false, created: false };
+  const empty = sessionsToGithubFilePayload({});
+  await putGithubSessionsFile(settings, empty, null);
+  log("GitHub: created placeholder sessions file for folder", folderKey, settings.path);
+  return { skipped: false, created: true, path: settings.path };
+}
+
 /**
  * If base path looks like the bundled test fixtures layout, ensure local folders
  * alpha…epsilon exist with matching GitHub subfolders so each remote file has a target.
  */
 async function ensureTestFixtureFoldersIfNeeded() {
   const gh = await getGithubSettings();
-  const p = (gh.path || "").toLowerCase();
+  const p = (gh.sessionsRoot || "").toLowerCase();
   if (p.indexOf("donkeycode-test-fixtures") === -1) return;
   const { folders } = await getSessionFoldersState();
   const testNames = ["alpha", "beta", "gamma", "delta", "epsilon"];
@@ -1601,6 +1728,7 @@ async function getStateForPopup() {
       githubRepo: gh.repo,
       githubBranch: gh.branch,
       githubPath: gh.path,
+      githubSessionsRoot: gh.sessionsRoot || "",
       githubEffectiveSessionFilePath: ghPathForFolder.path,
       githubTokenConfigured: !!gh.token,
       githubBakedIn: !!String(
@@ -1638,6 +1766,7 @@ async function getStateForPopup() {
       githubRepo: "",
       githubBranch: "main",
       githubPath: "sessions/donkeycode-sessions.json",
+      githubSessionsRoot: "sessions",
       githubEffectiveSessionFilePath: "sessions/donkeycode-sessions.json",
       githubTokenConfigured: false,
       githubBakedIn: false,
@@ -1733,18 +1862,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         }
         case "SET_GITHUB_SYNC_SETTINGS": {
           const payload = message.payload || {};
+          const rootInput =
+            (payload.sessionsRoot || payload.path || "sessions").trim() || "sessions";
+          const sessionsRoot = normalizeUserSessionsRootInput(rootInput);
+          const legacyDisplayPath = defaultSessionFilePathForRoot(sessionsRoot);
           const patch = {
             [STORAGE.GITHUB_OWNER]: (payload.owner || "").trim(),
             [STORAGE.GITHUB_REPO]: (payload.repo || "").trim(),
             [STORAGE.GITHUB_BRANCH]: (payload.branch || "main").trim() || "main",
-            [STORAGE.GITHUB_PATH]:
-              (payload.path || "sessions/donkeycode-sessions.json").trim() ||
-              "sessions/donkeycode-sessions.json",
+            [STORAGE.GITHUB_SESSIONS_ROOT]: sessionsRoot,
+            [STORAGE.GITHUB_PATH]: legacyDisplayPath,
           };
           const tok = (payload.token || "").trim();
           if (tok) patch[STORAGE.GITHUB_PAT] = tok;
           await chrome.storage.local.set(patch);
-          log("GitHub sync settings saved");
+          log("GitHub sync settings saved", "sessions root", sessionsRoot);
           sendResponse({ ok: true });
           break;
         }
@@ -1932,8 +2064,65 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             [STORAGE.SESSION_FOLDERS_V2]: folders,
             [STORAGE.CURRENT_SESSION_FOLDER]: key,
           });
+          let githubPlaceholder = null;
+          try {
+            githubPlaceholder = await ensureGithubSessionsPlaceholderForFolder(key);
+          } catch (e) {
+            logWarn("GitHub placeholder create failed for new folder", key, e);
+            githubPlaceholder = {
+              skipped: false,
+              error: String(e && e.message ? e.message : e),
+            };
+          }
           const st = await getStateForPopup();
-          sendResponse({ ok: true, ...st });
+          sendResponse({ ok: true, ...st, githubPlaceholder });
+          break;
+        }
+        case "DELETE_SESSION_FOLDER": {
+          const key = normalizeFolderKey(message.folderKey);
+          if (key === DEFAULT_SESSION_FOLDER) throw new Error("Cannot delete the default folder");
+          const { folders, currentKey } = await getSessionFoldersState();
+          if (!folders[key]) throw new Error("Unknown folder");
+          const deleteRemote = !!message.deleteRemote;
+          let remoteDeleted = false;
+          let remoteError = "";
+          if (deleteRemote) {
+            const gh = await getGithubSettings();
+            if (!gh.token || !gh.owner || !gh.repo) {
+              throw new Error("Configure GitHub owner, repo, and token to delete remote file.");
+            }
+            try {
+              const settings = await getGithubPathForFolder(key);
+              const file = await fetchGithubSessionsFile(settings);
+              if (file && file.sha) {
+                await githubDeleteRepoFile(settings, file.sha);
+                remoteDeleted = true;
+                log("GitHub: deleted remote sessions file for folder", key, settings.path);
+              }
+            } catch (e) {
+              remoteError = String(e && e.message ? e.message : e);
+              logWarn("GitHub remote delete failed for folder", key, e);
+            }
+            if (remoteError) {
+              throw new Error("Could not delete file on GitHub: " + remoteError);
+            }
+          }
+          delete folders[key];
+          let nextCur = currentKey;
+          if (currentKey === key) {
+            nextCur = DEFAULT_SESSION_FOLDER;
+          }
+          await chrome.storage.local.set({
+            [STORAGE.SESSION_FOLDERS_V2]: folders,
+            [STORAGE.CURRENT_SESSION_FOLDER]: nextCur,
+          });
+          const st = await getStateForPopup();
+          sendResponse({
+            ok: true,
+            ...st,
+            remoteDeleted,
+            remoteError: remoteError || undefined,
+          });
           break;
         }
         case "SET_SESSION_FOLDER_GITHUB_PATH": {
@@ -1962,7 +2151,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             ok: true,
             tree,
             currentFolder: currentKey,
-            githubBasePath: gh.path,
+            githubBasePath: gh.sessionsRoot || "",
+            githubDefaultFilePath: gh.path,
           });
           break;
         }

@@ -370,9 +370,16 @@ function fillSessionFolderUI(state) {
   if (hint) {
     const rel = (state.folderGithubRelativePaths && state.folderGithubRelativePaths[cur]) || "";
     const eff = state.githubEffectiveSessionFilePath || "";
+    const root =
+      state.githubSessionsRoot != null && String(state.githubSessionsRoot).trim() !== ""
+        ? String(state.githubSessionsRoot).trim()
+        : "";
     hint.textContent = rel
       ? "GitHub file for this folder: " + eff
-      : "GitHub file (base path): " + (state.githubPath || "") + " — add subfolder in full settings if needed.";
+      : "GitHub sessions root: " +
+        (root || "(not set)") +
+        " — this folder: " +
+        (eff || state.githubPath || "");
   }
 }
 
@@ -919,7 +926,14 @@ bindClick("btn-add-session-folder", async function () {
     fillSessionFolderUI(res);
     renderSessions(res.sessions || []);
     syncLoginFirstSelect(res.sessions || []);
-    setStatus("Folder added.");
+    const ph = res.githubPlaceholder;
+    if (ph && ph.created) {
+      setStatus("Folder added; created " + (ph.path || "sessions file") + " on GitHub.");
+    } else if (ph && ph.error) {
+      setStatus("Folder added; GitHub placeholder failed: " + ph.error, true);
+    } else {
+      setStatus("Folder added.");
+    }
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
     setStatus(String(e.message || e), true);
