@@ -347,25 +347,17 @@ async function switchSessionFolder(folderKey) {
   }
 }
 
+/** Updated on each loadState for folder browser modal */
+let lastFolderPickerState = null;
+
 function fillSessionFolderUI(state) {
-  const chips = $("session-folder-chips");
+  lastFolderPickerState = state;
+  const labelEl = $("session-folder-current-label");
   const hint = $("session-folder-github-hint");
-  if (!chips) return;
-  const folders = state.sessionFolders || ["__default__"];
   const cur = state.currentSessionFolder || "__default__";
-  chips.innerHTML = "";
-  for (const fk of folders) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "session-folder-chip" + (fk === cur ? " active" : "");
-    btn.textContent = fk === "__default__" ? "Default" : fk;
-    btn.title = fk === "__default__" ? "Default folder" : fk;
-    btn.dataset.folderKey = fk;
-    btn.addEventListener("click", function () {
-      if (fk === cur) return;
-      switchSessionFolder(fk);
-    });
-    chips.appendChild(btn);
+  if (labelEl) {
+    labelEl.textContent = cur === "__default__" ? "Default" : cur;
+    labelEl.title = cur === "__default__" ? "Default (__default__)" : cur;
   }
   if (hint) {
     const rel = (state.folderGithubRelativePaths && state.folderGithubRelativePaths[cur]) || "";
@@ -380,6 +372,83 @@ function fillSessionFolderUI(state) {
         (root || "(not set)") +
         " — this folder: " +
         (eff || state.githubPath || "");
+  }
+}
+
+function closeFolderPickerModal() {
+  const ov = $("folder-picker-overlay");
+  const inp = $("folder-picker-filter");
+  if (inp) inp.value = "";
+  if (ov) {
+    ov.classList.add("hidden");
+    ov.setAttribute("aria-hidden", "true");
+  }
+}
+
+function renderFolderPickerList(filterText) {
+  const ul = $("folder-picker-list");
+  const state = lastFolderPickerState;
+  if (!ul || !state) return;
+  const folders = (state.sessionFolders || ["__default__"]).slice().sort(folderPathSort);
+  const cur = state.currentSessionFolder || "__default__";
+  const relMap = state.folderGithubRelativePaths || {};
+  const q = (filterText || "").trim().toLowerCase();
+  ul.innerHTML = "";
+  for (const fk of folders) {
+    const display = fk === "__default__" ? "Default" : fk;
+    const searchHay = (fk + " " + (relMap[fk] || "")).toLowerCase();
+    if (q && searchHay.indexOf(q) === -1) continue;
+    const li = document.createElement("li");
+    li.setAttribute("role", "presentation");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "folder-picker-item" + (fk === cur ? " active" : "");
+    btn.dataset.folderKey = fk;
+    const pathSpan = document.createElement("span");
+    pathSpan.className = "folder-picker-path";
+    pathSpan.textContent = display;
+    btn.appendChild(pathSpan);
+    const override = (relMap[fk] || "").trim();
+    if (override && fk !== "__default__") {
+      const meta = document.createElement("span");
+      meta.className = "folder-picker-meta";
+      meta.textContent = "Git override: " + override;
+      btn.appendChild(meta);
+    }
+    btn.addEventListener("click", async function () {
+      closeFolderPickerModal();
+      if (fk !== cur) await switchSessionFolder(fk);
+    });
+    li.appendChild(btn);
+    ul.appendChild(li);
+  }
+  if (!ul.children.length) {
+    const li = document.createElement("li");
+    const empty = document.createElement("p");
+    empty.className = "hint";
+    empty.style.margin = "12px";
+    empty.textContent = q ? "No folders match your filter." : "No folders.";
+    li.appendChild(empty);
+    ul.appendChild(li);
+  }
+}
+
+function folderPathSort(a, b) {
+  if (a === "__default__") return -1;
+  if (b === "__default__") return 1;
+  return a.localeCompare(b, undefined, { sensitivity: "base" });
+}
+
+function openFolderPickerModal() {
+  const ov = $("folder-picker-overlay");
+  const inp = $("folder-picker-filter");
+  if (!ov) return;
+  ov.classList.remove("hidden");
+  ov.setAttribute("aria-hidden", "false");
+  renderFolderPickerList(inp ? inp.value : "");
+  if (inp) {
+    inp.focus();
+    inp.select();
   }
 }
 
@@ -951,6 +1020,25 @@ bindClick("btn-push-all-sessions-github", pushAllSessionsToGithub);
 bindClick("btn-sync-all-sessions-github", syncAllSessionsWithGithub);
 bindClick("btn-refresh-scripts", refreshScripts);
 bindClick("btn-open-settings", openSettingsTab);
+
+bindClick("btn-browse-session-folders", function () {
+  openFolderPickerModal();
+});
+bindClick("folder-picker-close", closeFolderPickerModal);
+(function () {
+  const ov = $("folder-picker-overlay");
+  if (ov) {
+    ov.addEventListener("click", function (ev) {
+      if (ev.target === ov) closeFolderPickerModal();
+    });
+  }
+  const inp = $("folder-picker-filter");
+  if (inp) {
+    inp.addEventListener("input", function () {
+      renderFolderPickerList(inp.value);
+    });
+  }
+})();
 
 bindClick("btn-add-session-folder", async function () {
   const name = window.prompt(

@@ -1283,6 +1283,45 @@ async function putGithubSessionsFile(settings, bodyObj, shaOrNull) {
   );
 }
 
+function isGithubShaConflictError(e) {
+  const msg = String(e && e.message ? e.message : e).toLowerCase();
+  return msg.includes("does not match") && msg.includes("sha");
+}
+
+/**
+ * Write merged sessions; on GitHub SHA race, refetch remote, merge again, retry (fixes concurrent edits).
+ */
+async function putGithubSessionsMergedWithRetry(settings, folderKey, maxAttempts) {
+  const fk = normalizeFolderKey(folderKey);
+  const attempts = Math.max(1, Math.min(Number(maxAttempts) || 4, 8));
+  let lastErr = null;
+  for (let i = 0; i < attempts; i++) {
+    const local = await getSessionsMapForFolder(fk);
+    let sha = null;
+    let remoteSessions = {};
+    const file = await fetchGithubSessionsFile(settings);
+    if (file) {
+      remoteSessions = file.sessions || {};
+      sha = file.sha;
+    }
+    const merged = mergeSessionsByTimestamp(local, remoteSessions);
+    await setSessionsMapForFolder(fk, merged);
+    const payload = sessionsToGithubFilePayload(merged);
+    try {
+      await putGithubSessionsFile(settings, payload, sha);
+      return { mergedCount: Object.keys(merged).length };
+    } catch (e) {
+      lastErr = e;
+      if (isGithubShaConflictError(e) && i < attempts - 1) {
+        logWarn("GitHub SHA conflict, refetching and retrying push", fk, settings.path, i + 1);
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr || new Error("GitHub push failed");
+}
+
 async function githubListDirectory(settings, relativePath) {
   const { token, owner, repo, branch } = settings;
   const prefix = (relativePath || "").trim().replace(/^\/+/, "");
@@ -1302,7 +1341,8 @@ async function githubListDirectory(settings, relativePath) {
 }
 
 /**
- * Subfolders under sessions root that contain donkeycode-sessions.json (Git “folders”).
+ * Paths under sessions root (relative to root) whose folder contains donkeycode-sessions.json.
+ * Recurses into nested directories (e.g. team/ns/project).
  */
 async function discoverGithubSessionFolderKeys() {
   const gh = await getGithubSettings();
@@ -1310,23 +1350,38 @@ async function discoverGithubSessionFolderKeys() {
     throw new Error("Configure GitHub owner, repo, and personal access token.");
   }
   const root = (gh.sessionsRoot || "").trim();
-  const items = await githubListDirectory(gh, root);
-  const keys = [];
-  for (const it of items) {
-    if (!it || it.type !== "dir" || !it.name) continue;
-    if (it.name.startsWith(".")) continue;
-    const subPath = joinGithubRepoPath(root, it.name);
+  const found = new Set();
+
+  async function walk(relDir) {
+    let items;
     try {
-      const subItems = await githubListDirectory(gh, subPath);
-      const hasFile = subItems.some(
-        (x) => x && x.type === "file" && x.name === SESSION_JSON_FILENAME
-      );
-      if (hasFile) keys.push(it.name);
+      items = await githubListDirectory(gh, relDir);
     } catch (e) {
-      logWarn("discover: could not list", subPath, e);
+      logWarn("discover: could not list", relDir, e);
+      return;
+    }
+    for (const it of items) {
+      if (!it || !it.name) continue;
+      if (it.type === "file" && it.name === SESSION_JSON_FILENAME) {
+        if (relDir === root) {
+          /* root-level file = Default folder; not a named subfolder */
+          continue;
+        }
+        const prefix = root ? root + "/" : "";
+        const suffix =
+          prefix && relDir.startsWith(prefix) ? relDir.slice(prefix.length).replace(/^\/+/, "") : relDir;
+        if (suffix) found.add(suffix);
+        continue;
+      }
+      if (it.type === "dir") {
+        if (it.name.startsWith(".")) continue;
+        await walk(joinGithubRepoPath(relDir, it.name));
+      }
     }
   }
-  keys.sort();
+
+  await walk(root);
+  const keys = Array.from(found).sort();
   return keys;
 }
 
@@ -1507,20 +1562,10 @@ async function githubPushSingleFolder(folderKey) {
   if (!settings.token || !settings.owner || !settings.repo) {
     throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
   }
-  const local = await getSessionsMapForFolder(fk);
-  let sha = null;
-  let remoteSessions = {};
-  const file = await fetchGithubSessionsFile(settings);
-  if (file) {
-    remoteSessions = file.sessions || {};
-    sha = file.sha;
-  }
-  const merged = mergeSessionsByTimestamp(local, remoteSessions);
-  await setSessionsMapForFolder(fk, merged);
-  const payload = sessionsToGithubFilePayload(merged);
-  await putGithubSessionsFile(settings, payload, sha);
-  log("GitHub push ok", Object.keys(merged).length, "sessions", "folder", fk, settings.path);
-  return { folderKey: fk, sessions: Object.keys(merged).sort() };
+  const { mergedCount } = await putGithubSessionsMergedWithRetry(settings, fk, 5);
+  const mergedKeys = Object.keys(await getSessionsMapForFolder(fk)).sort();
+  log("GitHub push ok", mergedCount, "sessions", "folder", fk, settings.path);
+  return { folderKey: fk, sessions: mergedKeys };
 }
 
 async function githubSyncPush() {

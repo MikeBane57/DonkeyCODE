@@ -209,39 +209,97 @@ body {
   align-items: center;
 }
 
-.session-folder-chips {
+.session-folder-active-wrap {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   flex: 1;
   min-width: 0;
-  align-items: center;
 }
 
-.session-folder-chip {
-  padding: 5px 10px;
-  border: 1px solid #c5cad3;
-  border-radius: 999px;
-  background: #fff;
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-  color: #37474f;
-  max-width: 100%;
+.session-folder-current-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0d47a1;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.session-folder-chip:hover {
-  background: #f0f2f5;
+.folder-picker-modal {
+  max-width: 420px;
+  width: calc(100vw - 32px);
 }
 
-.session-folder-chip.active {
-  border-color: #0d47a1;
+.folder-picker-filter {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border: 1px solid #c5cad3;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.folder-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(52vh, 320px);
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.folder-picker-list li {
+  margin: 0;
+  border-bottom: 1px solid #eee;
+}
+
+.folder-picker-list li:last-child {
+  border-bottom: none;
+}
+
+.folder-picker-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  color: #263238;
+  line-height: 1.35;
+  word-break: break-all;
+}
+
+.folder-picker-item:hover {
   background: #e3f2fd;
-  color: #0d47a1;
+}
+
+.folder-picker-item.active {
+  background: #bbdefb;
   font-weight: 600;
+}
+
+.folder-picker-item .folder-picker-path {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: #37474f;
+}
+
+.folder-picker-item .folder-picker-meta {
+  display: block;
+  font-size: 10px;
+  color: #78909c;
+  margin-top: 2px;
 }
 
 #session-folder-github-hint {

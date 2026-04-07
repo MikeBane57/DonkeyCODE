@@ -57,12 +57,17 @@
       <div class="row session-folder-row">
         <span class="session-folder-label">Session folder</span>
         <div class="session-folder-controls">
-          <div
-            id="session-folder-chips"
-            class="session-folder-chips"
-            role="group"
-            aria-label="Session folder"
-          ></div>
+          <div class="session-folder-active-wrap" title="Current folder">
+            <span id="session-folder-current-label" class="session-folder-current-label">Default</span>
+            <button
+              type="button"
+              id="btn-browse-session-folders"
+              class="small secondary"
+              title="Search and pick from all folders (including nested paths)"
+            >
+              Browse…
+            </button>
+          </div>
           <button type="button" id="btn-add-session-folder" class="small secondary" title="Add folder">+ Folder</button>
         </div>
         <p id="session-folder-github-hint" class="hint"></p>
@@ -129,6 +134,27 @@
         <div class="btn-row modal-actions">
           <button type="button" id="worksheet-order-save">Save session</button>
           <button type="button" id="worksheet-order-cancel" class="secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="folder-picker-overlay" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal folder-picker-modal" role="dialog" aria-labelledby="folder-picker-title">
+        <h2 id="folder-picker-title" class="modal-title">Choose session folder</h2>
+        <p class="hint modal-hint">
+          Filter by any part of the path. Nested folders use <code>/</code> (e.g. <code>team/a/b</code>).
+        </p>
+        <input
+          type="search"
+          id="folder-picker-filter"
+          class="folder-picker-filter"
+          placeholder="Type to filter…"
+          autocomplete="off"
+          aria-label="Filter folders"
+        />
+        <ul id="folder-picker-list" class="folder-picker-list" role="listbox" aria-label="Folders"></ul>
+        <div class="btn-row modal-actions">
+          <button type="button" id="folder-picker-close" class="secondary">Close</button>
         </div>
       </div>
     </div>
