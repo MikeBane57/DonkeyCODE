@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": 1775650821372,
+  "updatedAt": 1775651255497,
   "sessions": {
     "Sector/Region - ALL": {
       "windows": [
@@ -568,6 +568,151 @@
       "_meta": {
         "updatedAt": 1775648744981,
         "worksheetStaggerMs": 800
+      }
+    },
+    "Sector/Region-Other": {
+      "windows": [
+        {
+          "id": "w_0_mnq0wt5k",
+          "left": 5,
+          "top": 710,
+          "width": 2827,
+          "height": 1273,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://wnco.sharepoint.com/sites/SWALife-NOC-Secure/SitePages/SOD-Main.aspx?source=https%3A%2F%2Fwnco.sharepoint.com%2Fsites%2FSWALife-NOC-Secure%2FSitePages%2FForms%2FAllPages.aspx",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ]
+        },
+        {
+          "id": "w_1_mnq0wt5k",
+          "left": -2761,
+          "top": 11,
+          "width": 1682,
+          "height": 1010,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/baker-scenario-view/2026-04-08/e97989_1775647607617_ep",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://southwest.quickbase.com/nav/app/bny4y93qb/table/buf7x88sk/action/td?skip=0",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            },
+            {
+              "url": "https://globalui.fpflightkeys.prod.aws.swacorp.com/5d-visual-angular/",
+              "active": false,
+              "index": 2,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/go-gates/DAL/20260408",
+              "active": false,
+              "index": 3,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/station-dashboard",
+              "active": false,
+              "index": 4,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/go-turns/DAL/20260408",
+              "active": false,
+              "index": 5,
+              "pinned": false
+            }
+          ]
+        },
+        {
+          "id": "w_2_mnq0wt5k",
+          "left": -3834,
+          "top": 481,
+          "width": 1089,
+          "height": 540,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "http://155.178.172.205/ois/oisedit/summary_sys?clock=off",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://www.flightaware.com/live/cancelled/",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            }
+          ]
+        },
+        {
+          "id": "w_3_mnq0wt5k",
+          "left": -3834,
+          "top": 11,
+          "width": 1089,
+          "height": 620,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/operational-dashboard",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ]
+        },
+        {
+          "id": "w_4_mnq0wt5k",
+          "left": -2164,
+          "top": 1012,
+          "width": 1088,
+          "height": 1098,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://teams.microsoft.com/v2/",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ]
+        },
+        {
+          "id": "w_5_mnq0wt5k",
+          "left": -3833,
+          "top": 1012,
+          "width": 1657,
+          "height": 1097,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://outlook.office.com/mail/AAMkAGU2YjJjMWQ3LWNmMDAtNGY1MC1hMDY5LWU2YThhNTI2YjEzOQAuAAAAAADKQ2Age82WRaNyOo1fiynwAQBL3%2BCbCNgQT43ghJsl6ZWQAASltI0EAAA%3D",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ]
+        }
+      ],
+      "_meta": {
+        "updatedAt": 1775651255192
       }
     },
     "Sector/Region-Wolf": {
