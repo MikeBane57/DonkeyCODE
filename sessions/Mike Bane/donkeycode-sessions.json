@@ -1,5 +1,197 @@
 {
   "version": 1,
-  "updatedAt": 1775608037221,
-  "sessions": {}
+  "updatedAt": 1775608042103,
+  "sessions": {
+    "test": {
+      "windows": [
+        {
+          "id": "w_0_mnpb6ln6",
+          "left": -1554,
+          "top": 758,
+          "width": 1554,
+          "height": 1354,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://wnco.sharepoint.com/",
+              "active": false,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://rvr.data.faa.gov/cgi-bin/rvr-details.pl?content=table&airport=BUR&rrate=medium&layout=2x2&gifsize=large&fontsize=large&fs=lg&cache_this=ct1775607957",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            },
+            {
+              "url": "https://worknet.swa.smartairline.com/ArisWorkNet/login.do;jsessionid=D9A1A51C17990FBEF17099A114EC1388",
+              "active": false,
+              "index": 2,
+              "pinned": false
+            },
+            {
+              "url": "https://aviationweather.gov/",
+              "active": false,
+              "index": 3,
+              "pinned": false
+            },
+            {
+              "url": "https://weather.cod.edu/forecast/",
+              "active": false,
+              "index": 4,
+              "pinned": false
+            },
+            {
+              "url": "https://cursor.com/agents/bc-3ed29d99-8b40-42f6-9111-483a7ee161d3?branch=cursor%2Fdonkeycode-extension-foundation-9e8b",
+              "active": true,
+              "index": 5,
+              "pinned": false
+            }
+          ]
+        },
+        {
+          "id": "w_1_mnpb6ln6",
+          "left": -3840,
+          "top": 1069,
+          "width": 926,
+          "height": 1040,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://cospa.wx.ll.mit.edu/login",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ]
+        },
+        {
+          "id": "w_2_mnpb6ln6",
+          "left": -909,
+          "top": 0,
+          "width": 909,
+          "height": 1040,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "http://155.178.172.205/ois/",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://www.fly.faa.gov/aadc/",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            },
+            {
+              "url": "http://155.178.64.61/itws_servlets/servlet/MapTop",
+              "active": false,
+              "index": 2,
+              "pinned": false
+            }
+          ]
+        },
+        {
+          "id": "w_3_mnpb6ln6",
+          "left": 2207,
+          "top": 1,
+          "width": 1633,
+          "height": 1017,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/go-turns/BUR/20251103",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ]
+        },
+        {
+          "id": "w_4_mnpb6ln6",
+          "left": -2033,
+          "top": 2,
+          "width": 1377,
+          "height": 756,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/operational-dashboard",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ]
+        },
+        {
+          "id": "w_5_mnpb6ln6",
+          "left": 3324,
+          "top": 636,
+          "width": 516,
+          "height": 1476,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/ots",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ]
+        },
+        {
+          "id": "w_6_mnpb6ln6",
+          "left": 0,
+          "top": 1,
+          "width": 1561,
+          "height": 792,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ]
+        },
+        {
+          "id": "w_7_mnpb6ln6",
+          "left": 150,
+          "top": 581,
+          "width": 1561,
+          "height": 792,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://github.com/MikeBane57/DonkeyCODE/actions/runs/24110507139",
+              "active": false,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "chrome://extensions/",
+              "active": true,
+              "index": 1,
+              "pinned": false
+            }
+          ]
+        }
+      ],
+      "_meta": {
+        "updatedAt": 1775608042002
+      }
+    }
+  }
 }
