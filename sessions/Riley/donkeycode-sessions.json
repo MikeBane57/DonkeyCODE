@@ -1,5 +1,116 @@
 {
   "version": 1,
-  "updatedAt": 1775614413390,
-  "sessions": {}
+  "updatedAt": 1775614430206,
+  "sessions": {
+    "Router..": {
+      "windows": [
+        {
+          "id": "w_0_mnpezgaq",
+          "left": 1530,
+          "top": 840,
+          "width": 1551,
+          "height": 848,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://wnco.sharepoint.com/sites/SWALife-NOC-Secure",
+              "active": false,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://worknet.swa.smartairline.com/ArisWorkNet/workerAttendLog.do",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": true,
+              "index": 2,
+              "pinned": false
+            },
+            {
+              "url": "https://citizenfreepress.com/",
+              "active": false,
+              "index": 3,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 0
+        },
+        {
+          "id": "w_1_mnpezgaq",
+          "left": -10,
+          "top": 329,
+          "width": 1555,
+          "height": 1052,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/ots",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 1
+        },
+        {
+          "id": "w_2_mnpezgaq",
+          "left": 3067,
+          "top": 214,
+          "width": 2521,
+          "height": 1476,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/related-flights?dark=true&windowId=689f8489-c153-4cf8-a22b-f0cd69ae43e7&windowState=true&groupId=47af9a25-23ea-4e6c-9f84-1614ca87d414",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 2
+        },
+        {
+          "id": "w_3_mnpezgaq",
+          "left": 3070,
+          "top": 4,
+          "width": 2518,
+          "height": 1440,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/related-flights?dark=true&windowId=a1dfe6e6-a9db-49da-8cb5-2a1a21736d25&windowState=true&groupId=33590eca-6593-4d22-8b44-fa7c8bf5605f",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 3
+        }
+      ],
+      "_meta": {
+        "updatedAt": 1775614430114,
+        "worksheetStaggerMs": 800
+      }
+    }
+  }
 }
