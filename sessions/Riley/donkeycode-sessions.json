@@ -1,5 +1,134 @@
 {
   "version": 1,
-  "updatedAt": 1775615096416,
-  "sessions": {}
+  "updatedAt": 1775615134103,
+  "sessions": {
+    "Router..": {
+      "windows": [
+        {
+          "id": "w_0_mnpfejyn",
+          "left": 1516,
+          "top": 850,
+          "width": 1552,
+          "height": 850,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/go-metrics",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 0
+        },
+        {
+          "id": "w_1_mnpfejyn",
+          "left": 1516,
+          "top": 831,
+          "width": 1552,
+          "height": 850,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://wnco.sharepoint.com/sites/SWALife-NOC-Secure",
+              "active": false,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://worknet.swa.smartairline.com/ArisWorkNet/login.do;jsessionid=3D78A4C70C5BBC19E1016F912EAB562E",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": true,
+              "index": 2,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 1
+        },
+        {
+          "id": "w_2_mnpfejyn",
+          "left": 0,
+          "top": 350,
+          "width": 1544,
+          "height": 1055,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/ots",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 2
+        },
+        {
+          "id": "w_3_mnpfejyn",
+          "left": 3072,
+          "top": 204,
+          "width": 2523,
+          "height": 1476,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 3
+        },
+        {
+          "id": "w_4_mnpfejyn",
+          "left": 3072,
+          "top": 4,
+          "width": 2520,
+          "height": 1440,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 4
+        },
+        {
+          "id": "w_5_mnpfejyn",
+          "left": 4,
+          "top": 4,
+          "width": 1519,
+          "height": 356,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 5
+        }
+      ],
+      "_meta": {
+        "updatedAt": 1775615133935,
+        "worksheetStaggerMs": 800
+      }
+    }
+  }
 }
