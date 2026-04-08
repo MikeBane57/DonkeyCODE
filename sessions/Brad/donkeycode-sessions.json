@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": 1775648751426,
+  "updatedAt": 1775650787171,
   "sessions": {
     "Sector/Region - ALL": {
       "windows": [
@@ -567,6 +567,164 @@
       ],
       "_meta": {
         "updatedAt": 1775648744981,
+        "worksheetStaggerMs": 800
+      }
+    },
+    "Sector/Region-Wolf": {
+      "windows": [
+        {
+          "id": "w_0_mnq0mqnl",
+          "left": 4,
+          "top": 750,
+          "width": 2828,
+          "height": 1362,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 0
+        },
+        {
+          "id": "w_1_mnq0mqnm",
+          "left": 5,
+          "top": 15,
+          "width": 2435,
+          "height": 704,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/flifo",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": false,
+              "index": 2,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": false,
+              "index": 3,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 1
+        },
+        {
+          "id": "w_2_mnq0mqnm",
+          "left": -1093,
+          "top": 11,
+          "width": 1088,
+          "height": 2099,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/schedule",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/acars-events",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 2
+        },
+        {
+          "id": "w_3_mnq0mqnm",
+          "left": 2424,
+          "top": 14,
+          "width": 1406,
+          "height": 705,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 3
+        },
+        {
+          "id": "w_4_mnq0mqnm",
+          "left": 2817,
+          "top": 709,
+          "width": 1014,
+          "height": 689,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/crew?dark=true&windowId=f0438e23-1ad2-4132-a113-5f9c3a5845be&windowState=true&groupId=a7d2f82b-1a7b-4197-b8d9-89fbe8413388",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 4
+        },
+        {
+          "id": "w_5_mnq0mqnm",
+          "left": 2816,
+          "top": 1389,
+          "width": 1015,
+          "height": 723,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/ots",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 5
+        },
+        {
+          "id": "w_6_mnq0mqnm",
+          "left": 5,
+          "top": 710,
+          "width": 2827,
+          "height": 1273,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://wnco.sharepoint.com/sites/SWALife-NOC-Secure/SitePages/SOD-Main.aspx?source=https%3A%2F%2Fwnco.sharepoint.com%2Fsites%2FSWALife-NOC-Secure%2FSitePages%2FForms%2FAllPages.aspx",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 6
+        }
+      ],
+      "_meta": {
+        "updatedAt": 1775650786963,
         "worksheetStaggerMs": 800
       }
     }
