@@ -941,6 +941,9 @@ function delayMs(ms) {
   });
 }
 
+/** After Login First, close login windows only once the session has started (avoids killing the browser too early). */
+const LOGIN_FLOW_CLOSE_AFTER_FIRST_WINDOW_MS = 500;
+
 function normalizeSessionSnapshot(snap) {
   if (!snap || !Array.isArray(snap.windows)) {
     const empty = { windows: [], _meta: { updatedAt: 0 } };
@@ -1823,7 +1826,9 @@ async function saveSession(name, snapshotOverride) {
   log("session saved", trimmed, "windows", snap.windows.length);
 }
 
-async function restoreSessionInternal(name) {
+async function restoreSessionInternal(name, opts) {
+  const deferCloseLoginFlow =
+    opts && opts.deferCloseLoginFlow === true;
   const trimmed = (name || "").trim();
   if (!trimmed) throw new Error("Session name required");
   const fk = await getCurrentSessionFolderKey();
@@ -1842,12 +1847,12 @@ async function restoreSessionInternal(name) {
     }
   }
 
+  let openedWorksheetWindow = false;
+  let pendingDeferLoginClose = deferCloseLoginFlow;
+
   for (let wi = 0; wi < ordered.length; wi++) {
     const w = ordered[wi];
-    if (wi > 0 && stagger > 0) {
-      log("worksheet stagger delay", stagger, "ms before window", wi + 1);
-      await delayMs(stagger);
-    }
+    const curIsWs = !!worksheetPrimaryUrlForWindow(w);
     const urls = (w.tabs || [])
       .sort((a, b) => (a.index || 0) - (b.index || 0))
       .map((t) => t.url)
@@ -1859,6 +1864,16 @@ async function restoreSessionInternal(name) {
       );
     if (urls.length === 0) continue;
 
+    if (curIsWs && openedWorksheetWindow && stagger > 0) {
+      log(
+        "worksheet stagger delay",
+        stagger,
+        "ms before worksheet window",
+        wi + 1
+      );
+      await delayMs(stagger);
+    }
+
     const created = await chrome.windows.create({
       url: urls,
       left: w.left,
@@ -1868,6 +1883,8 @@ async function restoreSessionInternal(name) {
       focused: !!w.focused,
       state: w.state === "minimized" || w.state === "maximized" ? w.state : undefined,
     });
+
+    if (curIsWs) openedWorksheetWindow = true;
 
     if (created && created.tabs && w.tabs) {
       const sortedTabs = (w.tabs || []).slice().sort((a, b) => (a.index || 0) - (b.index || 0));
@@ -1880,6 +1897,15 @@ async function restoreSessionInternal(name) {
         }
       }
     }
+
+    if (pendingDeferLoginClose && created && created.id != null) {
+      await delayMs(LOGIN_FLOW_CLOSE_AFTER_FIRST_WINDOW_MS);
+      await closeLoginFlowWindowsIfAny();
+      pendingDeferLoginClose = false;
+    }
+  }
+  if (pendingDeferLoginClose) {
+    await closeLoginFlowWindowsIfAny();
   }
   log("session restored", trimmed, "windows", ordered.length, "staggerMs", stagger);
 }
@@ -1992,8 +2018,9 @@ async function completePendingRestore() {
     throw new Error("No session is waiting. Use Login First, then Continue.");
   }
   await chrome.storage.local.remove(STORAGE.PENDING_RESTORE);
-  await closeLoginFlowWindowsIfAny();
-  await restoreSessionInternal(String(name).trim());
+  await restoreSessionInternal(String(name).trim(), {
+    deferCloseLoginFlow: true,
+  });
   log("pending restore completed", name);
 }
 
