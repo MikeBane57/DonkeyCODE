@@ -74,6 +74,10 @@ const STORAGE = {
   SESSION_STORAGE_MIGRATED: "donkeycode_sessions_storage_migrated_v3",
   LAST_FETCH: "donkeycode_last_script_fetch_ms",
   PENDING_RESTORE: "donkeycode_pending_restore_session",
+  /** Window ids for Login First flow (close on Continue). */
+  LOGIN_FLOW_WINDOW_IDS: "donkeycode_login_flow_window_ids",
+  /** Tab id of the tab that started Login First (close on Continue if not a login page). */
+  LOGIN_FLOW_OPENER_TAB_ID: "donkeycode_login_flow_opener_tab_id",
   SETUP_DISMISSED: "donkeycode_setup_banner_dismissed",
   PENDING_FIRST_POPUP_REFRESH: "donkeycode_pending_first_popup_refresh",
   GITHUB_PAT: "donkeycode_github_pat",
@@ -1884,7 +1888,21 @@ async function restoreSession(name) {
   await restoreSessionInternal(name);
 }
 
-async function openLoginWindowsThenQueueRestore(sessionName) {
+function tabUrlIsLoginFlowPage(url) {
+  if (!url || typeof url !== "string") return false;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+    const h = (u.hostname || "").toLowerCase();
+    if (h === "opssuitemain.swacorp.com") return true;
+    if (h === "www.swalife.com" || h === "swalife.com") return true;
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function openLoginWindowsThenQueueRestore(sessionName, openerTabId) {
   const trimmed = (sessionName || "").trim();
   if (!trimmed) throw new Error("Session name required");
   await chrome.storage.local.set({
@@ -1913,7 +1931,7 @@ async function openLoginWindowsThenQueueRestore(sessionName) {
   } catch (e) {
     logWarn("could not read first login window bounds", e);
   }
-  await chrome.windows.create({
+  const w2 = await chrome.windows.create({
     url: LOGIN_WINDOW_URLS[1],
     focused: false,
     type: "normal",
@@ -1922,7 +1940,49 @@ async function openLoginWindowsThenQueueRestore(sessionName) {
     left: left2,
     top,
   });
-  log("login windows opened side by side; pending restore", trimmed);
+  const winIds = [w1.id, w2.id].filter((id) => id != null);
+  const patch = {
+    [STORAGE.LOGIN_FLOW_WINDOW_IDS]: winIds,
+  };
+  if (openerTabId != null && openerTabId !== undefined) {
+    const tid = Number(openerTabId);
+    if (!Number.isNaN(tid)) patch[STORAGE.LOGIN_FLOW_OPENER_TAB_ID] = tid;
+  }
+  await chrome.storage.local.set(patch);
+  log("login windows opened side by side; pending restore", trimmed, "windows", winIds.join(","));
+}
+
+async function closeLoginFlowWindowsIfAny() {
+  const d = await chrome.storage.local.get([
+    STORAGE.LOGIN_FLOW_WINDOW_IDS,
+    STORAGE.LOGIN_FLOW_OPENER_TAB_ID,
+  ]);
+  const winIds = Array.isArray(d[STORAGE.LOGIN_FLOW_WINDOW_IDS])
+    ? d[STORAGE.LOGIN_FLOW_WINDOW_IDS]
+    : [];
+  for (const wid of winIds) {
+    try {
+      if (wid != null) await chrome.windows.remove(Number(wid));
+    } catch (e) {
+      logWarn("close login flow window", wid, e);
+    }
+  }
+  const openerTab = d[STORAGE.LOGIN_FLOW_OPENER_TAB_ID];
+  if (openerTab != null && openerTab !== undefined) {
+    try {
+      const tab = await chrome.tabs.get(Number(openerTab));
+      if (tab && tab.id != null && !tabUrlIsLoginFlowPage(tab.url || "")) {
+        await chrome.tabs.remove(tab.id);
+        log("closed login-flow opener tab", tab.id);
+      }
+    } catch (e) {
+      logWarn("close login flow opener tab", e);
+    }
+  }
+  await chrome.storage.local.remove([
+    STORAGE.LOGIN_FLOW_WINDOW_IDS,
+    STORAGE.LOGIN_FLOW_OPENER_TAB_ID,
+  ]);
 }
 
 async function completePendingRestore() {
@@ -1932,6 +1992,7 @@ async function completePendingRestore() {
     throw new Error("No session is waiting. Use Login First, then Continue.");
   }
   await chrome.storage.local.remove(STORAGE.PENDING_RESTORE);
+  await closeLoginFlowWindowsIfAny();
   await restoreSessionInternal(String(name).trim());
   log("pending restore completed", name);
 }
@@ -1944,6 +2005,10 @@ async function getPendingRestore() {
 
 async function clearPendingRestore() {
   await chrome.storage.local.remove(STORAGE.PENDING_RESTORE);
+  await chrome.storage.local.remove([
+    STORAGE.LOGIN_FLOW_WINDOW_IDS,
+    STORAGE.LOGIN_FLOW_OPENER_TAB_ID,
+  ]);
 }
 
 async function getSessionDetail(name) {
@@ -2392,7 +2457,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           break;
         }
         case "RESTORE_SESSION_AFTER_LOGIN": {
-          await openLoginWindowsThenQueueRestore(message.name);
+          await openLoginWindowsThenQueueRestore(message.name, message.openerTabId);
           const pending = await getPendingRestore();
           sendResponse({ ok: true, pendingRestoreSession: pending });
           break;
@@ -2438,8 +2503,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             [STORAGE.CURRENT_SESSION_FOLDER]: key,
             [STORAGE.SESSION_FOLDERS_V2]: folders,
           });
+          let folderPullError = null;
+          const gh = await getGithubSettings();
+          if (gh.token && gh.owner && gh.repo) {
+            const pe = await githubPullSingleFolderMerge(key);
+            if (pe) folderPullError = pe;
+          }
           const st = await getStateForPopup();
-          sendResponse({ ok: true, ...st });
+          sendResponse({ ok: true, ...st, folderPullError });
           break;
         }
         case "ADD_SESSION_FOLDER": {
@@ -2465,8 +2536,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
               error: String(e && e.message ? e.message : e),
             };
           }
+          let folderPullError = null;
+          const gh2 = await getGithubSettings();
+          if (gh2.token && gh2.owner && gh2.repo) {
+            const pe = await githubPullSingleFolderMerge(key);
+            if (pe) folderPullError = pe;
+          }
           const st = await getStateForPopup();
-          sendResponse({ ok: true, ...st, githubPlaceholder });
+          sendResponse({ ok: true, ...st, githubPlaceholder, folderPullError });
           break;
         }
         case "DELETE_SESSION_FOLDER": {

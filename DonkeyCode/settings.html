@@ -47,7 +47,7 @@
         <h2 id="h-github">GitHub session sync</h2>
         <p class="muted">
           Session files live under a <strong>sessions root</strong> in the repo (default <code>sessions</code>). Use
-          <strong>Sync folder</strong> in the popup to upload and merge the active folder. Folder table below shows paths.
+          <strong>Save to cloud</strong> / <strong>Get cloud sessions</strong> in the popup for the active folder. Folder table below shows paths.
         </p>
         <div class="grid2">
           <div>
@@ -69,6 +69,10 @@
         <div class="btn-row">
           <button type="button" id="btn-save-github" class="btn primary">Save GitHub settings</button>
           <button type="button" id="btn-remove-token" class="btn danger secondary">Remove stored token</button>
+        </div>
+        <div class="btn-row">
+          <button type="button" id="btn-gh-push" class="btn secondary">Save to cloud (current folder)</button>
+          <button type="button" id="btn-gh-pull" class="btn secondary">Get cloud sessions (current folder)</button>
         </div>
         <p id="github-status" class="inline-status" role="status"></p>
         <p class="muted small">

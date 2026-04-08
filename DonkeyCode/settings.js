@@ -385,6 +385,41 @@ $("btn-save-github").addEventListener("click", async function () {
   }
 });
 
+$("btn-gh-pull").addEventListener("click", async function () {
+  setInlineStatus($("github-status"), "Getting cloud sessions…", false);
+  try {
+    const res = await send("GITHUB_SESSIONS_PULL", {});
+    if (res.ok === false) throw new Error(res.error || "Pull failed");
+    const names = res.sessions || [];
+    const pe = res.pullErrors || [];
+    let msg =
+      "Cloud sessions merged. Active folder: " +
+      (names.length ? names.join(", ") : "(none)");
+    if (pe.length) msg += " — " + pe.join(" ");
+    setInlineStatus($("github-status"), msg, !!pe.length);
+    await refreshFoldersOnly();
+  } catch (e) {
+    setInlineStatus($("github-status"), String(e.message || e), true);
+  }
+});
+
+$("btn-gh-push").addEventListener("click", async function () {
+  setInlineStatus($("github-status"), "Saving to cloud…", false);
+  try {
+    const res = await send("GITHUB_SESSIONS_PUSH", {});
+    if (res.ok === false) throw new Error(res.error || "Push failed");
+    const names = res.sessions || [];
+    setInlineStatus(
+      $("github-status"),
+      "Saved to cloud. Sessions: " + (names.length ? names.join(", ") : "(none)"),
+      false
+    );
+    await refreshFoldersOnly();
+  } catch (e) {
+    setInlineStatus($("github-status"), String(e.message || e), true);
+  }
+});
+
 $("btn-remove-token").addEventListener("click", async function () {
   if (!window.confirm("Remove the stored GitHub token from this browser profile?")) return;
   setInlineStatus($("github-status"), "Removing…", false);

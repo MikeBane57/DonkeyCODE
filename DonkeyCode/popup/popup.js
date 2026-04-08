@@ -339,7 +339,18 @@ async function switchSessionFolder(folderKey) {
     fillSessionFolderUI(res);
     renderSessions(res.sessions || []);
     syncLoginFirstSelect(res.sessions || []);
-    setStatus('Folder: "' + (v === "__default__" ? "Default" : v) + '".');
+    const pe = res.folderPullError;
+    if (pe) {
+      setStatus(
+        'Folder "' +
+          (v === "__default__" ? "Default" : v) +
+          '". Cloud sync note: ' +
+          pe,
+        true
+      );
+    } else {
+      setStatus('Folder: "' + (v === "__default__" ? "Default" : v) + '".');
+    }
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
     setStatus(String(e.message || e), true);
@@ -355,25 +366,10 @@ const folderPickerExpandedPaths = new Set();
 function fillSessionFolderUI(state) {
   lastFolderPickerState = state;
   const labelEl = $("session-folder-current-label");
-  const hint = $("session-folder-github-hint");
   const cur = state.currentSessionFolder || "__default__";
   if (labelEl) {
     labelEl.textContent = cur === "__default__" ? "Default" : cur;
     labelEl.title = cur === "__default__" ? "Default (__default__)" : cur;
-  }
-  if (hint) {
-    const rel = (state.folderGithubRelativePaths && state.folderGithubRelativePaths[cur]) || "";
-    const eff = state.githubEffectiveSessionFilePath || "";
-    const root =
-      state.githubSessionsRoot != null && String(state.githubSessionsRoot).trim() !== ""
-        ? String(state.githubSessionsRoot).trim()
-        : "";
-    hint.textContent = rel
-      ? "GitHub file for this folder: " + eff
-      : "GitHub sessions root: " +
-        (root || "(not set)") +
-        " — this folder: " +
-        (eff || state.githubPath || "");
   }
 }
 
@@ -1023,6 +1019,41 @@ function formatGithubSyncStatus(prefix, res) {
   return { text: parts.join(" "), isErr };
 }
 
+async function pullSessionsFromGithub() {
+  setStatus("Getting cloud sessions…");
+  try {
+    const res = await send("GITHUB_SESSIONS_PULL", {});
+    await loadState();
+    const { text, isErr } = formatGithubSyncStatus("Cloud sessions merged.", res);
+    setStatus(text, isErr);
+  } catch (e) {
+    console.error("[DonkeyCode:popup] GitHub pull", e);
+    setStatus(String(e.message || e), true);
+    try {
+      await loadState();
+    } catch (e2) {
+      /* ignore */
+    }
+  }
+}
+
+async function pushCurrentFolderToGithub() {
+  setStatus("Saving to cloud…");
+  try {
+    await send("GITHUB_SESSIONS_PUSH", {});
+    await loadState();
+    setStatus("Saved to cloud.");
+  } catch (e) {
+    console.error("[DonkeyCode:popup] GitHub push", e);
+    setStatus(String(e.message || e), true);
+    try {
+      await loadState();
+    } catch (e2) {
+      /* ignore */
+    }
+  }
+}
+
 async function discoverSessionFoldersFromGithub() {
   setStatus("Discovering folders on GitHub…");
   try {
@@ -1036,24 +1067,6 @@ async function discoverSessionFoldersFromGithub() {
     }
   } catch (e) {
     console.error("[DonkeyCode:popup] GitHub discover folders", e);
-    setStatus(String(e.message || e), true);
-    try {
-      await loadState();
-    } catch (e2) {
-      /* ignore */
-    }
-  }
-}
-
-async function syncAllSessionsWithGithub() {
-  setStatus("Sync folder (GitHub)…");
-  try {
-    const res = await send("GITHUB_SESSIONS_SYNC_ALL", {});
-    await loadState();
-    const { text, isErr } = formatGithubSyncStatus("Sync folder complete.", res);
-    setStatus(text, isErr);
-  } catch (e) {
-    console.error("[DonkeyCode:popup] GitHub sync all", e);
     setStatus(String(e.message || e), true);
     try {
       await loadState();
@@ -1126,7 +1139,17 @@ async function loginFirst() {
   }
   setStatus("Opening login windows…");
   try {
-    const res = await send("RESTORE_SESSION_AFTER_LOGIN", { name: name.trim() });
+    let openerTabId;
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs && tabs[0] && tabs[0].id != null) openerTabId = tabs[0].id;
+    } catch (e) {
+      /* ignore */
+    }
+    const res = await send("RESTORE_SESSION_AFTER_LOGIN", {
+      name: name.trim(),
+      openerTabId,
+    });
     updatePendingBanner(res);
     setStatus(
       "Sign in to both sites, then click Continue to launch your saved session."
@@ -1269,7 +1292,8 @@ bindClick("worksheet-order-cancel", function () {
 })();
 
 bindClick("btn-discover-session-folders", discoverSessionFoldersFromGithub);
-bindClick("btn-sync-session-folder-github", syncAllSessionsWithGithub);
+bindClick("btn-pull-sessions-github", pullSessionsFromGithub);
+bindClick("btn-push-sessions-github", pushCurrentFolderToGithub);
 bindClick("btn-refresh-scripts", refreshScripts);
 bindClick("btn-open-settings", openSettingsTab);
 
@@ -1315,13 +1339,12 @@ bindClick("btn-add-session-folder", async function () {
     renderSessions(res.sessions || []);
     syncLoginFirstSelect(res.sessions || []);
     const ph = res.githubPlaceholder;
-    if (ph && ph.created) {
-      setStatus("Folder added; created " + (ph.path || "sessions file") + " on GitHub.");
-    } else if (ph && ph.error) {
-      setStatus("Folder added; GitHub placeholder failed: " + ph.error, true);
-    } else {
-      setStatus("Folder added.");
-    }
+    const pe = res.folderPullError;
+    let msg = "Folder added.";
+    if (ph && ph.created) msg += " Created file on GitHub.";
+    else if (ph && ph.error) msg += " GitHub: " + ph.error;
+    if (pe) msg += " Cloud: " + pe;
+    setStatus(msg, !!(pe || (ph && ph.error)));
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
     setStatus(String(e.message || e), true);

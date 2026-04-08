@@ -78,11 +78,6 @@
           </button>
           <button type="button" id="btn-add-session-folder" class="small secondary" title="Add folder">+ Folder</button>
         </div>
-        <p id="session-folder-github-hint" class="hint"></p>
-        <p class="hint small-hint">
-          <strong>Sync folder</strong> uploads this folder to GitHub, then merges remote changes. <strong>Discover</strong> adds folder paths from the repo (no session merge).
-          <strong>+ Folder</strong>: name, or <code>name, path/override</code> for a custom Git path.
-        </p>
       </div>
 
       <div class="row">
@@ -91,8 +86,11 @@
       </div>
       <div class="btn-row github-sync-row">
         <button type="button" id="btn-save-session">Save current layout</button>
-        <button type="button" id="btn-sync-session-folder-github" class="primary" title="Push this folder to GitHub, then pull merge">
-          Sync folder
+        <button type="button" id="btn-push-sessions-github" class="primary" title="Upload this folder’s sessions to GitHub">
+          Save to cloud
+        </button>
+        <button type="button" id="btn-pull-sessions-github" class="secondary" title="Merge GitHub sessions into this folder">
+          Get cloud sessions
         </button>
       </div>
       <h2 class="section-title">Saved sessions</h2>
