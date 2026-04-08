@@ -1,5 +1,248 @@
 {
   "version": 1,
-  "updatedAt": 1775669145005,
-  "sessions": {}
+  "updatedAt": 1775669233773,
+  "sessions": {
+    "First Try": {
+      "windows": [
+        {
+          "id": "w_0_mnqbm2g3",
+          "left": 2002,
+          "top": 704,
+          "width": 1080,
+          "height": 984,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/schedule",
+              "active": false,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/schedule",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/schedule",
+              "active": false,
+              "index": 2,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/baker-scenario-view",
+              "active": true,
+              "index": 3,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 0
+        },
+        {
+          "id": "w_1_mnqbm2g3",
+          "left": 3066,
+          "top": 0,
+          "width": 2211,
+          "height": 1687,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/flifo",
+              "active": false,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/flight-history",
+              "active": true,
+              "index": 1,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet-filter?type=worksheet&windowId=adf84759-5c2b-4345-ac64-0f7b7401ab2f&detached=true",
+              "active": false,
+              "index": 2,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": false,
+              "index": 3,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet-filter?type=worksheet&windowId=8fd8a26d-17cf-4734-88f9-367c0787c38f&detached=true",
+              "active": false,
+              "index": 4,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": false,
+              "index": 5,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet-filter?type=worksheet&windowId=86ed5034-e494-47a4-bee8-e7ae7236c3f9&detached=true",
+              "active": false,
+              "index": 6,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": false,
+              "index": 7,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 1
+        },
+        {
+          "id": "w_2_mnqbm2g3",
+          "left": 5263,
+          "top": 0,
+          "width": 888,
+          "height": 1687,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/crew?dark=true&windowId=9f151111-e908-444f-84d1-dc4af2645ba0&windowState=true&groupId=adf84759-5c2b-4345-ac64-0f7b7401ab2f",
+              "active": false,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/related-flights?dark=true&windowId=3de8201d-ffa9-45cf-a081-6612794a5ab1&windowState=true&groupId=adf84759-5c2b-4345-ac64-0f7b7401ab2f",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/crew?dark=true&windowId=77b80e2d-8f36-4cf9-a5f8-d7933a014276&windowState=true&groupId=8fd8a26d-17cf-4734-88f9-367c0787c38f",
+              "active": true,
+              "index": 2,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/related-flights?dark=true&windowId=0fdeb911-6055-4b64-86e3-e355a334cb6f&windowState=true&groupId=8fd8a26d-17cf-4734-88f9-367c0787c38f",
+              "active": false,
+              "index": 3,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/crew?dark=true&windowId=b7c3e622-0b1b-4a4e-ac3a-93c2f812eb44&windowState=true&groupId=86ed5034-e494-47a4-bee8-e7ae7236c3f9",
+              "active": false,
+              "index": 4,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/related-flights?dark=true&windowId=de13a922-b1bd-4c68-b4fe-cd0ae7e3b8ca&windowState=true&groupId=86ed5034-e494-47a4-bee8-e7ae7236c3f9",
+              "active": false,
+              "index": 5,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 2
+        },
+        {
+          "id": "w_3_mnqbm2g3",
+          "left": 1989,
+          "top": 0,
+          "width": 1093,
+          "height": 712,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/operational-dashboard",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 3
+        },
+        {
+          "id": "w_4_mnqbm2g3",
+          "left": -241,
+          "top": 0,
+          "width": 879,
+          "height": 708,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "http://155.178.172.205/ois/",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 4
+        },
+        {
+          "id": "w_5_mnqbm2g3",
+          "left": -6,
+          "top": 701,
+          "width": 814,
+          "height": 989,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://outlook.office.com/mail/",
+              "active": false,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://teams.microsoft.com/v2/",
+              "active": true,
+              "index": 1,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 5
+        },
+        {
+          "id": "w_6_mnqbm2g3",
+          "left": 815,
+          "top": 463,
+          "width": 1061,
+          "height": 899,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "edge://extensions/",
+              "active": false,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "chrome-extension://mmgfmepenijlohmphnehbnkjbaedinec/welcome.html",
+              "active": true,
+              "index": 1,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 6
+        }
+      ],
+      "_meta": {
+        "updatedAt": 1775669233587,
+        "worksheetStaggerMs": 800
+      }
+    }
+  }
 }
