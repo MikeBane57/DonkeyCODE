@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": 1775651255497,
+  "updatedAt": 1775651320094,
   "sessions": {
     "Sector/Region - ALL": {
       "windows": [
@@ -617,7 +617,7 @@
               "pinned": false
             },
             {
-              "url": "https://opssuitemain.swacorp.com/go-gates/DAL/20260408",
+              "url": "https://opssuitemain.swacorp.com/go-gates",
               "active": false,
               "index": 3,
               "pinned": false
@@ -629,7 +629,7 @@
               "pinned": false
             },
             {
-              "url": "https://opssuitemain.swacorp.com/go-turns/DAL/20260408",
+              "url": "https://opssuitemain.swacorp.com/go-turns",
               "active": false,
               "index": 5,
               "pinned": false
@@ -712,7 +712,7 @@
         }
       ],
       "_meta": {
-        "updatedAt": 1775651255192
+        "updatedAt": 1775651319919
       }
     },
     "Sector/Region-Wolf": {
