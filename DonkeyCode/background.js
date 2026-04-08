@@ -1853,15 +1853,18 @@ async function restoreSessionInternal(name, opts) {
   for (let wi = 0; wi < ordered.length; wi++) {
     const w = ordered[wi];
     const curIsWs = !!worksheetPrimaryUrlForWindow(w);
-    const urls = (w.tabs || [])
-      .sort((a, b) => (a.index || 0) - (b.index || 0))
-      .map((t) => t.url)
-      .filter(
-        (u) =>
-          u &&
-          !u.startsWith("chrome-extension:") &&
-          /^https?:\/\//i.test(u)
+    const sortedTabs = (w.tabs || [])
+      .slice()
+      .sort((a, b) => (a.index || 0) - (b.index || 0));
+    const validTabs = sortedTabs.filter(function (t) {
+      const u = t.url;
+      return (
+        u &&
+        !String(u).startsWith("chrome-extension:") &&
+        /^https?:\/\//i.test(u)
       );
+    });
+    const urls = validTabs.map((t) => t.url);
     if (urls.length === 0) continue;
 
     if (curIsWs && openedWorksheetWindow && stagger > 0) {
@@ -1886,9 +1889,17 @@ async function restoreSessionInternal(name, opts) {
 
     if (curIsWs) openedWorksheetWindow = true;
 
-    if (created && created.tabs && w.tabs) {
-      const sortedTabs = (w.tabs || []).slice().sort((a, b) => (a.index || 0) - (b.index || 0));
-      const activeIndex = sortedTabs.findIndex((t) => t.active);
+    if (created && created.tabs && validTabs.length) {
+      const n = Math.min(created.tabs.length, validTabs.length);
+      for (let ti = 0; ti < n; ti++) {
+        if (!validTabs[ti].pinned) continue;
+        try {
+          await chrome.tabs.update(created.tabs[ti].id, { pinned: true });
+        } catch (e) {
+          logWarn("could not pin tab", ti, e);
+        }
+      }
+      const activeIndex = validTabs.findIndex((t) => t.active);
       if (activeIndex >= 0 && created.tabs[activeIndex]) {
         try {
           await chrome.tabs.update(created.tabs[activeIndex].id, { active: true });
