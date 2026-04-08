@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": 1775610291453,
+  "updatedAt": 1775610319823,
   "sessions": {
     "Sector/Region - ALL": {
       "windows": [
@@ -283,6 +283,290 @@
       ],
       "_meta": {
         "updatedAt": 1775610286773,
+        "worksheetStaggerMs": 800
+      }
+    },
+    "hi brad": {
+      "windows": [
+        {
+          "id": "w_0_mnpcje0v",
+          "left": 0,
+          "top": 730,
+          "width": 2832,
+          "height": 1382,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": false,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://cursor.com/agents/bc-3ed29d99-8b40-42f6-9111-483a7ee161d3?branch=cursor%2Fdonkeycode-extension-foundation-9e8b",
+              "active": true,
+              "index": 1,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 0
+        },
+        {
+          "id": "w_1_mnpcje0v",
+          "left": 0,
+          "top": 0,
+          "width": 2453,
+          "height": 704,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/flifo",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": false,
+              "index": 2,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": false,
+              "index": 3,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 1
+        },
+        {
+          "id": "w_2_mnpcje0v",
+          "left": -1095,
+          "top": 0,
+          "width": 1095,
+          "height": 2112,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/schedule",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/acars-events",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 2
+        },
+        {
+          "id": "w_3_mnpcje0v",
+          "left": 2423,
+          "top": 0,
+          "width": 1417,
+          "height": 705,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 3
+        },
+        {
+          "id": "w_4_mnpcje0v",
+          "left": 2800,
+          "top": 696,
+          "width": 1040,
+          "height": 707,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/crew?dark=true&windowId=37ebca98-d08b-4cea-b230-2d7734a857fe&windowState=true&groupId=4755a75e-a7ba-4c89-9bb9-d7a6d82c141b",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 4
+        },
+        {
+          "id": "w_5_mnpcje0v",
+          "left": 2800,
+          "top": 1389,
+          "width": 1040,
+          "height": 723,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/ots",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 5
+        },
+        {
+          "id": "w_6_mnpcje0v",
+          "left": 0,
+          "top": 696,
+          "width": 2831,
+          "height": 1289,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://login.microsoftonline.com/f5d3bd9c-a8c2-4efc-9493-ddf2d4b42f17/oauth2/authorize?client%5Fid=00000003%2D0000%2D0ff1%2Dce00%2D000000000000&response%5Fmode=form%5Fpost&ear%5Fjwe%5Fcrypto=eyJhbGciOiJFQ0RILUVTIiwiZW5jIjoiQTI1NkdDTSIsImFwdiI6IkFBQUFDVVZoY2tOc2FXVnVkR2dBQUFCRlEwc3pNQUFBQUg1RFdZZ0VyV05qUFRyTnRycEJITW1XQ2hmNFVNY0MvUmNZOG5nQy9FZUJ2dzh1Wk1weEcvbEYrc1ptUEtKSDNabFJKYXQyNUlVcFFZMFZ0eEtraE16VVhnWFlzVTFZUHpmM2pKVkhKdndWTldZdUlnRlVMbmI3WFNvY0NMVlNDd0FBQUJnWCtvYWtGMHRscGxCbUwwMDlaSFd3ZzhpODVKeEZLamc9In0%3D&ear%5Fjwk=eyJhbGciOiJFQ0RILUVTIiwiY3J2IjoiUC0zODQiLCJ4IjoiQUFBQU1INURXWWdFcldOalBUck50cnBCSE1tV0NoZjRVTWNDL1JjWThuZ0MvRWVCdnc4dVpNcHhHL2xGK3NabVBLSkgzUT09IiwieSI6IkFBQUFNSmxSSmF0MjVJVXBRWTBWdHhLa2hNelVYZ1hZc1UxWVB6ZjNqSlZISnZ3Vk5XWXVJZ0ZVTG5iN1hTb2NDTFZTQ3c9PSIsImt0eSI6IkVDIn0%3D&spa%5Fclient%5Fid=08e18876%2D6177%2D487e%2Db8b5%2Dcf950c1e598c&client%5Finfo=1&response%5Ftype=code%20id%5Ftoken%20spa%5Frt&resource=00000003%2D0000%2D0ff1%2Dce00%2D000000000000&scope=openid&nonce=9CC74FF3B72061329AC9C4E7757FD5712BBA192746E52B4C%2DE864C35912A103F8290D9366F1DD4B41F2740F942D0340DEE3CB92C0C780F26E&redirect%5Furi=https%3A%2F%2Fwnco%2Esharepoint%2Ecom%2F%5Fforms%2Fdefault%2Easpx&state=OD0wJjMyPUFBTVQ2Z0FBQUJRNzI4MlFkU1lLamZBU0pYSiUyRmI4aVo4VzV2aG9pbVhub0Zha3hKdG5qOWgyYk54Z2cxYVdzZ0FjQnZsTkt3OTFscWdwdVBrWDNBciUyQm9GWGdNaWZqbHFGNXFLbyUyQlpwUThUc0ZUbHRIWmpybkJMRFZjR1VnZ2JaQ3p1c0YxWGhLcTF2ZE9PRFJpWSUyRkI5bE10cXklMkJyaDN6aGl5U3hZSmZBSnZXeUUlMkIyT3NLb25qTVlJUEQ5MW9DUW9BVGRDbUhJS1Npa1lZUjh1ZjJiNGRoQjRFYWxJWFJCWE9OckVDSlhpYzZldnE0dzJJTEtnYmJadTFaekxmb0dTNU9zWDYwNiUyRm5ETWNQZjBJYTd1SnBCakVYcVZOU3lmZ1dHaklMeXp6azdNVEhoUTN1VGp2d0dEbEkwS09GVVBqQ3FIOXBZJTJGOU1FQVdoSUtnT3FMOTZ2bDZKTERSN3ZMU2oxRnBheXpMbHJMcHBiWjBicVVjUmJhMTh6MWpRNCUzRA&claims=%7B%22id%5Ftoken%22%3A%7B%22xms%5Fcc%22%3A%7B%22values%22%3A%5B%22CP1%22%5D%7D%7D%7D&wsucxt=1&cobrandid=11bd8083%2D87e0%2D41b5%2Dbb78%2D0bc43c8a8e8a&client%2Drequest%2Did=8dcb07a2%2D10cc%2D0000%2D8453%2D5b37516cb9cd&sso_reload=true",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 6
+        },
+        {
+          "id": "w_7_mnpcje0v",
+          "left": -2759,
+          "top": 0,
+          "width": 1682,
+          "height": 1009,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/recovery",
+              "active": false,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://southwest.quickbase.com/db/main?a=SignIn&nexturl=https%3A%2F%2Fsouthwest.quickbase.com%2Fdb%2Fbuf7x88sk%3Fskip%3D0%26a%3Dtd&rc=psi&_c=y8fh49",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            },
+            {
+              "url": "https://globalui.fpflightkeys.prod.aws.swacorp.com/auth/signIn?rd=https://globalui.fpflightkeys.prod.aws.swacorp.com%2F5d-visual-angular%2F",
+              "active": false,
+              "index": 2,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/station-dashboard",
+              "active": false,
+              "index": 3,
+              "pinned": false
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/go-turns/DAL/20260407",
+              "active": true,
+              "index": 4,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 7
+        },
+        {
+          "id": "w_8_mnpcje0v",
+          "left": -3840,
+          "top": 467,
+          "width": 1101,
+          "height": 540,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "http://155.178.172.205/ois/oisedit/summary_sys?clock=off",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://www.flightaware.com/live/cancelled/",
+              "active": false,
+              "index": 1,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 8
+        },
+        {
+          "id": "w_9_mnpcje0v",
+          "left": -3840,
+          "top": 0,
+          "width": 1104,
+          "height": 618,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/operational-dashboard",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 9
+        },
+        {
+          "id": "w_10_mnpcje0v",
+          "left": -2168,
+          "top": 995,
+          "width": 1092,
+          "height": 1117,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=5e3ce6c0-2b1f-4285-8d4b-75ee78787346&scope=openId%20profile%20openid%20offline_access&redirect_uri=https%3A%2F%2Fteams.microsoft.com%2Fv2&client-request-id=019d6a8c-1c95-7acf-add9-6a5f556c8ea0&response_mode=fragment&response_type=code&x-client-SKU=msal.js.browser&x-client-VER=3.30.0&client_info=1&code_challenge=KQgeBU5pGh2sglzkwlQyDwtPyuScZVqtSFxCfyLgAQE&code_challenge_method=S256&nonce=019d6a8c-1c96-74b5-ad1f-356fec4792ac&state=eyJpZCI6IjAxOWQ2YThjLTFjOTUtNzllNC1hMmI4LTgyZDQwYjEzMmFkYiIsIm1ldGEiOnsiaW50ZXJhY3Rpb25UeXBlIjoicmVkaXJlY3QifX0%3D%7Chttps%3A%2F%2Fteams.microsoft.com%2Fv2%2F%3Fenablemcasfort21%3Dtrue",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 10
+        },
+        {
+          "id": "w_11_mnpcje0v",
+          "left": -3840,
+          "top": 993,
+          "width": 1673,
+          "height": 1119,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=9199bf20-a13f-4107-85dc-02114787ef48&scope=https%3A%2F%2Foutlook.office.com%2F.default%20openid%20profile%20offline_access&redirect_uri=https%3A%2F%2Foutlook.office.com%2Fmail%2F&client-request-id=7abf2e69-2084-9a05-70f4-9d39ead475dc&response_mode=fragment&client_info=1&prompt=select_account&nonce=019d6a8c-19f5-728b-9011-dc397ce6013f&state=eyJpZCI6IjAxOWQ2YThjLTE5ZjUtNzAwYy04ZDIxLTNmMGYyZDVkMDE2MyIsIm1ldGEiOnsiaW50ZXJhY3Rpb25UeXBlIjoicmVkaXJlY3QifX0%3D%7CaHR0cHM6Ly9vdXRsb29rLm9mZmljZS5jb20vbWFpbC8&claims=%7B%22access_token%22%3A%7B%22xms_cc%22%3A%7B%22values%22%3A%5B%22CP1%22%5D%7D%7D%7D&x-client-SKU=msal.js.browser&x-client-VER=4.28.2&response_type=code&code_challenge=zv4MiYRVdTF3-hRaXR8AD1LfFpzxAzTRbvDkScuCX_w&code_challenge_method=S256",
+              "active": true,
+              "index": 0,
+              "pinned": false
+            }
+          ],
+          "restoreOrder": 11
+        }
+      ],
+      "_meta": {
+        "updatedAt": 1775610319694,
         "worksheetStaggerMs": 800
       }
     }
