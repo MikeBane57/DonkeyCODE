@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": 1775654158456,
+  "updatedAt": 1775696575416,
   "sessions": {
     "Sector/Region-ALL": {
       "windows": [
@@ -564,28 +564,10 @@
             }
           ],
           "restoreOrder": 5
-        },
-        {
-          "id": "w_6_mnq0mqnm",
-          "left": 5,
-          "top": 710,
-          "width": 2827,
-          "height": 1273,
-          "state": "normal",
-          "focused": false,
-          "tabs": [
-            {
-              "url": "https://wnco.sharepoint.com/sites/SWALife-NOC-Secure/SitePages/SOD-Main.aspx?source=https%3A%2F%2Fwnco.sharepoint.com%2Fsites%2FSWALife-NOC-Secure%2FSitePages%2FForms%2FAllPages.aspx",
-              "active": true,
-              "index": 0,
-              "pinned": false
-            }
-          ],
-          "restoreOrder": 6
         }
       ],
       "_meta": {
-        "updatedAt": 1775650786963,
+        "updatedAt": 1775696575011,
         "worksheetStaggerMs": 800
       }
     }
