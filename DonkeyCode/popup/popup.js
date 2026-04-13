@@ -309,7 +309,7 @@ function setTabVersions(version) {
   const s1 = $("tab-ver-sessions");
   const s2 = $("tab-ver-scripts");
   if (s1) s1.textContent = v ? v : "";
-  if (s2) s2.textContent = v ? v : "";
+  if (s2) s2.textContent = "";
 }
 
 function syncLoginFirstSelect(names) {
@@ -968,24 +968,31 @@ function renderScripts(scripts) {
     ul.appendChild(li);
   }
 
-  if (enabledList.length) {
+  function appendSectionLabel(text) {
+    const li = document.createElement("li");
+    li.className = "script-section-label";
+    li.textContent = text;
+    ul.appendChild(li);
+  }
+
+  function appendColumnHeader() {
     const head = document.createElement("li");
     head.className = "script-section-heading script-section-heading--scripts";
     head.innerHTML =
-      '<span class="script-col-toggle"></span>' +
+      '<span class="script-col-toggle" aria-hidden="true"></span>' +
       '<span class="script-col-name">Script</span>' +
       '<span class="script-col-ver">Ver</span>';
     ul.appendChild(head);
+  }
+
+  if (enabledList.length) {
+    appendSectionLabel("Enabled");
+    appendColumnHeader();
     enabledList.forEach(appendScriptRow);
   }
   if (inactiveList.length) {
-    const head = document.createElement("li");
-    head.className = "script-section-heading script-section-heading--scripts";
-    head.innerHTML =
-      '<span class="script-col-toggle"></span>' +
-      '<span class="script-col-name">Script</span>' +
-      '<span class="script-col-ver">Ver</span>';
-    ul.appendChild(head);
+    appendSectionLabel("Inactive");
+    appendColumnHeader();
     inactiveList.forEach(appendScriptRow);
   }
 }
@@ -1020,7 +1027,7 @@ function formatGithubSyncStatus(prefix, res) {
 }
 
 async function pullSessionsFromGithub() {
-  setStatus("Getting cloud sessions…");
+  setStatus("Getting cloud layouts…");
   try {
     const res = await send("GITHUB_SESSIONS_PULL", {});
     await loadState();

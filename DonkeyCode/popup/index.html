@@ -16,9 +16,20 @@
             <p class="sub">Sessions &amp; user scripts</p>
           </div>
         </div>
-        <button type="button" id="btn-open-settings" class="btn-gear" title="Open full settings in a tab" aria-label="Settings">
-          &#9881;
-        </button>
+        <div class="header-actions">
+          <button
+            type="button"
+            id="btn-browse-session-folders"
+            class="btn-header-icon"
+            title="Search and pick a session folder"
+            aria-label="Browse session folders"
+          >
+            <span class="btn-header-icon-label" aria-hidden="true">📁</span>
+          </button>
+          <button type="button" id="btn-open-settings" class="btn-gear" title="Open full settings in a tab" aria-label="Settings">
+            &#9881;
+          </button>
+        </div>
       </div>
     </header>
 
@@ -56,7 +67,7 @@
 
       <p class="hint restore-hint restore-hint--top">
         <strong>Login First</strong> opens two side-by-side windows (opssuite + swalife). Sign in, then click
-        <strong>Continue: open saved session</strong> to launch your saved layout. Use the <strong>gear</strong> for scripts, GitHub settings, and repo browser.
+        <strong>Continue: open saved session</strong> to launch your saved layout. Use the <strong>folder</strong> icon to pick a session folder, or the <strong>gear</strong> for scripts and GitHub settings.
       </p>
 
       <div class="row session-folder-row">
@@ -64,19 +75,7 @@
         <div class="session-folder-controls">
           <div class="session-folder-active-wrap" title="Current folder">
             <span id="session-folder-current-label" class="session-folder-current-label">Default</span>
-            <button
-              type="button"
-              id="btn-browse-session-folders"
-              class="small secondary"
-              title="Search and pick from all folders (including nested paths)"
-            >
-              Browse…
-            </button>
           </div>
-          <button type="button" id="btn-discover-session-folders" class="small secondary" title="Scan repo for session folders and add any missing to the list">
-            Discover
-          </button>
-          <button type="button" id="btn-add-session-folder" class="small secondary" title="Add folder">+ Folder</button>
         </div>
       </div>
 
@@ -89,8 +88,8 @@
         <button type="button" id="btn-push-sessions-github" class="primary" title="Upload this folder’s sessions to GitHub">
           Save to cloud
         </button>
-        <button type="button" id="btn-pull-sessions-github" class="secondary" title="Merge GitHub sessions into this folder">
-          Get cloud sessions
+        <button type="button" id="btn-pull-sessions-github" class="secondary" title="Merge GitHub session layouts into this folder">
+          Get cloud layouts
         </button>
       </div>
       <h2 class="section-title">Saved sessions</h2>
@@ -99,18 +98,13 @@
     </section>
 
     <section id="panel-scripts" class="panel" role="tabpanel" hidden>
-      <div class="scripts-toolbar">
-        <button type="button" id="btn-refresh-scripts">Refresh scripts</button>
-        <p id="last-fetch" class="hint scripts-toolbar-hint"></p>
+      <div class="scripts-head-row">
+        <h2 class="section-title scripts-head-title">Scripts</h2>
+        <button type="button" id="btn-refresh-scripts" class="scripts-refresh-btn">Refresh</button>
       </div>
-      <h2 class="section-title">Scripts</h2>
+      <p id="last-fetch" class="hint scripts-last-fetch"></p>
       <ul id="script-list" class="list script-list"></ul>
       <p id="scripts-empty" class="hint hidden">No scripts loaded. Open settings (gear) and refresh.</p>
-
-      <div class="script-settings">
-        <h2 class="section-title">Script sources</h2>
-        <p class="hint">Configure script sources and GitHub sync in <strong>full settings</strong> (gear icon).</p>
-      </div>
     </section>
 
     <p id="status" class="status" role="status"></p>
@@ -133,7 +127,15 @@
 
     <div id="folder-picker-overlay" class="modal-overlay hidden" aria-hidden="true">
       <div class="modal folder-picker-modal" role="dialog" aria-labelledby="folder-picker-title">
-        <h2 id="folder-picker-title" class="modal-title">Choose session folder</h2>
+        <div class="folder-picker-head">
+          <h2 id="folder-picker-title" class="modal-title folder-picker-title">Choose session folder</h2>
+          <div class="folder-picker-head-actions">
+            <button type="button" id="btn-discover-session-folders" class="small secondary" title="Scan repo for session folders and add any missing to the list">
+              Discover
+            </button>
+            <button type="button" id="btn-add-session-folder" class="small secondary" title="Add folder">+ Folder</button>
+          </div>
+        </div>
         <p class="hint modal-hint">
           Filter by any part of the path. Nested folders use <code>/</code> (e.g. <code>team/a/b</code>).
         </p>
