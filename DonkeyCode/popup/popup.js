@@ -1089,13 +1089,40 @@ async function refreshScripts() {
     const res = await send("REFRESH_SCRIPTS", {});
     renderScripts(res.scripts || []);
     const st = await send("GET_STATE", {});
-    $("last-fetch").textContent = st.lastScriptFetch
-      ? "Last fetch: " + formatTime(st.lastScriptFetch)
-      : "";
+    const lf = $("last-fetch");
+    if (lf) {
+      lf.textContent = st.lastScriptFetch
+        ? "Last fetch: " + formatTime(st.lastScriptFetch)
+        : "";
+    }
     updateSetupBanner(st);
     setStatus("Scripts refreshed.");
   } catch (e) {
     console.error("[DonkeyCode:popup]", e);
+    setStatus(String(e.message || e), true);
+  }
+}
+
+async function pullScriptPrefsFromGithub() {
+  setStatus("Loading script prefs from GitHub…");
+  try {
+    const res = await send("GITHUB_SCRIPT_PREFS_PULL", {});
+    renderScripts(res.scripts || []);
+    setStatus("Script prefs loaded from cloud.");
+  } catch (e) {
+    console.error("[DonkeyCode:popup] GitHub script prefs pull", e);
+    setStatus(String(e.message || e), true);
+  }
+}
+
+async function pushScriptPrefsToGithub() {
+  setStatus("Saving script prefs to GitHub…");
+  try {
+    const res = await send("GITHUB_SCRIPT_PREFS_PUSH", {});
+    renderScripts(res.scripts || []);
+    setStatus("Script prefs saved to cloud.");
+  } catch (e) {
+    console.error("[DonkeyCode:popup] GitHub script prefs push", e);
     setStatus(String(e.message || e), true);
   }
 }
@@ -1302,6 +1329,8 @@ bindClick("btn-discover-session-folders", discoverSessionFoldersFromGithub);
 bindClick("btn-pull-sessions-github", pullSessionsFromGithub);
 bindClick("btn-push-sessions-github", pushCurrentFolderToGithub);
 bindClick("btn-refresh-scripts", refreshScripts);
+bindClick("btn-pull-script-prefs-github", pullScriptPrefsFromGithub);
+bindClick("btn-push-script-prefs-github", pushScriptPrefsToGithub);
 bindClick("btn-open-settings", openSettingsTab);
 
 bindClick("btn-browse-session-folders", function () {

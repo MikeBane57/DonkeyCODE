@@ -97,7 +97,25 @@
     <section id="panel-scripts" class="panel" role="tabpanel" hidden>
       <div class="scripts-head-row">
         <h2 class="section-title scripts-head-title">Scripts</h2>
-        <button type="button" id="btn-refresh-scripts" class="scripts-refresh-btn">Refresh</button>
+        <div class="scripts-head-actions">
+          <button
+            type="button"
+            id="btn-pull-script-prefs-github"
+            class="scripts-head-btn secondary"
+            title="Load script on/off from GitHub for this session folder (does not refresh script list)"
+          >
+            Get prefs
+          </button>
+          <button
+            type="button"
+            id="btn-push-script-prefs-github"
+            class="scripts-head-btn primary"
+            title="Save script on/off to GitHub for this session folder"
+          >
+            Save prefs
+          </button>
+          <button type="button" id="btn-refresh-scripts" class="scripts-head-btn scripts-refresh-btn">Refresh</button>
+        </div>
       </div>
       <p id="last-fetch" class="hint scripts-last-fetch"></p>
       <ul id="script-list" class="list script-list"></ul>

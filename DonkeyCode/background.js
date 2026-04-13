@@ -24,6 +24,8 @@ try {
 }
 
 const SESSION_JSON_FILENAME = "donkeycode-sessions.json";
+/** Per session-folder script toggles + future per-script options (same folder path as sessions). */
+const SCRIPT_PREFS_JSON_FILENAME = "donkeycode-script-prefs.json";
 
 function joinGithubRepoPath(rootDir, ...segments) {
   const parts = [];
@@ -653,6 +655,8 @@ async function loadScriptsFromRemote() {
 
   const prev = await getStoredScripts();
   const prevByUrl = new Map(prev.map((s) => [s.url, s]));
+  const fkRefresh = await getCurrentSessionFolderKey();
+  let folderPrefs = await getScriptPrefsMapForFolder(fkRefresh);
 
   const next = [];
   for (const e of entries) {
@@ -697,6 +701,11 @@ async function loadScriptsFromRemote() {
       (meta.userScriptDescription && String(meta.userScriptDescription).trim()) ||
       (prevRow && prevRow.userScriptDescription) ||
       "";
+    const prefRow = folderPrefs[id];
+    const enabledFromFolder =
+      prefRow && Object.prototype.hasOwnProperty.call(folderPrefs, id)
+        ? prefRow.enabled !== false
+        : false;
     next.push({
       id,
       url: e.url,
@@ -704,13 +713,30 @@ async function loadScriptsFromRemote() {
       userScriptName,
       userScriptVersion,
       userScriptDescription,
-      enabled: prevRow ? prevRow.enabled !== false : false,
+      enabled: enabledFromFolder,
       matches: meta.matches,
       excludes: meta.excludes,
       grants,
       connects,
       code: meta.body,
     });
+  }
+
+  const now = Date.now();
+  let prefsChanged = false;
+  for (const row of next) {
+    if (!row.id) continue;
+    if (!Object.prototype.hasOwnProperty.call(folderPrefs, row.id)) {
+      folderPrefs[row.id] = {
+        enabled: false,
+        updatedAt: now,
+        prefs: {},
+      };
+      prefsChanged = true;
+    }
+  }
+  if (prefsChanged) {
+    await setScriptPrefsMapForFolder(fkRefresh, folderPrefs);
   }
 
   await saveScripts(next);
@@ -867,6 +893,15 @@ async function toggleScript(scriptId, enabled) {
   if (idx < 0) throw new Error("Script not found");
   scripts[idx].enabled = enabled;
   await saveScripts(scripts);
+  const fk = await getCurrentSessionFolderKey();
+  const map = await getScriptPrefsMapForFolder(fk);
+  const prev = map[scriptId] || {};
+  map[scriptId] = {
+    enabled,
+    updatedAt: Date.now(),
+    prefs: prev.prefs && typeof prev.prefs === "object" && !Array.isArray(prev.prefs) ? prev.prefs : {},
+  };
+  await setScriptPrefsMapForFolder(fk, map);
   log("toggle script", scriptId, enabled);
 
   if (!enabled) {
@@ -1084,6 +1119,87 @@ async function migrateSessionStorageToLocalIfNeeded() {
   log("sessions storage migrated to chrome.storage.local");
 }
 
+function normalizeScriptPrefsEntry(row) {
+  if (!row || typeof row !== "object") {
+    return { enabled: false, updatedAt: 0, prefs: {} };
+  }
+  const enabled = row.enabled !== false;
+  const updatedAt = Number(row.updatedAt) || 0;
+  const prefs =
+    row.prefs && typeof row.prefs === "object" && !Array.isArray(row.prefs)
+      ? row.prefs
+      : {};
+  return { enabled, updatedAt, prefs };
+}
+
+function normalizeScriptPrefsMap(raw) {
+  const out = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const [k, v] of Object.entries(raw)) {
+    if (!k || typeof k !== "string") continue;
+    out[k] = normalizeScriptPrefsEntry(v);
+  }
+  return out;
+}
+
+async function getScriptPrefsMapForFolder(folderKey) {
+  const { folders } = await getSessionFoldersState();
+  const fk = normalizeFolderKey(folderKey);
+  const entry = folders[fk] || {};
+  const raw = entry.scriptPrefs;
+  return normalizeScriptPrefsMap(raw);
+}
+
+async function setScriptPrefsMapForFolder(folderKey, map) {
+  const { folders } = await getSessionFoldersState();
+  const fk = normalizeFolderKey(folderKey);
+  if (!folders[fk]) folders[fk] = { sessions: {}, scriptPrefs: {} };
+  if (!folders[fk].sessions || typeof folders[fk].sessions !== "object") {
+    folders[fk].sessions = {};
+  }
+  folders[fk].scriptPrefs = normalizeScriptPrefsMap(map);
+  await chrome.storage.local.set({ [STORAGE.SESSION_FOLDERS_V2]: folders });
+}
+
+/**
+ * Copy current global script enabled flags into a folder's scriptPrefs (call before switching folders).
+ */
+async function persistCurrentFolderScriptPrefsFromStorage() {
+  const fk = await getCurrentSessionFolderKey();
+  const scripts = await getStoredScripts();
+  const map = await getScriptPrefsMapForFolder(fk);
+  const now = Date.now();
+  for (const s of scripts) {
+    if (!s || !s.id) continue;
+    const prev = map[s.id] || {};
+    map[s.id] = {
+      enabled: s.enabled !== false,
+      updatedAt: now,
+      prefs: prev.prefs && typeof prev.prefs === "object" ? prev.prefs : {},
+    };
+  }
+  await setScriptPrefsMapForFolder(fk, map);
+}
+
+/**
+ * Apply a folder's scriptPrefs onto the global scripts array (enabled + future prefs), then save.
+ */
+async function applyScriptPrefsFromFolderToStorage(folderKey) {
+  const scripts = await getStoredScripts();
+  const prefs = await getScriptPrefsMapForFolder(folderKey);
+  const next = scripts.map(function (s) {
+    const p = prefs[s.id];
+    const enabled = p ? p.enabled !== false : false;
+    const o = Object.assign({}, s);
+    o.enabled = enabled;
+    return o;
+  });
+  await saveScripts(next);
+  forgetAllInjections();
+  await resyncAllTabs();
+  updateInstallBadge().catch(() => {});
+}
+
 async function getSessionFoldersState() {
   await migrateSessionStorageToLocalIfNeeded();
   const d = await chrome.storage.local.get([
@@ -1095,11 +1211,24 @@ async function getSessionFoldersState() {
     folders = {};
   }
   if (!folders[DEFAULT_SESSION_FOLDER]) {
-    folders[DEFAULT_SESSION_FOLDER] = { sessions: {} };
+    folders[DEFAULT_SESSION_FOLDER] = { sessions: {}, scriptPrefs: {} };
   }
   let cur = (d[STORAGE.CURRENT_SESSION_FOLDER] || "").trim() || DEFAULT_SESSION_FOLDER;
   cur = normalizeFolderKey(cur);
-  if (!folders[cur]) folders[cur] = { sessions: {} };
+  if (!folders[cur]) folders[cur] = { sessions: {}, scriptPrefs: {} };
+  for (const k of Object.keys(folders)) {
+    const ent = folders[k];
+    if (!ent || typeof ent !== "object") {
+      folders[k] = { sessions: {}, scriptPrefs: {} };
+      continue;
+    }
+    if (!ent.sessions || typeof ent.sessions !== "object" || Array.isArray(ent.sessions)) {
+      ent.sessions = {};
+    }
+    if (!ent.scriptPrefs || typeof ent.scriptPrefs !== "object" || Array.isArray(ent.scriptPrefs)) {
+      ent.scriptPrefs = {};
+    }
+  }
   return { folders, currentKey: cur };
 }
 
@@ -1144,6 +1273,16 @@ async function getGithubPathForFolder(folderKey) {
   const entry = folders[fk] || {};
   const segs = folderGithubSegments(entry, fk);
   const path = joinGithubRepoPath(base.sessionsRoot, ...segs, SESSION_JSON_FILENAME);
+  return { ...base, path };
+}
+
+async function getGithubPathForFolderScriptPrefs(folderKey) {
+  const base = await getGithubSettings();
+  const { folders } = await getSessionFoldersState();
+  const fk = normalizeFolderKey(folderKey);
+  const entry = folders[fk] || {};
+  const segs = folderGithubSegments(entry, fk);
+  const path = joinGithubRepoPath(base.sessionsRoot, ...segs, SCRIPT_PREFS_JSON_FILENAME);
   return { ...base, path };
 }
 
@@ -1218,6 +1357,59 @@ function sessionsFromGithubFilePayload(parsed) {
     return out;
   }
   return {};
+}
+
+function scriptPrefsToGithubFilePayload(map) {
+  return {
+    version: 1,
+    updatedAt: Date.now(),
+    scriptPrefs: normalizeScriptPrefsMap(map),
+  };
+}
+
+function scriptPrefsFromGithubFilePayload(parsed) {
+  if (!parsed || typeof parsed !== "object") return {};
+  if (parsed.scriptPrefs && typeof parsed.scriptPrefs === "object") {
+    return normalizeScriptPrefsMap(parsed.scriptPrefs);
+  }
+  return {};
+}
+
+function mergeScriptPrefsByTimestamp(localMap, remoteMap) {
+  const L = normalizeScriptPrefsMap(localMap);
+  const R = normalizeScriptPrefsMap(remoteMap);
+  const ids = new Set([...Object.keys(L), ...Object.keys(R)]);
+  const merged = {};
+  for (const id of ids) {
+    const a = L[id];
+    const b = R[id];
+    if (!a) merged[id] = normalizeScriptPrefsEntry(b);
+    else if (!b) merged[id] = normalizeScriptPrefsEntry(a);
+    else {
+      const tA = a.updatedAt || 0;
+      const tB = b.updatedAt || 0;
+      merged[id] = tB > tA ? normalizeScriptPrefsEntry(b) : normalizeScriptPrefsEntry(a);
+    }
+  }
+  return merged;
+}
+
+function mergeScriptPrefsForPush(localMap, remoteMap) {
+  const L = normalizeScriptPrefsMap(localMap);
+  const R = normalizeScriptPrefsMap(remoteMap);
+  const merged = Object.assign({}, R);
+  for (const id of Object.keys(L)) {
+    const loc = L[id];
+    const rem = R[id];
+    if (!rem) {
+      merged[id] = normalizeScriptPrefsEntry(loc);
+      continue;
+    }
+    const tL = loc.updatedAt || 0;
+    const tR = rem.updatedAt || 0;
+    merged[id] = tR > tL ? normalizeScriptPrefsEntry(rem) : normalizeScriptPrefsEntry(loc);
+  }
+  return merged;
 }
 
 function utf8ToBase64(str) {
@@ -1372,6 +1564,175 @@ async function putGithubSessionsFile(settings, bodyObj, shaOrNull) {
     },
     token
   );
+}
+
+async function fetchGithubScriptPrefsFile(settings) {
+  const { token, owner, repo, branch, path } = settings;
+  if (!token || !owner || !repo) throw new Error("GitHub owner, repo, and token required");
+  const pathSeg = path
+    .split("/")
+    .map((p) => encodeURIComponent(p))
+    .join("/");
+  const apiPath =
+    "/repos/" +
+    encodeURIComponent(owner) +
+    "/" +
+    encodeURIComponent(repo) +
+    "/contents/" +
+    pathSeg +
+    "?ref=" +
+    encodeURIComponent(branch);
+  let json;
+  try {
+    json = await githubApiRequest(apiPath, { method: "GET" }, token);
+  } catch (e) {
+    if (e && e.status === 404) return null;
+    throw e;
+  }
+  if (!json || json.type !== "file" || !json.content) {
+    throw new Error("Unexpected GitHub API response for script prefs file");
+  }
+  const raw = base64ToUtf8(json.content.replace(/\s/g, ""));
+  const parsed = JSON.parse(raw);
+  return { sha: json.sha, scriptPrefs: scriptPrefsFromGithubFilePayload(parsed) };
+}
+
+async function putGithubScriptPrefsFile(settings, bodyObj, shaOrNull) {
+  const { token, owner, repo, branch, path } = settings;
+  const pathSeg = path
+    .split("/")
+    .map((p) => encodeURIComponent(p))
+    .join("/");
+  const apiPath =
+    "/repos/" +
+    encodeURIComponent(owner) +
+    "/" +
+    encodeURIComponent(repo) +
+    "/contents/" +
+    pathSeg;
+  const content = utf8ToBase64(JSON.stringify(bodyObj, null, 2));
+  const payload = {
+    message: "DonkeyCode: sync script prefs",
+    content,
+    branch,
+  };
+  if (shaOrNull) payload.sha = shaOrNull;
+  await githubApiRequest(
+    apiPath,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    token
+  );
+}
+
+async function putGithubScriptPrefsMergedWithRetry(settings, folderKey, maxAttempts) {
+  const fk = normalizeFolderKey(folderKey);
+  const attempts = Math.max(1, Math.min(Number(maxAttempts) || 8, 20));
+  let lastErr = null;
+  for (let i = 0; i < attempts; i++) {
+    if (i > 0) await delayMs(120 + i * 80);
+    const local = await getScriptPrefsMapForFolder(fk);
+    let sha = null;
+    let remotePrefs = {};
+    const file = await fetchGithubScriptPrefsFile(settings);
+    if (file) {
+      remotePrefs = file.scriptPrefs || {};
+      sha = file.sha;
+    }
+    const merged = mergeScriptPrefsForPush(local, remotePrefs);
+    await setScriptPrefsMapForFolder(fk, merged);
+    const payload = scriptPrefsToGithubFilePayload(merged);
+    try {
+      await putGithubScriptPrefsFile(settings, payload, sha);
+      return { mergedCount: Object.keys(merged).length };
+    } catch (e) {
+      lastErr = e;
+      if (isGithubPushRetryableError(e) && i < attempts - 1) {
+        logWarn(
+          "GitHub script prefs push retry",
+          fk,
+          settings.path,
+          "attempt",
+          i + 2,
+          githubApiErrorFullText(e).slice(0, 120)
+        );
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr || new Error("GitHub script prefs push failed");
+}
+
+async function githubPullScriptPrefsSingleFolderMerge(folderKey) {
+  const fk = normalizeFolderKey(folderKey);
+  try {
+    const settings = await getGithubPathForFolderScriptPrefs(fk);
+    let remotePrefs = {};
+    const file = await fetchGithubScriptPrefsFile(settings);
+    if (!file) {
+      log("GitHub pull: no script prefs file for folder", fk, "path", settings.path);
+    } else {
+      remotePrefs = file.scriptPrefs || {};
+    }
+    const local = await getScriptPrefsMapForFolder(fk);
+    const merged = mergeScriptPrefsByTimestamp(local, remotePrefs);
+    await setScriptPrefsMapForFolder(fk, merged);
+    log(
+      "GitHub script prefs merged folder",
+      fk,
+      Object.keys(merged).length,
+      "ids",
+      "path",
+      settings.path
+    );
+    return "";
+  } catch (e) {
+    const msg = String(e && e.message ? e.message : e);
+    logWarn("GitHub script prefs pull failed for folder", fk, e);
+    return fk + ": " + msg;
+  }
+}
+
+async function githubSyncPushScriptPrefs() {
+  const fk = await getCurrentSessionFolderKey();
+  const settings = await getGithubPathForFolderScriptPrefs(fk);
+  if (!settings.token || !settings.owner || !settings.repo) {
+    throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
+  }
+  await persistCurrentFolderScriptPrefsFromStorage();
+  const { mergedCount } = await putGithubScriptPrefsMergedWithRetry(settings, fk, 12);
+  log("GitHub script prefs push ok", mergedCount, "folder", fk, settings.path);
+  await chrome.storage.local.set({
+    [STORAGE.GITHUB_SYNC_LAST_ERROR]: "",
+    [STORAGE.GITHUB_SYNC_LAST_OK]: Date.now(),
+  });
+  return { folderKey: fk, count: mergedCount };
+}
+
+async function githubSyncPullScriptPrefs() {
+  const gh = await getGithubSettings();
+  if (!gh.token || !gh.owner || !gh.repo) {
+    throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
+  }
+  const curFk = await getCurrentSessionFolderKey();
+  const one = await githubPullScriptPrefsSingleFolderMerge(curFk);
+  if (one) {
+    await chrome.storage.local.set({
+      [STORAGE.GITHUB_SYNC_LAST_ERROR]: one,
+    });
+    throw new Error(one);
+  }
+  await applyScriptPrefsFromFolderToStorage(curFk);
+  await chrome.storage.local.set({
+    [STORAGE.GITHUB_SYNC_LAST_ERROR]: "",
+    [STORAGE.GITHUB_SYNC_LAST_OK]: Date.now(),
+  });
+  const scripts = await getStoredScripts();
+  return { folderKey: curFk, scripts };
 }
 
 /**
@@ -2428,6 +2789,41 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           sendResponse({ ok: true, scripts });
           break;
         }
+        case "GITHUB_SCRIPT_PREFS_PULL": {
+          try {
+            const result = await githubSyncPullScriptPrefs();
+            sendResponse({ ok: true, scripts: result.scripts });
+          } catch (e) {
+            await chrome.storage.local.set({
+              [STORAGE.GITHUB_SYNC_LAST_ERROR]: String(
+                e && e.message ? e.message : e
+              ),
+            });
+            sendResponse({
+              ok: false,
+              error: String(e && e.message ? e.message : e),
+            });
+          }
+          break;
+        }
+        case "GITHUB_SCRIPT_PREFS_PUSH": {
+          try {
+            await githubSyncPushScriptPrefs();
+            const scripts = await getStoredScripts();
+            sendResponse({ ok: true, scripts });
+          } catch (e) {
+            await chrome.storage.local.set({
+              [STORAGE.GITHUB_SYNC_LAST_ERROR]: String(
+                e && e.message ? e.message : e
+              ),
+            });
+            sendResponse({
+              ok: false,
+              error: String(e && e.message ? e.message : e),
+            });
+          }
+          break;
+        }
         case "SET_SCRIPT_ENABLED": {
           await toggleScript(message.scriptId, !!message.enabled);
           const scripts = await getStoredScripts();
@@ -2533,14 +2929,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         }
         case "SET_CURRENT_SESSION_FOLDER": {
           const key = normalizeFolderKey(message.folderKey);
+          await persistCurrentFolderScriptPrefsFromStorage();
           await getSessionFoldersState();
           const d = await chrome.storage.local.get(STORAGE.SESSION_FOLDERS_V2);
           let folders = d[STORAGE.SESSION_FOLDERS_V2] || {};
-          if (!folders[key]) folders[key] = { sessions: {} };
+          if (!folders[key]) folders[key] = { sessions: {}, scriptPrefs: {} };
           await chrome.storage.local.set({
             [STORAGE.CURRENT_SESSION_FOLDER]: key,
             [STORAGE.SESSION_FOLDERS_V2]: folders,
           });
+          await applyScriptPrefsFromFolderToStorage(key);
           let folderPullError = null;
           const gh = await getGithubSettings();
           if (gh.token && gh.owner && gh.repo) {
@@ -2554,16 +2952,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         case "ADD_SESSION_FOLDER": {
           const key = normalizeFolderKey(message.folderKey);
           if (key === DEFAULT_SESSION_FOLDER) throw new Error("Use a non-default folder name");
+          await persistCurrentFolderScriptPrefsFromStorage();
           const { folders } = await getSessionFoldersState();
           if (folders[key]) throw new Error("Folder already exists");
           folders[key] = {
             sessions: {},
+            scriptPrefs: {},
             githubRelativePath: (message.githubRelativePath || "").trim(),
           };
           await chrome.storage.local.set({
             [STORAGE.SESSION_FOLDERS_V2]: folders,
             [STORAGE.CURRENT_SESSION_FOLDER]: key,
           });
+          await applyScriptPrefsFromFolderToStorage(key);
           let githubPlaceholder = null;
           try {
             githubPlaceholder = await ensureGithubSessionsPlaceholderForFolder(key);
@@ -2589,6 +2990,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           if (key === DEFAULT_SESSION_FOLDER) throw new Error("Cannot delete the default folder");
           const { folders, currentKey } = await getSessionFoldersState();
           if (!folders[key]) throw new Error("Unknown folder");
+          if (currentKey === key) {
+            await persistCurrentFolderScriptPrefsFromStorage();
+          }
           const deleteRemote = !!message.deleteRemote;
           let remoteDeleted = false;
           let remoteError = "";
@@ -2622,6 +3026,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             [STORAGE.SESSION_FOLDERS_V2]: folders,
             [STORAGE.CURRENT_SESSION_FOLDER]: nextCur,
           });
+          if (currentKey === key) {
+            await applyScriptPrefsFromFolderToStorage(nextCur);
+          }
           const st = await getStateForPopup();
           sendResponse({
             ok: true,

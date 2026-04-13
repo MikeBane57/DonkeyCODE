@@ -457,9 +457,9 @@ body {
 
 .scripts-head-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 2px;
 }
 
@@ -469,10 +469,24 @@ body {
   min-width: 0;
 }
 
+.scripts-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  max-width: 68%;
+}
+
+.scripts-head-btn {
+  padding: 5px 6px;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .scripts-refresh-btn {
   flex-shrink: 0;
-  padding: 6px 12px;
-  font-size: 12px;
 }
 
 .scripts-last-fetch {
