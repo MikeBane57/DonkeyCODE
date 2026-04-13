@@ -203,6 +203,20 @@ body {
   border-bottom-color: #fff;
 }
 
+.tab.tab--icon {
+  flex: 0 0 auto;
+  min-width: 40px;
+  max-width: 48px;
+  padding: 6px 8px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.tab.tab--icon .tab-icon {
+  display: inline-block;
+  vertical-align: middle;
+}
+
 .panel {
   background: #fff;
   border: 1px solid #d8dde4;
@@ -217,11 +231,40 @@ body {
 }
 
 #panel-report.panel {
-  min-height: 320px;
+  min-height: 240px;
+}
+
+.panel.panel--compact {
+  padding: 10px;
+  min-height: 240px;
+}
+
+.section-title--compact {
+  font-size: 13px;
+  margin: 0 0 6px;
+}
+
+.row--compact {
+  margin-bottom: 6px;
+}
+
+.row--compact label {
+  font-size: 11px;
+}
+
+.btn-row--compact {
+  margin-bottom: 4px;
+}
+
+.btn-report-submit {
+  padding: 6px 14px;
+  font-size: 12px;
 }
 
 .report-lead {
   margin-top: 0;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .report-lead--warn {
@@ -229,9 +272,10 @@ body {
 }
 
 textarea.report-body {
-  min-height: 88px;
+  min-height: 56px;
   resize: vertical;
   font: inherit;
+  font-size: 12px;
 }
 
 .report-result {

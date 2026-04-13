@@ -53,8 +53,16 @@
       <button type="button" class="tab" data-tab="scripts" role="tab" aria-selected="false">
         Scripts
       </button>
-      <button type="button" class="tab" data-tab="report" role="tab" aria-selected="false">
-        Report
+      <button
+        type="button"
+        class="tab tab--icon"
+        data-tab="report"
+        role="tab"
+        aria-selected="false"
+        title="Report an issue"
+        aria-label="Report an issue"
+      >
+        <span class="tab-icon" aria-hidden="true">&#128681;</span>
       </button>
     </nav>
 
@@ -134,21 +142,21 @@
       <p id="scripts-empty" class="hint hidden">No scripts loaded. Open settings (gear) and refresh.</p>
     </section>
 
-    <section id="panel-report" class="panel" role="tabpanel" hidden>
-      <h2 class="section-title">Report an issue</h2>
+    <section id="panel-report" class="panel panel--compact" role="tabpanel" hidden>
+      <h2 class="section-title section-title--compact">Report</h2>
       <p class="hint report-lead">
-        Creates a <strong>GitHub Issue</strong> in your configured repo. The issue <strong>#number</strong> is your reference (e.g. cite as <strong>INC #42</strong>). Requires a token with <strong>Issues</strong> permission.
+        Creates a <strong>GitHub Issue</strong> in your configured repo. <strong>INC</strong> shows the issue number zero-padded to 7 digits (same as GitHub #). Requires token <strong>Issues</strong> permission.
       </p>
-      <div class="row">
+      <div class="row row--compact">
         <label for="report-title">Title</label>
         <input id="report-title" type="text" placeholder="Short summary" maxlength="240" autocomplete="off" />
       </div>
-      <div class="row">
+      <div class="row row--compact">
         <label for="report-body">Details</label>
-        <textarea id="report-body" class="report-body" rows="5" placeholder="What happened, steps, expected vs actual…"></textarea>
+        <textarea id="report-body" class="report-body" rows="3" placeholder="What happened, steps…"></textarea>
       </div>
-      <div class="btn-row">
-        <button type="button" id="btn-submit-report" class="primary">Submit report</button>
+      <div class="btn-row btn-row--compact">
+        <button type="button" id="btn-submit-report" class="primary btn-report-submit">Submit</button>
       </div>
       <p id="report-result" class="hint report-result hidden" role="status"></p>
     </section>

@@ -85,6 +85,14 @@ function switchTab(name) {
   if (pr) pr.classList.toggle("active", name === "report");
 }
 
+/** Display INC as a 7-digit zero-padded code (GitHub issue #42 → 0000042). */
+function formatIncCode(issueNumber) {
+  const n = Number(issueNumber);
+  if (!Number.isFinite(n) || n < 0) return String(issueNumber);
+  const s = String(Math.floor(n));
+  return s.length >= 7 ? s : s.padStart(7, "0");
+}
+
 function updateReportPanel(state) {
   const btn = $("btn-submit-report");
   const lead = document.querySelector(".report-lead");
@@ -125,14 +133,21 @@ async function submitIssueReport() {
       labels: [],
     });
     const num = res.issueNumber;
+    const incDisp = formatIncCode(num);
     const url = res.issueUrl || "";
     if (out) {
       out.classList.remove("hidden");
       out.innerHTML = "";
       const strong = document.createElement("strong");
-      strong.textContent = "INC #" + num;
+      strong.textContent = "INC #" + incDisp;
       out.appendChild(strong);
-      out.appendChild(document.createTextNode(" — reference this number when following up."));
+      out.appendChild(
+        document.createTextNode(
+          " (GitHub #" +
+            num +
+            ") — reference this when following up."
+        )
+      );
       if (url) {
         out.appendChild(document.createElement("br"));
         const a = document.createElement("a");
@@ -143,7 +158,7 @@ async function submitIssueReport() {
         out.appendChild(a);
       }
     }
-    setStatus("Report filed: INC #" + num + ".");
+    setStatus("Report filed: INC #" + incDisp + ".");
     if (titleEl) titleEl.value = "";
     if (bodyEl) bodyEl.value = "";
   } catch (e) {
