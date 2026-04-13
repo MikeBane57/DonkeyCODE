@@ -2132,6 +2132,49 @@ async function githubPullSingleFolderMerge(folderKey) {
   }
 }
 
+/**
+ * Remove the old folder’s session + script-prefs JSON on GitHub after a local rename,
+ * so the repo does not keep duplicate files under the previous path.
+ */
+async function deleteGithubRemoteFilesForRenamedFolder(oldFolderKey) {
+  const fk = normalizeFolderKey(oldFolderKey);
+  if (fk === DEFAULT_SESSION_FOLDER) return { skipped: true };
+  const gh = await getGithubSettings();
+  if (!gh.token || !gh.owner || !gh.repo) {
+    log("GitHub rename: skip remote delete (not configured)");
+    return { skipped: true };
+  }
+  let removedSessions = false;
+  let removedScriptPrefs = false;
+  try {
+    const sessSettings = await getGithubPathForFolder(fk);
+    const sessFile = await fetchGithubSessionsFile(sessSettings);
+    if (sessFile && sessFile.sha) {
+      await githubDeleteRepoFile(sessSettings, sessFile.sha);
+      removedSessions = true;
+      log("GitHub: removed remote sessions file after folder rename", fk, sessSettings.path);
+    }
+  } catch (e) {
+    logWarn("GitHub: failed to remove old sessions file on folder rename", fk, e);
+    throw new Error(
+      "Could not remove old sessions file on GitHub: " +
+        String(e && e.message ? e.message : e)
+    );
+  }
+  try {
+    const prefSettings = await getGithubPathForFolderScriptPrefs(fk);
+    const prefFile = await fetchGithubScriptPrefsFile(prefSettings);
+    if (prefFile && prefFile.sha) {
+      await githubDeleteRepoFile(prefSettings, prefFile.sha);
+      removedScriptPrefs = true;
+      log("GitHub: removed remote script prefs file after folder rename", fk, prefSettings.path);
+    }
+  } catch (e) {
+    logWarn("GitHub: could not remove old script prefs on folder rename (continuing)", fk, e);
+  }
+  return { skipped: false, removedSessions, removedScriptPrefs };
+}
+
 async function githubDeleteRepoFile(settings, sha) {
   const { token, owner, repo, branch, path } = settings;
   if (!sha) throw new Error("Missing file sha for GitHub delete");
@@ -2768,6 +2811,7 @@ async function renameSessionFolder(oldKey, newKey) {
   if (currentKey === o) {
     await persistCurrentFolderScriptPrefsFromStorage();
   }
+  await deleteGithubRemoteFilesForRenamedFolder(o);
   folders[n] = folders[o];
   delete folders[o];
   let nextCur = currentKey;
