@@ -84,6 +84,9 @@ function switchTab(name) {
 
 let editingSessionName = null;
 
+/** Script user-prefs modal */
+let scriptPrefsEditingId = null;
+
 /** Pending save after worksheet order modal */
 let saveSessionPendingName = null;
 let saveSessionPendingSnapshot = null;
@@ -915,6 +918,70 @@ function scriptRowTooltip(s) {
   return u ? "Source: " + u : "";
 }
 
+function scriptHasPrefSchema(s) {
+  const sch = s && s.donkeycodePrefSchema;
+  return sch && typeof sch === "object" && !Array.isArray(sch) && Object.keys(sch).length > 0;
+}
+
+function openScriptPrefsModal(s) {
+  const ov = $("script-prefs-overlay");
+  const ta = $("script-prefs-json");
+  const lead = $("script-prefs-lead");
+  if (!ov || !ta) return;
+  scriptPrefsEditingId = s.id;
+  if (lead) {
+    lead.textContent =
+      "Edit stored values for " +
+      scriptDisplayName(s) +
+      ". Use donkeycodeGetPref(\"key\") in the script body to read them.";
+  }
+  const vals = (s.userPrefs && typeof s.userPrefs === "object" && !Array.isArray(s.userPrefs)) ? s.userPrefs : {};
+  try {
+    ta.value = JSON.stringify(vals, null, 2);
+  } catch (e) {
+    ta.value = "{}";
+  }
+  ov.classList.remove("hidden");
+  ov.setAttribute("aria-hidden", "false");
+  ta.focus();
+}
+
+function closeScriptPrefsModal() {
+  const ov = $("script-prefs-overlay");
+  if (ov) {
+    ov.classList.add("hidden");
+    ov.setAttribute("aria-hidden", "true");
+  }
+  scriptPrefsEditingId = null;
+}
+
+async function saveScriptPrefsFromModal() {
+  const id = scriptPrefsEditingId;
+  const ta = $("script-prefs-json");
+  if (!id || !ta) return;
+  let obj;
+  try {
+    obj = JSON.parse(String(ta.value || "").trim() || "{}");
+  } catch (e) {
+    setStatus("Invalid JSON: " + (e.message || e), true);
+    return;
+  }
+  if (obj === null || typeof obj !== "object" || Array.isArray(obj)) {
+    setStatus("Preferences must be a JSON object, e.g. {\"openUrl\":\"https://…\"}.", true);
+    return;
+  }
+  setStatus("Saving preferences…");
+  try {
+    const res = await send("SET_SCRIPT_USER_PREFS", { scriptId: id, userPrefs: obj });
+    renderScripts(res.scripts || []);
+    closeScriptPrefsModal();
+    setStatus("Preferences saved.");
+  } catch (e) {
+    console.error("[DonkeyCode:popup] save script prefs", e);
+    setStatus(String(e.message || e), true);
+  }
+}
+
 function renderScripts(scripts) {
   const list = Array.isArray(scripts) ? scripts : [];
   const ul = $("script-list");
@@ -983,9 +1050,24 @@ function renderScripts(scripts) {
     toggleLabel.appendChild(input);
     toggleLabel.appendChild(slider);
 
+    const prefsBtn = document.createElement("button");
+    prefsBtn.type = "button";
+    prefsBtn.className = "btn-script-prefs";
+    prefsBtn.setAttribute("aria-label", "Edit preferences");
+    prefsBtn.title = scriptHasPrefSchema(s)
+      ? "Edit preferences for this script"
+      : "This script has no @donkeycode-pref schema in its header";
+    prefsBtn.textContent = "⚙";
+    prefsBtn.disabled = !scriptHasPrefSchema(s);
+    prefsBtn.addEventListener("click", function () {
+      if (!scriptHasPrefSchema(s)) return;
+      openScriptPrefsModal(s);
+    });
+
     li.appendChild(toggleLabel);
     li.appendChild(labelSpan);
     li.appendChild(verSpan);
+    li.appendChild(prefsBtn);
     ul.appendChild(li);
   }
 
@@ -1002,7 +1084,8 @@ function renderScripts(scripts) {
     head.innerHTML =
       '<span class="script-col-toggle" aria-hidden="true"></span>' +
       '<span class="script-col-name">Script</span>' +
-      '<span class="script-col-ver">Ver</span>';
+      '<span class="script-col-ver">Ver</span>' +
+      '<span class="script-col-prefs" title="Scripts with @donkeycode-pref in the header">Pref</span>';
     ul.appendChild(head);
   }
 
@@ -1342,6 +1425,22 @@ bindClick("worksheet-order-cancel", function () {
     if (ev.target === ov) {
       closeWorksheetOrderModal();
       setStatus("Save cancelled.");
+    }
+  });
+})();
+
+bindClick("script-prefs-save", saveScriptPrefsFromModal);
+bindClick("script-prefs-cancel", function () {
+  closeScriptPrefsModal();
+  setStatus("");
+});
+(function () {
+  const ov = $("script-prefs-overlay");
+  if (!ov) return;
+  ov.addEventListener("click", function (ev) {
+    if (ev.target === ov) {
+      closeScriptPrefsModal();
+      setStatus("");
     }
   });
 })();

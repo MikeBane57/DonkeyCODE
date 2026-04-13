@@ -169,6 +169,23 @@
       </div>
     </div>
 
+    <div id="script-prefs-overlay" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal script-prefs-modal" role="dialog" aria-labelledby="script-prefs-title">
+        <h2 id="script-prefs-title" class="modal-title">Script preferences</h2>
+        <p id="script-prefs-lead" class="hint modal-hint"></p>
+        <p class="hint modal-hint script-prefs-doc-hint">
+          In the script header, add one line per option set, for example:
+          <code>// @donkeycode-pref {"openUrl":{"type":"string","default":"https://example.com","label":"Open URL"}}</code>
+        </p>
+        <label for="script-prefs-json" class="script-prefs-label">Values (JSON object — keys match your schema)</label>
+        <textarea id="script-prefs-json" class="session-json script-prefs-textarea" spellcheck="false" rows="10"></textarea>
+        <div class="btn-row modal-actions">
+          <button type="button" id="script-prefs-save">Save</button>
+          <button type="button" id="script-prefs-cancel" class="secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <div id="session-editor-overlay" class="modal-overlay hidden" aria-hidden="true">
       <div class="modal" role="dialog" aria-labelledby="session-editor-title">
         <h2 id="session-editor-title" class="modal-title">Edit session</h2>

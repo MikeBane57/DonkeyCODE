@@ -266,6 +266,8 @@ function parseUserScript(fullText) {
   let userScriptName = "";
   let userScriptVersion = "";
   let userScriptDescription = "";
+  /** @type {Record<string, { type?: string, default?: unknown, label?: string }>} */
+  let donkeycodePrefSchema = {};
   const lines = metaText.split(/\r?\n/);
   for (const line of lines) {
     const m = line.match(/^\s*\/\/\s*@(\S+)\s+(.*)$/);
@@ -279,6 +281,16 @@ function parseUserScript(fullText) {
     else if (key === "name" && val) userScriptName = val;
     else if (key === "version" && val) userScriptVersion = val;
     else if (key === "description" && val) userScriptDescription = val;
+    else if (key === "donkeycode-pref" && val) {
+      try {
+        const parsed = JSON.parse(val);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          donkeycodePrefSchema = Object.assign(donkeycodePrefSchema, parsed);
+        }
+      } catch (e) {
+        logWarn("@donkeycode-pref JSON parse failed", val.slice(0, 80));
+      }
+    }
   }
 
   if (matches.length === 0) matches.push("*://*/*");
@@ -291,8 +303,27 @@ function parseUserScript(fullText) {
     userScriptName,
     userScriptVersion,
     userScriptDescription,
+    donkeycodePrefSchema,
     body,
   };
+}
+
+function prefDefaultsFromSchema(schema) {
+  const out = {};
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) return out;
+  for (const [k, v] of Object.entries(schema)) {
+    if (v && typeof v === "object" && !Array.isArray(v) && Object.prototype.hasOwnProperty.call(v, "default")) {
+      out[k] = v.default;
+    }
+  }
+  return out;
+}
+
+function mergeUserPrefsWithSchemaDefaults(stored, schema) {
+  const defs = prefDefaultsFromSchema(schema);
+  const base = Object.assign({}, defs);
+  if (!stored || typeof stored !== "object" || Array.isArray(stored)) return base;
+  return Object.assign(base, stored);
 }
 
 /**
@@ -404,13 +435,22 @@ function scriptMatchesUrl(script, pageUrl) {
  * Passes Tampermonkey-style GM_xmlhttpRequest when @grant requests it (via
  * new Function argument so each script keeps the correct script id for @connect).
  * Must be self-contained (serialized).
- * @param {{ id: string, code: string, grants?: string[], connects?: string[] }} payload
+ * @param {{ id: string, code: string, grants?: string[], connects?: string[], userPrefs?: object, donkeycodePrefSchema?: object }} payload
  */
 function donkeycodeInjectMain(payload) {
   const scriptId = payload.id;
   const code = payload.code;
   const grants = payload.grants || [];
   const connects = payload.connects || [];
+  const userPrefs = payload.userPrefs && typeof payload.userPrefs === "object" && !Array.isArray(payload.userPrefs)
+    ? payload.userPrefs
+    : {};
+  const prefSchema =
+    payload.donkeycodePrefSchema &&
+    typeof payload.donkeycodePrefSchema === "object" &&
+    !Array.isArray(payload.donkeycodePrefSchema)
+      ? payload.donkeycodePrefSchema
+      : {};
 
   const g = typeof window !== "undefined" ? window : globalThis;
   const key = "__donkeycodeCleanups";
@@ -504,6 +544,19 @@ function donkeycodeInjectMain(payload) {
     );
   }
 
+  function donkeycodeGetPref(key) {
+    const k = String(key || "");
+    if (!k) return undefined;
+    if (Object.prototype.hasOwnProperty.call(userPrefs, k)) {
+      return userPrefs[k];
+    }
+    const spec = prefSchema[k];
+    if (spec && typeof spec === "object" && Object.prototype.hasOwnProperty.call(spec, "default")) {
+      return spec.default;
+    }
+    return undefined;
+  }
+
   try {
     console.log(
       "[DonkeyCode:page] executing script",
@@ -511,10 +564,10 @@ function donkeycodeInjectMain(payload) {
       wantsGmXhr ? "+GM_xmlhttpRequest" : ""
     );
     const run = wantsGmXhr
-      ? new Function("GM_xmlhttpRequest", code)
-      : new Function(code);
-    if (wantsGmXhr) run(gmImpl);
-    else run();
+      ? new Function("donkeycodeGetPref", "GM_xmlhttpRequest", code)
+      : new Function("donkeycodeGetPref", code);
+    if (wantsGmXhr) run(donkeycodeGetPref, gmImpl);
+    else run(donkeycodeGetPref);
     if (typeof g.__myScriptCleanup === "function") {
       cleanups[scriptId] = g.__myScriptCleanup;
       try {
@@ -582,6 +635,12 @@ async function getStoredScripts() {
       s && s.userScriptDescription != null && String(s.userScriptDescription).trim() !== ""
         ? String(s.userScriptDescription).trim()
         : "",
+    donkeycodePrefSchema:
+      s && s.donkeycodePrefSchema && typeof s.donkeycodePrefSchema === "object" && !Array.isArray(s.donkeycodePrefSchema)
+        ? s.donkeycodePrefSchema
+        : {},
+    userPrefs:
+      s && s.userPrefs && typeof s.userPrefs === "object" && !Array.isArray(s.userPrefs) ? s.userPrefs : {},
   }));
 }
 
@@ -677,6 +736,7 @@ async function loadScriptsFromRemote() {
     }
 
     const meta = parseUserScript(text);
+    const prefSchema = meta.donkeycodePrefSchema || {};
     const grants =
       meta.grants && meta.grants.length
         ? meta.grants
@@ -712,6 +772,13 @@ async function loadScriptsFromRemote() {
     } else {
       enabledFromFolder = prevRow ? prevRow.enabled !== false : false;
     }
+    const storedPrefVals =
+      prefRow && prefRow.prefs && typeof prefRow.prefs === "object" && !Array.isArray(prefRow.prefs)
+        ? prefRow.prefs
+        : prevRow && prevRow.userPrefs && typeof prevRow.userPrefs === "object"
+          ? prevRow.userPrefs
+          : {};
+    const userPrefsMerged = mergeUserPrefsWithSchemaDefaults(storedPrefVals, prefSchema);
     next.push({
       id,
       url: e.url,
@@ -720,6 +787,8 @@ async function loadScriptsFromRemote() {
       userScriptVersion,
       userScriptDescription,
       enabled: enabledFromFolder,
+      donkeycodePrefSchema: prefSchema,
+      userPrefs: userPrefsMerged,
       matches: meta.matches,
       excludes: meta.excludes,
       grants,
@@ -847,6 +916,8 @@ async function syncTabScripts(tabId, url) {
             code: script.code,
             grants: script.grants || [],
             connects: script.connects || [],
+            userPrefs: script.userPrefs || {},
+            donkeycodePrefSchema: script.donkeycodePrefSchema || {},
           },
         ],
       });
@@ -904,10 +975,15 @@ async function toggleScript(scriptId, enabled) {
   const fk = await getCurrentSessionFolderKey();
   const map = await getScriptPrefsMapForFolder(fk);
   const prev = map[scriptId] || {};
+  const prevP = prev.prefs && typeof prev.prefs === "object" && !Array.isArray(prev.prefs) ? prev.prefs : {};
+  const up =
+    scripts[idx].userPrefs && typeof scripts[idx].userPrefs === "object" && !Array.isArray(scripts[idx].userPrefs)
+      ? scripts[idx].userPrefs
+      : {};
   map[scriptId] = {
     enabled,
     updatedAt: Date.now(),
-    prefs: prev.prefs && typeof prev.prefs === "object" && !Array.isArray(prev.prefs) ? prev.prefs : {},
+    prefs: Object.assign({}, prevP, up),
   };
   await setScriptPrefsMapForFolder(fk, map);
   log("toggle script", scriptId, enabled);
@@ -1193,10 +1269,13 @@ async function persistCurrentFolderScriptPrefsFromStorage() {
   for (const s of scripts) {
     if (!s || !s.id) continue;
     const prev = map[s.id] || {};
+    const prevObj = prev.prefs && typeof prev.prefs === "object" && !Array.isArray(prev.prefs) ? prev.prefs : {};
+    const scriptPrefs =
+      s.userPrefs && typeof s.userPrefs === "object" && !Array.isArray(s.userPrefs) ? s.userPrefs : {};
     map[s.id] = {
       enabled: s.enabled !== false,
       updatedAt: now,
-      prefs: prev.prefs && typeof prev.prefs === "object" ? prev.prefs : {},
+      prefs: Object.assign({}, prevObj, scriptPrefs),
     };
   }
   await setScriptPrefsMapForFolder(fk, map);
@@ -1218,6 +1297,9 @@ async function applyScriptPrefsFromFolderToStorage(folderKey) {
     const enabled = p ? p.enabled !== false : false;
     const o = Object.assign({}, s);
     o.enabled = enabled;
+    const rawStored = p && p.prefs && typeof p.prefs === "object" && !Array.isArray(p.prefs) ? p.prefs : {};
+    const schema = o.donkeycodePrefSchema || {};
+    o.userPrefs = mergeUserPrefsWithSchemaDefaults(rawStored, schema);
     return o;
   });
   await saveScripts(next);
@@ -2879,6 +2961,36 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           await toggleScript(message.scriptId, !!message.enabled);
           const scripts = await getStoredScripts();
           sendResponse({ ok: true, scripts });
+          break;
+        }
+        case "SET_SCRIPT_USER_PREFS": {
+          const scriptId = message.scriptId;
+          const nextPrefs = message.userPrefs;
+          if (!scriptId || typeof scriptId !== "string") throw new Error("scriptId required");
+          if (!nextPrefs || typeof nextPrefs !== "object" || Array.isArray(nextPrefs)) {
+            throw new Error("userPrefs must be an object");
+          }
+          const scripts = await getStoredScripts();
+          const idx = scripts.findIndex((s) => s.id === scriptId);
+          if (idx < 0) throw new Error("Script not found");
+          const schema = scripts[idx].donkeycodePrefSchema || {};
+          const merged = mergeUserPrefsWithSchemaDefaults(nextPrefs, schema);
+          scripts[idx].userPrefs = merged;
+          await saveScripts(scripts);
+          const fk = await getCurrentSessionFolderKey();
+          const map = await getScriptPrefsMapForFolder(fk);
+          const prev = map[scriptId] || {};
+          const prevP = prev.prefs && typeof prev.prefs === "object" && !Array.isArray(prev.prefs) ? prev.prefs : {};
+          map[scriptId] = {
+            enabled: scripts[idx].enabled !== false,
+            updatedAt: Date.now(),
+            prefs: Object.assign({}, prevP, merged),
+          };
+          await setScriptPrefsMapForFolder(fk, map);
+          forgetScriptEverywhere(scriptId);
+          await resyncAllTabs();
+          updateInstallBadge().catch(() => {});
+          sendResponse({ ok: true, scripts: await getStoredScripts() });
           break;
         }
         case "SET_SCRIPT_SOURCE_URL": {
