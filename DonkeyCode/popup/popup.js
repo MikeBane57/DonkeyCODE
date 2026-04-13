@@ -311,11 +311,7 @@ function updateSetupBanner(state) {
 
 function setTabVersions(version) {
   const v = (version && String(version).trim()) || "";
-  const s1 = $("tab-ver-sessions");
-  const s2 = $("tab-ver-scripts");
   const sub = $("header-sub-version");
-  if (s1) s1.textContent = v ? v : "";
-  if (s2) s2.textContent = v ? v : "";
   if (sub) sub.textContent = v ? v : "";
 }
 
