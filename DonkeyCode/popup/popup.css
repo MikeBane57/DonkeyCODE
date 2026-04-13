@@ -213,6 +213,10 @@ body {
   box-sizing: border-box;
 }
 
+#panel-scripts.panel {
+  min-height: 380px;
+}
+
 .panel[hidden] {
   display: none !important;
 }
@@ -457,16 +461,18 @@ body {
 
 .scripts-head-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 2px;
+  margin-bottom: 8px;
 }
 
-.scripts-head-title {
+.scripts-last-fetch--head {
   margin: 0;
   flex: 1;
   min-width: 0;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .scripts-head-actions {
@@ -494,11 +500,6 @@ body {
   flex-shrink: 0;
 }
 
-.scripts-last-fetch {
-  margin: 0 0 8px;
-  font-size: 11px;
-  line-height: 1.35;
-}
 
 .settings-modal .modal-hint {
   margin-top: 0;
@@ -666,10 +667,14 @@ button.danger:hover {
   overflow-y: auto;
 }
 
-#session-list,
-#script-list {
+#session-list {
   min-height: 200px;
   max-height: 220px;
+}
+
+#script-list {
+  min-height: 260px;
+  max-height: min(58vh, 420px);
 }
 
 .list li {
@@ -735,6 +740,7 @@ button.danger:hover {
 }
 
 .script-col-ver {
+  justify-self: end;
   text-align: right;
   font: inherit;
   color: #78909c;
@@ -743,16 +749,19 @@ button.danger:hover {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   padding-bottom: 1px;
+  width: 100%;
 }
 
 .script-col-prefs {
-  text-align: center;
+  justify-self: end;
+  text-align: right;
   font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: #78909c;
   padding-bottom: 1px;
+  width: 100%;
 }
 
 .script-list li.script-row {
@@ -780,10 +789,12 @@ button.danger:hover {
   font-size: 11px;
   color: #546e7a;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  justify-self: end;
   text-align: right;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  width: 100%;
 }
 
 .btn-script-prefs {
@@ -798,7 +809,7 @@ button.danger:hover {
   line-height: 1;
   cursor: pointer;
   color: #455a64;
-  justify-self: center;
+  justify-self: end;
   align-self: start;
 }
 
