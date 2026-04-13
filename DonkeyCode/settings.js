@@ -386,7 +386,7 @@ $("btn-save-github").addEventListener("click", async function () {
 });
 
 $("btn-gh-pull").addEventListener("click", async function () {
-  setInlineStatus($("github-status"), "Getting cloud sessions…", false);
+  setInlineStatus($("github-status"), "Getting cloud layouts…", false);
   try {
     const res = await send("GITHUB_SESSIONS_PULL", {});
     if (res.ok === false) throw new Error(res.error || "Pull failed");
