@@ -932,6 +932,170 @@ function getPrefSchemaKeys(schema) {
   });
 }
 
+function getPrefGroupLabel(spec) {
+  const raw = spec && spec.group != null ? String(spec.group).trim() : "";
+  return raw || "General";
+}
+
+function appendOnePrefField(wrap, key, spec, vals) {
+  const typ = normalizePrefType(spec);
+  const labelText = spec.label ? String(spec.label) : key;
+  const hint = spec.description || spec.hint ? String(spec.description || spec.hint) : "";
+  const def = Object.prototype.hasOwnProperty.call(spec, "default") ? spec.default : undefined;
+  const current = Object.prototype.hasOwnProperty.call(vals, key) ? vals[key] : def;
+
+  if (typ === "boolean") {
+    const row = document.createElement("div");
+    row.className = "script-prefs-field-row";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.className = "script-prefs-input";
+    cb.id = "script-pref-" + key;
+    cb.dataset.prefKey = key;
+    cb.dataset.prefType = "boolean";
+    cb.checked = current === true || current === "true";
+    const lab = document.createElement("label");
+    lab.className = "script-prefs-field-label";
+    lab.htmlFor = cb.id;
+    lab.textContent = labelText;
+    row.appendChild(cb);
+    row.appendChild(lab);
+    wrap.appendChild(row);
+    if (hint) {
+      const hi = document.createElement("span");
+      hi.className = "script-prefs-field-hint";
+      hi.textContent = hint;
+      wrap.appendChild(hi);
+    }
+  } else if (typ === "select") {
+    const lab = document.createElement("label");
+    lab.className = "script-prefs-field-label";
+    lab.htmlFor = "script-pref-" + key;
+    lab.textContent = labelText;
+    wrap.appendChild(lab);
+    const sel = document.createElement("select");
+    sel.className = "script-prefs-input";
+    sel.id = "script-pref-" + key;
+    sel.dataset.prefKey = key;
+    sel.dataset.prefType = "select";
+    const opts = Array.isArray(spec.options) ? spec.options : [];
+    if (opts.length === 0) {
+      const o = document.createElement("option");
+      o.value = "";
+      o.textContent = "(no options in schema)";
+      sel.appendChild(o);
+      sel.disabled = true;
+    } else {
+      opts.forEach(function (opt) {
+        const o = document.createElement("option");
+        if (opt && typeof opt === "object") {
+          o.value = opt.value != null ? String(opt.value) : "";
+          o.textContent = opt.label != null ? String(opt.label) : o.value;
+        } else {
+          o.value = String(opt);
+          o.textContent = String(opt);
+        }
+        sel.appendChild(o);
+      });
+      const strCur = current != null ? String(current) : "";
+      let matched = false;
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === strCur) {
+          matched = true;
+          break;
+        }
+      }
+      sel.value = matched ? strCur : sel.options[0] ? sel.options[0].value : "";
+    }
+    wrap.appendChild(sel);
+    if (hint) {
+      const hi = document.createElement("span");
+      hi.className = "script-prefs-field-hint";
+      hi.textContent = hint;
+      wrap.appendChild(hi);
+    }
+  } else if (typ === "number") {
+    const lab = document.createElement("label");
+    lab.className = "script-prefs-field-label";
+    lab.htmlFor = "script-pref-" + key;
+    lab.textContent = labelText;
+    wrap.appendChild(lab);
+    const inp = document.createElement("input");
+    inp.type = "number";
+    inp.className = "script-prefs-input";
+    inp.id = "script-pref-" + key;
+    inp.dataset.prefKey = key;
+    inp.dataset.prefType = "number";
+    if (spec.min != null && !Number.isNaN(Number(spec.min))) inp.min = String(spec.min);
+    if (spec.max != null && !Number.isNaN(Number(spec.max))) inp.max = String(spec.max);
+    if (spec.step != null && !Number.isNaN(Number(spec.step))) inp.step = String(spec.step);
+    else inp.step = "any";
+    const num =
+      typeof current === "number"
+        ? current
+        : current != null && String(current).trim() !== ""
+          ? parseFloat(String(current))
+          : def != null && typeof def === "number"
+            ? def
+            : def != null && String(def).trim() !== ""
+              ? parseFloat(String(def))
+              : "";
+    inp.value = Number.isFinite(num) ? String(num) : "";
+    if (spec.placeholder) inp.placeholder = String(spec.placeholder);
+    wrap.appendChild(inp);
+    if (hint) {
+      const hi = document.createElement("span");
+      hi.className = "script-prefs-field-hint";
+      hi.textContent = hint;
+      wrap.appendChild(hi);
+    }
+  } else {
+    const lab = document.createElement("label");
+    lab.className = "script-prefs-field-label";
+    lab.htmlFor = "script-pref-" + key;
+    lab.textContent = labelText;
+    wrap.appendChild(lab);
+    const inp = document.createElement("input");
+    inp.type = typ === "url" ? "url" : "text";
+    inp.className = "script-prefs-input";
+    inp.id = "script-pref-" + key;
+    inp.dataset.prefKey = key;
+    inp.dataset.prefType = typ === "url" ? "url" : "string";
+    inp.value = current != null ? String(current) : def != null ? String(def) : "";
+    if (spec.placeholder) inp.placeholder = String(spec.placeholder);
+    if (spec.maxlength != null) inp.maxLength = Math.min(2048, Math.max(1, parseInt(String(spec.maxlength), 10) || 512));
+    wrap.appendChild(inp);
+    if (hint) {
+      const hi = document.createElement("span");
+      hi.className = "script-prefs-field-hint";
+      hi.textContent = hint;
+      wrap.appendChild(hi);
+    }
+  }
+}
+
+function groupPrefKeysByGroup(schema) {
+  const map = {};
+  const keys = getPrefSchemaKeys(schema);
+  keys.forEach(function (key) {
+    const spec = schema[key] && typeof schema[key] === "object" && !Array.isArray(schema[key]) ? schema[key] : {};
+    const g = getPrefGroupLabel(spec);
+    if (!map[g]) map[g] = [];
+    map[g].push(key);
+  });
+  return map;
+}
+
+function sortGroupNames(names) {
+  const copy = names.slice();
+  copy.sort(function (a, b) {
+    if (a === "General") return -1;
+    if (b === "General") return 1;
+    return a.localeCompare(b, undefined, { sensitivity: "base" });
+  });
+  return copy;
+}
+
 function normalizePrefType(spec) {
   const t = spec && spec.type != null ? String(spec.type).toLowerCase().trim() : "string";
   if (t === "bool") return "boolean";
@@ -956,146 +1120,22 @@ function buildScriptPrefsFormFields(container, s) {
     container.appendChild(p);
     return;
   }
-  keys.forEach(function (key) {
-    const spec = schema[key] && typeof schema[key] === "object" && !Array.isArray(schema[key]) ? schema[key] : {};
-    const typ = normalizePrefType(spec);
-    const labelText = spec.label ? String(spec.label) : key;
-    const hint = spec.description || spec.hint ? String(spec.description || spec.hint) : "";
-    const def = Object.prototype.hasOwnProperty.call(spec, "default") ? spec.default : undefined;
-    let current = Object.prototype.hasOwnProperty.call(vals, key) ? vals[key] : def;
-
-    const wrap = document.createElement("div");
-    wrap.className = "script-prefs-field";
-
-    if (typ === "boolean") {
-      const row = document.createElement("div");
-      row.className = "script-prefs-field-row";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.className = "script-prefs-input";
-      cb.id = "script-pref-" + key;
-      cb.dataset.prefKey = key;
-      cb.dataset.prefType = "boolean";
-      cb.checked = current === true || current === "true";
-      const lab = document.createElement("label");
-      lab.className = "script-prefs-field-label";
-      lab.htmlFor = cb.id;
-      lab.textContent = labelText;
-      row.appendChild(cb);
-      row.appendChild(lab);
-      wrap.appendChild(row);
-      if (hint) {
-        const hi = document.createElement("span");
-        hi.className = "script-prefs-field-hint";
-        hi.textContent = hint;
-        wrap.appendChild(hi);
-      }
-    } else if (typ === "select") {
-      const lab = document.createElement("label");
-      lab.className = "script-prefs-field-label";
-      lab.htmlFor = "script-pref-" + key;
-      lab.textContent = labelText;
-      wrap.appendChild(lab);
-      const sel = document.createElement("select");
-      sel.className = "script-prefs-input";
-      sel.id = "script-pref-" + key;
-      sel.dataset.prefKey = key;
-      sel.dataset.prefType = "select";
-      const opts = Array.isArray(spec.options) ? spec.options : [];
-      if (opts.length === 0) {
-        const o = document.createElement("option");
-        o.value = "";
-        o.textContent = "(no options in schema)";
-        sel.appendChild(o);
-        sel.disabled = true;
-      } else {
-        opts.forEach(function (opt) {
-          const o = document.createElement("option");
-          if (opt && typeof opt === "object") {
-            o.value = opt.value != null ? String(opt.value) : "";
-            o.textContent = opt.label != null ? String(opt.label) : o.value;
-          } else {
-            o.value = String(opt);
-            o.textContent = String(opt);
-          }
-          sel.appendChild(o);
-        });
-        const strCur = current != null ? String(current) : "";
-        let matched = false;
-        for (let i = 0; i < sel.options.length; i++) {
-          if (sel.options[i].value === strCur) {
-            matched = true;
-            break;
-          }
-        }
-        sel.value = matched ? strCur : sel.options[0] ? sel.options[0].value : "";
-      }
-      wrap.appendChild(sel);
-      if (hint) {
-        const hi = document.createElement("span");
-        hi.className = "script-prefs-field-hint";
-        hi.textContent = hint;
-        wrap.appendChild(hi);
-      }
-    } else if (typ === "number") {
-      const lab = document.createElement("label");
-      lab.className = "script-prefs-field-label";
-      lab.htmlFor = "script-pref-" + key;
-      lab.textContent = labelText;
-      wrap.appendChild(lab);
-      const inp = document.createElement("input");
-      inp.type = "number";
-      inp.className = "script-prefs-input";
-      inp.id = "script-pref-" + key;
-      inp.dataset.prefKey = key;
-      inp.dataset.prefType = "number";
-      if (spec.min != null && !Number.isNaN(Number(spec.min))) inp.min = String(spec.min);
-      if (spec.max != null && !Number.isNaN(Number(spec.max))) inp.max = String(spec.max);
-      if (spec.step != null && !Number.isNaN(Number(spec.step))) inp.step = String(spec.step);
-      else inp.step = "any";
-      const num =
-        typeof current === "number"
-          ? current
-          : current != null && String(current).trim() !== ""
-            ? parseFloat(String(current))
-            : def != null && typeof def === "number"
-              ? def
-              : def != null && String(def).trim() !== ""
-                ? parseFloat(String(def))
-                : "";
-      inp.value = Number.isFinite(num) ? String(num) : "";
-      if (spec.placeholder) inp.placeholder = String(spec.placeholder);
-      wrap.appendChild(inp);
-      if (hint) {
-        const hi = document.createElement("span");
-        hi.className = "script-prefs-field-hint";
-        hi.textContent = hint;
-        wrap.appendChild(hi);
-      }
-    } else {
-      const lab = document.createElement("label");
-      lab.className = "script-prefs-field-label";
-      lab.htmlFor = "script-pref-" + key;
-      lab.textContent = labelText;
-      wrap.appendChild(lab);
-      const inp = document.createElement("input");
-      inp.type = typ === "url" ? "url" : "text";
-      inp.className = "script-prefs-input";
-      inp.id = "script-pref-" + key;
-      inp.dataset.prefKey = key;
-      inp.dataset.prefType = typ === "url" ? "url" : "string";
-      inp.value = current != null ? String(current) : def != null ? String(def) : "";
-      if (spec.placeholder) inp.placeholder = String(spec.placeholder);
-      if (spec.maxlength != null) inp.maxLength = Math.min(2048, Math.max(1, parseInt(String(spec.maxlength), 10) || 512));
-      wrap.appendChild(inp);
-      if (hint) {
-        const hi = document.createElement("span");
-        hi.className = "script-prefs-field-hint";
-        hi.textContent = hint;
-        wrap.appendChild(hi);
-      }
-    }
-    container.appendChild(wrap);
+  const byGroup = groupPrefKeysByGroup(schema);
+  const groupNames = sortGroupNames(Object.keys(byGroup));
+  groupNames.forEach(function (groupName) {
+    const groupKeys = byGroup[groupName] || [];
+    if (!groupKeys.length) return;
+    const heading = document.createElement("div");
+    heading.className = "script-prefs-group-heading";
+    heading.textContent = groupName;
+    container.appendChild(heading);
+    groupKeys.forEach(function (key) {
+      const spec = schema[key] && typeof schema[key] === "object" && !Array.isArray(schema[key]) ? schema[key] : {};
+      const wrap = document.createElement("div");
+      wrap.className = "script-prefs-field";
+      appendOnePrefField(wrap, key, spec, vals);
+      container.appendChild(wrap);
+    });
   });
 }
 

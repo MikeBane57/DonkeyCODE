@@ -35,6 +35,7 @@ Aliases: `bool` → boolean, `int`/`integer`/`float` → number, `enum`/`dropdow
 Common properties on each field:
 
 - **`label`** — Short label shown above the control (fallback: key name).
+- **`group`** — Optional section title in the Pref modal (e.g. `"Go Turn Details"`). Keys without `group` appear under **General**.
 - **`description`** or **`hint`** — Smaller help text under the control.
 - **`default`** — Used when the user has never saved a value (and for `donkeycodeGetPref` fallback).
 
@@ -51,7 +52,31 @@ Common properties on each field:
 
 ## What to put in the script body
 
-The extension runs your script body as a function with **`donkeycodeGetPref`** as the **first argument** (same pattern as `GM_xmlhttpRequest` when `@grant` requests it).
+### How DonkeyCode injects your code (important)
+
+The extension compiles the script body with:
+
+- `new Function("donkeycodeGetPref", userCode)` — or with **`GM_xmlhttpRequest`** as a second parameter when `@grant` / code uses it.
+
+It then calls the resulting function with the **real** `donkeycodeGetPref` implementation (and `GM_xmlhttpRequest` when applicable). **Your top-level code must receive that parameter** — e.g. wrap in `(function (donkeycodeGetPref) { ... })(donkeycodeGetPref)` **without** passing `globalThis.donkeycodeGetPref` as the argument unless the host has set it (see below).
+
+DonkeyCode also assigns **`window.donkeycodeGetPref`** / **`globalThis.donkeycodeGetPref`** to the same function during and after injection so:
+
+- Parameterless IIFEs can pass **`globalThis.donkeycodeGetPref`** into a wrapper: `(function (g) { ... })(globalThis.donkeycodeGetPref)` — **only valid after** DonkeyCode has run on the page.
+- Async callbacks that run later can still call `globalThis.donkeycodeGetPref("key")` (if multiple scripts inject, the **last** one wins for the global).
+
+**Wrong (do not do this):** `(function (donkeycodeGetPref) { ... })(globalThis.donkeycodeGetPref)` when `globalThis.donkeycodeGetPref` is still `undefined` — you will pass `undefined` and break reads.
+
+**Preferred:** use the lexical parameter from a wrapper:
+
+```javascript
+(function (donkeycodeGetPref) {
+  var url = donkeycodeGetPref("openUrl");
+  // main logic...
+})(donkeycodeGetPref);
+```
+
+Or use **`globalThis.donkeycodeGetPref("key")`** directly in the body **after** DonkeyCode has injected (no IIFE argument needed).
 
 ### No GM_xmlhttpRequest
 
@@ -60,12 +85,6 @@ The extension runs your script body as a function with **`donkeycodeGetPref`** a
   var url = donkeycodeGetPref("openUrl");
   console.log(url);
 })(donkeycodeGetPref);
-```
-
-Or rely on the injected first parameter in sloppy global style:
-
-```javascript
-var url = donkeycodeGetPref("openUrl");
 ```
 
 ### With GM_xmlhttpRequest
@@ -79,7 +98,9 @@ var url = donkeycodeGetPref("openUrl");
 
 Semantics:
 
-- `donkeycodeGetPref("key")` returns the **saved** value, or the schema **`default`**, or `undefined` if neither exists.
+- `donkeycodeGetPref("key")` returns the **saved** value for the active session folder (merged with schema), or the schema **`default`**, or `undefined` if neither exists.
+
+**Debug:** After saving prefs and reloading the page, the browser console may log `[DonkeyCode:page] applying saved prefs` with the script id and object when non-empty prefs are injected.
 
 ## What is possible / not possible
 
@@ -89,11 +110,15 @@ Semantics:
 - Multiple prefs per script via one merged JSON object or several `@donkeycode-pref` lines.
 - Per-user values that follow the machine’s **session folder** and optional GitHub sync (named folders; **Default** folder does not sync script prefs).
 
-**Not in the popup UI (yet)**
+**Not in the popup UI**
 
 - Freeform **JSON** editing in the modal (use schema fields only).
 - **Arrays** or nested objects as a single editable value (flatten into keys or use string fields).
 - **Validation** beyond HTML5 (`url`, `number` min/max). Add checks in script.
+
+**In the popup UI**
+
+- **`group`** on field specs → section headings in the Pref modal.
 
 ## Agent checklist when adding prefs to a script
 

@@ -836,6 +836,21 @@ button.danger:hover {
   padding: 2px 0;
 }
 
+.script-prefs-group-heading {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #546e7a;
+  margin: 12px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e0e4e8;
+}
+
+.script-prefs-group-heading:first-child {
+  margin-top: 0;
+}
+
 .script-prefs-field {
   margin-bottom: 12px;
 }

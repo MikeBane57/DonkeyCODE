@@ -558,6 +558,10 @@ function donkeycodeInjectMain(payload) {
   }
 
   try {
+    const prefKeys = Object.keys(userPrefs);
+    if (prefKeys.length > 0) {
+      console.log("[DonkeyCode:page] applying saved prefs", scriptId, userPrefs);
+    }
     console.log(
       "[DonkeyCode:page] executing script",
       scriptId,
@@ -566,6 +570,13 @@ function donkeycodeInjectMain(payload) {
     const run = wantsGmXhr
       ? new Function("donkeycodeGetPref", "GM_xmlhttpRequest", code)
       : new Function("donkeycodeGetPref", code);
+    /**
+     * Lexical parameter from new Function(...) is the primary API.
+     * Also assign window/globalThis.donkeycodeGetPref so wrappers can pass
+     * globalThis.donkeycodeGetPref into an IIFE, and so async callbacks after
+     * the initial run still resolve (last injected script wins if several run).
+     */
+    g.donkeycodeGetPref = donkeycodeGetPref;
     if (wantsGmXhr) run(donkeycodeGetPref, gmImpl);
     else run(donkeycodeGetPref);
     if (typeof g.__myScriptCleanup === "function") {
