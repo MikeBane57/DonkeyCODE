@@ -834,16 +834,63 @@ button.danger:hover {
   white-space: pre-wrap;
 }
 
-.script-prefs-label {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  color: #333;
-  margin: 8px 0 4px;
+.script-prefs-fields {
+  max-height: min(50vh, 280px);
+  overflow-y: auto;
+  margin: 8px 0 12px;
+  padding: 2px 0;
 }
 
-.script-prefs-textarea {
-  min-height: 120px;
+.script-prefs-field {
+  margin-bottom: 12px;
+}
+
+.script-prefs-field:last-child {
+  margin-bottom: 0;
+}
+
+.script-prefs-field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.script-prefs-field-hint {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: #78909c;
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.script-prefs-field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.script-prefs-field-row .script-prefs-field-label {
+  margin-bottom: 0;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.script-prefs-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid #c5cad3;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.script-prefs-input[type="checkbox"] {
+  width: auto;
+  flex-shrink: 0;
 }
 
 /* Toggle switch — compact, left side of row */

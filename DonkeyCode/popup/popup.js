@@ -86,6 +86,8 @@ let editingSessionName = null;
 
 /** Script user-prefs modal */
 let scriptPrefsEditingId = null;
+/** @type {object|null} */
+let scriptPrefsEditingScript = null;
 
 /** Pending save after worksheet order modal */
 let saveSessionPendingName = null;
@@ -923,27 +925,235 @@ function scriptHasPrefSchema(s) {
   return sch && typeof sch === "object" && !Array.isArray(sch) && Object.keys(sch).length > 0;
 }
 
+function getPrefSchemaKeys(schema) {
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) return [];
+  return Object.keys(schema).sort(function (a, b) {
+    return a.localeCompare(b, undefined, { sensitivity: "base" });
+  });
+}
+
+function normalizePrefType(spec) {
+  const t = spec && spec.type != null ? String(spec.type).toLowerCase().trim() : "string";
+  if (t === "bool") return "boolean";
+  if (t === "int" || t === "integer" || t === "float" || t === "double") return "number";
+  if (t === "dropdown" || t === "enum") return "select";
+  return t;
+}
+
+function buildScriptPrefsFormFields(container, s) {
+  if (!container) return;
+  container.innerHTML = "";
+  const schema = (s.donkeycodePrefSchema && typeof s.donkeycodePrefSchema === "object" && !Array.isArray(s.donkeycodePrefSchema))
+    ? s.donkeycodePrefSchema
+    : {};
+  const vals =
+    s.userPrefs && typeof s.userPrefs === "object" && !Array.isArray(s.userPrefs) ? s.userPrefs : {};
+  const keys = getPrefSchemaKeys(schema);
+  if (keys.length === 0) {
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = "No preference keys in this script’s schema.";
+    container.appendChild(p);
+    return;
+  }
+  keys.forEach(function (key) {
+    const spec = schema[key] && typeof schema[key] === "object" && !Array.isArray(schema[key]) ? schema[key] : {};
+    const typ = normalizePrefType(spec);
+    const labelText = spec.label ? String(spec.label) : key;
+    const hint = spec.description || spec.hint ? String(spec.description || spec.hint) : "";
+    const def = Object.prototype.hasOwnProperty.call(spec, "default") ? spec.default : undefined;
+    let current = Object.prototype.hasOwnProperty.call(vals, key) ? vals[key] : def;
+
+    const wrap = document.createElement("div");
+    wrap.className = "script-prefs-field";
+
+    if (typ === "boolean") {
+      const row = document.createElement("div");
+      row.className = "script-prefs-field-row";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "script-prefs-input";
+      cb.id = "script-pref-" + key;
+      cb.dataset.prefKey = key;
+      cb.dataset.prefType = "boolean";
+      cb.checked = current === true || current === "true";
+      const lab = document.createElement("label");
+      lab.className = "script-prefs-field-label";
+      lab.htmlFor = cb.id;
+      lab.textContent = labelText;
+      row.appendChild(cb);
+      row.appendChild(lab);
+      wrap.appendChild(row);
+      if (hint) {
+        const hi = document.createElement("span");
+        hi.className = "script-prefs-field-hint";
+        hi.textContent = hint;
+        wrap.appendChild(hi);
+      }
+    } else if (typ === "select") {
+      const lab = document.createElement("label");
+      lab.className = "script-prefs-field-label";
+      lab.htmlFor = "script-pref-" + key;
+      lab.textContent = labelText;
+      wrap.appendChild(lab);
+      const sel = document.createElement("select");
+      sel.className = "script-prefs-input";
+      sel.id = "script-pref-" + key;
+      sel.dataset.prefKey = key;
+      sel.dataset.prefType = "select";
+      const opts = Array.isArray(spec.options) ? spec.options : [];
+      if (opts.length === 0) {
+        const o = document.createElement("option");
+        o.value = "";
+        o.textContent = "(no options in schema)";
+        sel.appendChild(o);
+        sel.disabled = true;
+      } else {
+        opts.forEach(function (opt) {
+          const o = document.createElement("option");
+          if (opt && typeof opt === "object") {
+            o.value = opt.value != null ? String(opt.value) : "";
+            o.textContent = opt.label != null ? String(opt.label) : o.value;
+          } else {
+            o.value = String(opt);
+            o.textContent = String(opt);
+          }
+          sel.appendChild(o);
+        });
+        const strCur = current != null ? String(current) : "";
+        let matched = false;
+        for (let i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value === strCur) {
+            matched = true;
+            break;
+          }
+        }
+        sel.value = matched ? strCur : sel.options[0] ? sel.options[0].value : "";
+      }
+      wrap.appendChild(sel);
+      if (hint) {
+        const hi = document.createElement("span");
+        hi.className = "script-prefs-field-hint";
+        hi.textContent = hint;
+        wrap.appendChild(hi);
+      }
+    } else if (typ === "number") {
+      const lab = document.createElement("label");
+      lab.className = "script-prefs-field-label";
+      lab.htmlFor = "script-pref-" + key;
+      lab.textContent = labelText;
+      wrap.appendChild(lab);
+      const inp = document.createElement("input");
+      inp.type = "number";
+      inp.className = "script-prefs-input";
+      inp.id = "script-pref-" + key;
+      inp.dataset.prefKey = key;
+      inp.dataset.prefType = "number";
+      if (spec.min != null && !Number.isNaN(Number(spec.min))) inp.min = String(spec.min);
+      if (spec.max != null && !Number.isNaN(Number(spec.max))) inp.max = String(spec.max);
+      if (spec.step != null && !Number.isNaN(Number(spec.step))) inp.step = String(spec.step);
+      else inp.step = "any";
+      const num =
+        typeof current === "number"
+          ? current
+          : current != null && String(current).trim() !== ""
+            ? parseFloat(String(current))
+            : def != null && typeof def === "number"
+              ? def
+              : def != null && String(def).trim() !== ""
+                ? parseFloat(String(def))
+                : "";
+      inp.value = Number.isFinite(num) ? String(num) : "";
+      if (spec.placeholder) inp.placeholder = String(spec.placeholder);
+      wrap.appendChild(inp);
+      if (hint) {
+        const hi = document.createElement("span");
+        hi.className = "script-prefs-field-hint";
+        hi.textContent = hint;
+        wrap.appendChild(hi);
+      }
+    } else {
+      const lab = document.createElement("label");
+      lab.className = "script-prefs-field-label";
+      lab.htmlFor = "script-pref-" + key;
+      lab.textContent = labelText;
+      wrap.appendChild(lab);
+      const inp = document.createElement("input");
+      inp.type = typ === "url" ? "url" : "text";
+      inp.className = "script-prefs-input";
+      inp.id = "script-pref-" + key;
+      inp.dataset.prefKey = key;
+      inp.dataset.prefType = typ === "url" ? "url" : "string";
+      inp.value = current != null ? String(current) : def != null ? String(def) : "";
+      if (spec.placeholder) inp.placeholder = String(spec.placeholder);
+      if (spec.maxlength != null) inp.maxLength = Math.min(2048, Math.max(1, parseInt(String(spec.maxlength), 10) || 512));
+      wrap.appendChild(inp);
+      if (hint) {
+        const hi = document.createElement("span");
+        hi.className = "script-prefs-field-hint";
+        hi.textContent = hint;
+        wrap.appendChild(hi);
+      }
+    }
+    container.appendChild(wrap);
+  });
+}
+
+function readScriptPrefsFormValues(container, schema) {
+  const out = {};
+  if (!container || !schema || typeof schema !== "object") return out;
+  const inputs = container.querySelectorAll("[data-pref-key]");
+  inputs.forEach(function (el) {
+    const key = el.dataset.prefKey;
+    if (!key) return;
+    const spec = schema[key] && typeof schema[key] === "object" ? schema[key] : {};
+    const typ = normalizePrefType(spec);
+    const def = Object.prototype.hasOwnProperty.call(spec, "default") ? spec.default : undefined;
+    if (typ === "boolean") {
+      out[key] = !!el.checked;
+      return;
+    }
+    if (typ === "select") {
+      out[key] = el.value;
+      return;
+    }
+    if (typ === "number") {
+      const raw = String(el.value || "").trim();
+      if (raw === "") {
+        if (def != null && typeof def === "number") out[key] = def;
+        else if (def != null && String(def).trim() !== "") {
+          const p = parseFloat(String(def));
+          out[key] = Number.isFinite(p) ? p : 0;
+        } else out[key] = 0;
+        return;
+      }
+      const n = parseFloat(raw);
+      out[key] = Number.isFinite(n) ? n : def != null ? def : 0;
+      return;
+    }
+    out[key] = String(el.value != null ? el.value : "");
+  });
+  return out;
+}
+
 function openScriptPrefsModal(s) {
   const ov = $("script-prefs-overlay");
-  const ta = $("script-prefs-json");
+  const fields = $("script-prefs-fields");
   const lead = $("script-prefs-lead");
-  if (!ov || !ta) return;
+  if (!ov || !fields) return;
   scriptPrefsEditingId = s.id;
+  scriptPrefsEditingScript = s;
   if (lead) {
     lead.textContent =
       "Edit stored values for " +
       scriptDisplayName(s) +
-      ". Use donkeycodeGetPref(\"key\") in the script body to read them.";
+      ". In the script, read values with donkeycodeGetPref(\"key\").";
   }
-  const vals = (s.userPrefs && typeof s.userPrefs === "object" && !Array.isArray(s.userPrefs)) ? s.userPrefs : {};
-  try {
-    ta.value = JSON.stringify(vals, null, 2);
-  } catch (e) {
-    ta.value = "{}";
-  }
+  buildScriptPrefsFormFields(fields, s);
   ov.classList.remove("hidden");
   ov.setAttribute("aria-hidden", "false");
-  ta.focus();
+  const first = fields.querySelector("input, select");
+  if (first && typeof first.focus === "function") first.focus();
 }
 
 function closeScriptPrefsModal() {
@@ -953,23 +1163,21 @@ function closeScriptPrefsModal() {
     ov.setAttribute("aria-hidden", "true");
   }
   scriptPrefsEditingId = null;
+  scriptPrefsEditingScript = null;
+  const fields = $("script-prefs-fields");
+  if (fields) fields.innerHTML = "";
 }
 
 async function saveScriptPrefsFromModal() {
   const id = scriptPrefsEditingId;
-  const ta = $("script-prefs-json");
-  if (!id || !ta) return;
-  let obj;
-  try {
-    obj = JSON.parse(String(ta.value || "").trim() || "{}");
-  } catch (e) {
-    setStatus("Invalid JSON: " + (e.message || e), true);
-    return;
-  }
-  if (obj === null || typeof obj !== "object" || Array.isArray(obj)) {
-    setStatus("Preferences must be a JSON object, e.g. {\"openUrl\":\"https://…\"}.", true);
-    return;
-  }
+  const fields = $("script-prefs-fields");
+  const s = scriptPrefsEditingScript;
+  if (!id || !fields || !s) return;
+  const schema =
+    s.donkeycodePrefSchema && typeof s.donkeycodePrefSchema === "object" && !Array.isArray(s.donkeycodePrefSchema)
+      ? s.donkeycodePrefSchema
+      : {};
+  const obj = readScriptPrefsFormValues(fields, schema);
   setStatus("Saving preferences…");
   try {
     const res = await send("SET_SCRIPT_USER_PREFS", { scriptId: id, userPrefs: obj });
