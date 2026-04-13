@@ -312,6 +312,26 @@ function setTabVersions(version) {
   if (s2) s2.textContent = "";
 }
 
+/** Script prefs (GitHub) only apply to named session folders, not Default. */
+function updateScriptPrefsButtons(state) {
+  const cur = state && state.currentSessionFolder;
+  const isDefault = !cur || cur === "__default__";
+  const pull = $("btn-pull-script-prefs-github");
+  const push = $("btn-push-script-prefs-github");
+  if (pull) {
+    pull.disabled = isDefault;
+    pull.title = isDefault
+      ? "Pick a named session folder (not Default) to load script prefs from GitHub."
+      : "Load script on/off from GitHub for this session folder (does not refresh script list)";
+  }
+  if (push) {
+    push.disabled = isDefault;
+    push.title = isDefault
+      ? "Pick a named session folder (not Default) to save script prefs to GitHub."
+      : "Save script on/off to GitHub for this session folder";
+  }
+}
+
 function syncLoginFirstSelect(names) {
   const sel = $("login-first-session");
   if (!sel) return;
@@ -371,6 +391,7 @@ function fillSessionFolderUI(state) {
     labelEl.textContent = cur === "__default__" ? "Default" : cur;
     labelEl.title = cur === "__default__" ? "Default (__default__)" : cur;
   }
+  updateScriptPrefsButtons(state);
 }
 
 function closeFolderPickerModal() {

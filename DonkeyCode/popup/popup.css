@@ -485,6 +485,11 @@ body {
   white-space: nowrap;
 }
 
+.scripts-head-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .scripts-refresh-btn {
   flex-shrink: 0;
 }

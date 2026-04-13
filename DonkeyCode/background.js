@@ -702,10 +702,16 @@ async function loadScriptsFromRemote() {
       (prevRow && prevRow.userScriptDescription) ||
       "";
     const prefRow = folderPrefs[id];
-    const enabledFromFolder =
-      prefRow && Object.prototype.hasOwnProperty.call(folderPrefs, id)
-        ? prefRow.enabled !== false
-        : false;
+    const useFolderPrefs = !isDefaultSessionFolderKey(fkRefresh);
+    let enabledFromFolder;
+    if (useFolderPrefs) {
+      enabledFromFolder =
+        prefRow && Object.prototype.hasOwnProperty.call(folderPrefs, id)
+          ? prefRow.enabled !== false
+          : false;
+    } else {
+      enabledFromFolder = prevRow ? prevRow.enabled !== false : false;
+    }
     next.push({
       id,
       url: e.url,
@@ -722,21 +728,23 @@ async function loadScriptsFromRemote() {
     });
   }
 
-  const now = Date.now();
-  let prefsChanged = false;
-  for (const row of next) {
-    if (!row.id) continue;
-    if (!Object.prototype.hasOwnProperty.call(folderPrefs, row.id)) {
-      folderPrefs[row.id] = {
-        enabled: false,
-        updatedAt: now,
-        prefs: {},
-      };
-      prefsChanged = true;
+  if (!isDefaultSessionFolderKey(fkRefresh)) {
+    const now = Date.now();
+    let prefsChanged = false;
+    for (const row of next) {
+      if (!row.id) continue;
+      if (!Object.prototype.hasOwnProperty.call(folderPrefs, row.id)) {
+        folderPrefs[row.id] = {
+          enabled: false,
+          updatedAt: now,
+          prefs: {},
+        };
+        prefsChanged = true;
+      }
     }
-  }
-  if (prefsChanged) {
-    await setScriptPrefsMapForFolder(fkRefresh, folderPrefs);
+    if (prefsChanged) {
+      await setScriptPrefsMapForFolder(fkRefresh, folderPrefs);
+    }
   }
 
   await saveScripts(next);
@@ -1142,17 +1150,27 @@ function normalizeScriptPrefsMap(raw) {
   return out;
 }
 
+function isDefaultSessionFolderKey(folderKey) {
+  return normalizeFolderKey(folderKey) === DEFAULT_SESSION_FOLDER;
+}
+
 async function getScriptPrefsMapForFolder(folderKey) {
-  const { folders } = await getSessionFoldersState();
   const fk = normalizeFolderKey(folderKey);
+  if (isDefaultSessionFolderKey(fk)) {
+    return {};
+  }
+  const { folders } = await getSessionFoldersState();
   const entry = folders[fk] || {};
   const raw = entry.scriptPrefs;
   return normalizeScriptPrefsMap(raw);
 }
 
 async function setScriptPrefsMapForFolder(folderKey, map) {
-  const { folders } = await getSessionFoldersState();
   const fk = normalizeFolderKey(folderKey);
+  if (isDefaultSessionFolderKey(fk)) {
+    return;
+  }
+  const { folders } = await getSessionFoldersState();
   if (!folders[fk]) folders[fk] = { sessions: {}, scriptPrefs: {} };
   if (!folders[fk].sessions || typeof folders[fk].sessions !== "object") {
     folders[fk].sessions = {};
@@ -1166,6 +1184,9 @@ async function setScriptPrefsMapForFolder(folderKey, map) {
  */
 async function persistCurrentFolderScriptPrefsFromStorage() {
   const fk = await getCurrentSessionFolderKey();
+  if (isDefaultSessionFolderKey(fk)) {
+    return;
+  }
   const scripts = await getStoredScripts();
   const map = await getScriptPrefsMapForFolder(fk);
   const now = Date.now();
@@ -1183,8 +1204,13 @@ async function persistCurrentFolderScriptPrefsFromStorage() {
 
 /**
  * Apply a folder's scriptPrefs onto the global scripts array (enabled + future prefs), then save.
+ * Default folder has no stored prefs — leave global script toggles unchanged.
  */
 async function applyScriptPrefsFromFolderToStorage(folderKey) {
+  const fk = normalizeFolderKey(folderKey);
+  if (isDefaultSessionFolderKey(fk)) {
+    return;
+  }
   const scripts = await getStoredScripts();
   const prefs = await getScriptPrefsMapForFolder(folderKey);
   const next = scripts.map(function (s) {
@@ -1389,6 +1415,22 @@ function mergeScriptPrefsByTimestamp(localMap, remoteMap) {
       const tA = a.updatedAt || 0;
       const tB = b.updatedAt || 0;
       merged[id] = tB > tA ? normalizeScriptPrefsEntry(b) : normalizeScriptPrefsEntry(a);
+    }
+  }
+  return merged;
+}
+
+/** Explicit "Get prefs" from cloud: remote wins when present (fixes equal-timestamp ties). */
+function mergeScriptPrefsPreferRemote(localMap, remoteMap) {
+  const L = normalizeScriptPrefsMap(localMap);
+  const R = normalizeScriptPrefsMap(remoteMap);
+  const ids = new Set([...Object.keys(L), ...Object.keys(R)]);
+  const merged = {};
+  for (const id of ids) {
+    if (Object.prototype.hasOwnProperty.call(R, id)) {
+      merged[id] = normalizeScriptPrefsEntry(R[id]);
+    } else {
+      merged[id] = normalizeScriptPrefsEntry(L[id]);
     }
   }
   return merged;
@@ -1667,7 +1709,8 @@ async function putGithubScriptPrefsMergedWithRetry(settings, folderKey, maxAttem
   throw lastErr || new Error("GitHub script prefs push failed");
 }
 
-async function githubPullScriptPrefsSingleFolderMerge(folderKey) {
+async function githubPullScriptPrefsSingleFolderMerge(folderKey, opts) {
+  const preferRemote = opts && opts.preferRemote === true;
   const fk = normalizeFolderKey(folderKey);
   try {
     const settings = await getGithubPathForFolderScriptPrefs(fk);
@@ -1679,7 +1722,9 @@ async function githubPullScriptPrefsSingleFolderMerge(folderKey) {
       remotePrefs = file.scriptPrefs || {};
     }
     const local = await getScriptPrefsMapForFolder(fk);
-    const merged = mergeScriptPrefsByTimestamp(local, remotePrefs);
+    const merged = preferRemote
+      ? mergeScriptPrefsPreferRemote(local, remotePrefs)
+      : mergeScriptPrefsByTimestamp(local, remotePrefs);
     await setScriptPrefsMapForFolder(fk, merged);
     log(
       "GitHub script prefs merged folder",
@@ -1699,6 +1744,9 @@ async function githubPullScriptPrefsSingleFolderMerge(folderKey) {
 
 async function githubSyncPushScriptPrefs() {
   const fk = await getCurrentSessionFolderKey();
+  if (isDefaultSessionFolderKey(fk)) {
+    throw new Error("Script prefs cannot be saved for the Default folder. Pick a named session folder first.");
+  }
   const settings = await getGithubPathForFolderScriptPrefs(fk);
   if (!settings.token || !settings.owner || !settings.repo) {
     throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
@@ -1719,7 +1767,10 @@ async function githubSyncPullScriptPrefs() {
     throw new Error("Configure GitHub owner, repo, and personal access token in Settings.");
   }
   const curFk = await getCurrentSessionFolderKey();
-  const one = await githubPullScriptPrefsSingleFolderMerge(curFk);
+  if (isDefaultSessionFolderKey(curFk)) {
+    throw new Error("Script prefs are not used for the Default folder. Pick a named session folder first.");
+  }
+  const one = await githubPullScriptPrefsSingleFolderMerge(curFk, { preferRemote: true });
   if (one) {
     await chrome.storage.local.set({
       [STORAGE.GITHUB_SYNC_LAST_ERROR]: one,
