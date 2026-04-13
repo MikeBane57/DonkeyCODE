@@ -76,10 +76,98 @@ function switchTab(name) {
     btn.classList.toggle("active", on);
     btn.setAttribute("aria-selected", on ? "true" : "false");
   });
+  const pr = $("panel-report");
   $("panel-sessions").hidden = name !== "sessions";
   $("panel-scripts").hidden = name !== "scripts";
+  if (pr) pr.hidden = name !== "report";
   $("panel-sessions").classList.toggle("active", name === "sessions");
   $("panel-scripts").classList.toggle("active", name === "scripts");
+  if (pr) pr.classList.toggle("active", name === "report");
+}
+
+function updateReportPanel(state) {
+  const btn = $("btn-submit-report");
+  const lead = document.querySelector(".report-lead");
+  if (!btn) return;
+  const hasGh =
+    state &&
+    (state.githubTokenConfigured || state.githubBakedIn) &&
+    state.githubOwner &&
+    String(state.githubOwner).trim() &&
+    state.githubRepo &&
+    String(state.githubRepo).trim();
+  btn.disabled = !hasGh;
+  btn.title = hasGh
+    ? "Create a GitHub Issue and get an issue # as your INC reference"
+    : "Configure GitHub owner, repo, and token in Settings (PAT needs Issues permission)";
+  if (lead && !hasGh) {
+    lead.classList.add("report-lead--warn");
+  } else if (lead) {
+    lead.classList.remove("report-lead--warn");
+  }
+}
+
+async function submitIssueReport() {
+  const titleEl = $("report-title");
+  const bodyEl = $("report-body");
+  const out = $("report-result");
+  const title = titleEl ? titleEl.value.trim() : "";
+  if (!title) {
+    setStatus("Enter a title for the report.", true);
+    return;
+  }
+  const body = bodyEl ? bodyEl.value.trim() : "";
+  setStatus("Submitting report…");
+  try {
+    const res = await send("REPORT_GITHUB_ISSUE", {
+      title,
+      body,
+      labels: [],
+    });
+    const num = res.issueNumber;
+    const url = res.issueUrl || "";
+    if (out) {
+      out.classList.remove("hidden");
+      out.innerHTML = "";
+      const strong = document.createElement("strong");
+      strong.textContent = "INC #" + num;
+      out.appendChild(strong);
+      out.appendChild(document.createTextNode(" — reference this number when following up."));
+      if (url) {
+        out.appendChild(document.createElement("br"));
+        const a = document.createElement("a");
+        a.href = url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = "Open issue on GitHub";
+        out.appendChild(a);
+      }
+    }
+    setStatus("Report filed: INC #" + num + ".");
+    if (titleEl) titleEl.value = "";
+    if (bodyEl) bodyEl.value = "";
+  } catch (e) {
+    console.error("[DonkeyCode:popup] report issue", e);
+    const msg = String(e.message || e);
+    if (out) {
+      out.classList.remove("hidden");
+      const hint = githubApiErrorHint(msg);
+      out.textContent = hint || msg;
+    }
+    setStatus(msg, true);
+  }
+}
+
+/** Friendly line when GitHub returns permission errors. */
+function githubApiErrorHint(msg) {
+  const m = String(msg || "").toLowerCase();
+  if (m.indexOf("resource not accessible") !== -1 || m.indexOf("403") !== -1) {
+    return (
+      msg +
+      " Check that your token can create issues (classic PAT: include the `issues` scope or use `repo` scope)."
+    );
+  }
+  return "";
 }
 
 let editingSessionName = null;
@@ -857,6 +945,7 @@ async function loadState() {
     syncLoginFirstSelect(state.sessions || []);
     renderScripts(Array.isArray(state.scripts) ? state.scripts : []);
     updateSessionZoomToggle(state);
+    updateReportPanel(state);
     if (!state.stateLoadError) setStatus("");
 
     await runFirstPopupRefreshIfNeeded();
@@ -893,6 +982,7 @@ function runFirstPopupRefreshIfNeeded() {
         renderSessions(st2.sessions || []);
         syncLoginFirstSelect(st2.sessions || []);
         updatePendingBanner(st2);
+        updateReportPanel(st2);
         switchTab("sessions");
         setStatus("Scripts and sessions loaded.");
       } catch (e) {
@@ -2123,6 +2213,7 @@ bindChange("chk-session-save-zoom", async function (ev) {
     }
   }
 });
+bindClick("btn-submit-report", submitIssueReport);
 bindClick("btn-open-settings", openSettingsGuardModal);
 bindClick("settings-guard-proceed", function () {
   closeSettingsGuardModal();

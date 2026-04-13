@@ -53,6 +53,9 @@
       <button type="button" class="tab" data-tab="scripts" role="tab" aria-selected="false">
         Scripts
       </button>
+      <button type="button" class="tab" data-tab="report" role="tab" aria-selected="false">
+        Report
+      </button>
     </nav>
 
     <section id="panel-sessions" class="panel active" role="tabpanel">
@@ -129,6 +132,25 @@
       </div>
       <ul id="script-list" class="list script-list"></ul>
       <p id="scripts-empty" class="hint hidden">No scripts loaded. Open settings (gear) and refresh.</p>
+    </section>
+
+    <section id="panel-report" class="panel" role="tabpanel" hidden>
+      <h2 class="section-title">Report an issue</h2>
+      <p class="hint report-lead">
+        Creates a <strong>GitHub Issue</strong> in your configured repo. The issue <strong>#number</strong> is your reference (e.g. cite as <strong>INC #42</strong>). Requires a token with <strong>Issues</strong> permission.
+      </p>
+      <div class="row">
+        <label for="report-title">Title</label>
+        <input id="report-title" type="text" placeholder="Short summary" maxlength="240" autocomplete="off" />
+      </div>
+      <div class="row">
+        <label for="report-body">Details</label>
+        <textarea id="report-body" class="report-body" rows="5" placeholder="What happened, steps, expected vs actual…"></textarea>
+      </div>
+      <div class="btn-row">
+        <button type="button" id="btn-submit-report" class="primary">Submit report</button>
+      </div>
+      <p id="report-result" class="hint report-result hidden" role="status"></p>
     </section>
 
     <p id="status" class="status" role="status"></p>

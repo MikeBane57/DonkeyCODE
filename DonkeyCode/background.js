@@ -1709,6 +1709,51 @@ async function getGithubSettings() {
   return { token, owner, repo, branch, path, sessionsRoot };
 }
 
+/**
+ * Create a GitHub Issue in the configured repo. The returned issue **number** is the INC reference.
+ * PAT must include the `issues` scope (classic) or Issues write (fine-grained).
+ */
+async function createGithubIssueReport(title, body, labelNames) {
+  const gh = await getGithubSettings();
+  if (!gh.token || !gh.owner || !gh.repo) {
+    throw new Error("Configure GitHub owner, repo, and token in Settings to report issues.");
+  }
+  const t = (title || "").trim();
+  if (!t) throw new Error("Title is required");
+  const b = (body || "").trim();
+  const payload = {
+    title: t.length > 240 ? t.slice(0, 237) + "…" : t,
+    body:
+      b ||
+      "(no description provided)\n\n---\n_Report submitted from DonkeyCode._",
+  };
+  const labels = Array.isArray(labelNames)
+    ? labelNames.map((x) => String(x || "").trim()).filter(Boolean)
+    : [];
+  if (labels.length) payload.labels = labels;
+  const apiPath =
+    "/repos/" +
+    encodeURIComponent(gh.owner) +
+    "/" +
+    encodeURIComponent(gh.repo) +
+    "/issues";
+  const json = await githubApiRequest(
+    apiPath,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    gh.token
+  );
+  const num = json && json.number != null ? Number(json.number) : NaN;
+  const htmlUrl = json && json.html_url ? String(json.html_url) : "";
+  if (!Number.isFinite(num)) {
+    throw new Error("GitHub did not return an issue number.");
+  }
+  return { number: num, htmlUrl, nodeId: json.node_id };
+}
+
 async function fetchGithubSessionsFile(settings) {
   const { token, owner, repo, branch, path } = settings;
   if (!token || !owner || !repo) throw new Error("GitHub owner, repo, and token required");
@@ -2958,6 +3003,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             [STORAGE.SESSION_SAVE_ZOOM_PER_TAB]: enabled,
           });
           sendResponse({ ok: true, sessionSaveZoomPerTab: enabled });
+          break;
+        }
+        case "REPORT_GITHUB_ISSUE": {
+          const title = (message.title || "").trim();
+          const body = (message.body || "").trim();
+          const labels = Array.isArray(message.labels) ? message.labels : [];
+          const result = await createGithubIssueReport(title, body, labels);
+          sendResponse({
+            ok: true,
+            issueNumber: result.number,
+            issueUrl: result.htmlUrl,
+          });
           break;
         }
         case "REQUEST_HOST_ACCESS": {

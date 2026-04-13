@@ -216,6 +216,33 @@ body {
   min-height: 380px;
 }
 
+#panel-report.panel {
+  min-height: 320px;
+}
+
+.report-lead {
+  margin-top: 0;
+}
+
+.report-lead--warn {
+  color: #c62828;
+}
+
+textarea.report-body {
+  min-height: 88px;
+  resize: vertical;
+  font: inherit;
+}
+
+.report-result {
+  margin-top: 10px;
+  word-break: break-word;
+}
+
+.report-result a {
+  color: #0d47a1;
+}
+
 .panel[hidden] {
   display: none !important;
 }
