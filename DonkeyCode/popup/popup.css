@@ -829,22 +829,6 @@ button.danger:hover {
   width: calc(100vw - 32px);
 }
 
-.script-prefs-doc-hint {
-  font-size: 10px;
-  line-height: 1.45;
-  word-break: break-word;
-}
-
-.script-prefs-doc-hint code {
-  font-size: 9px;
-  display: block;
-  margin-top: 6px;
-  padding: 6px 8px;
-  background: #f5f5f5;
-  border-radius: 4px;
-  white-space: pre-wrap;
-}
-
 .script-prefs-fields {
   max-height: min(50vh, 280px);
   overflow-y: auto;
