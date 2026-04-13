@@ -1060,6 +1060,36 @@ function delayMs(ms) {
   });
 }
 
+/**
+ * Close normal tabs that show a given extension page (e.g. popup opened as a fallback tab).
+ */
+async function closeTabsShowingExtensionPath(relativePath) {
+  const rel = String(relativePath || "")
+    .trim()
+    .replace(/^\/+/, "");
+  if (!rel) return;
+  let targetUrl;
+  try {
+    targetUrl = chrome.runtime.getURL(rel);
+  } catch (e) {
+    return;
+  }
+  try {
+    const tabs = await chrome.tabs.query({ url: targetUrl });
+    for (const t of tabs) {
+      if (t.id == null) continue;
+      try {
+        await chrome.tabs.remove(t.id);
+        log("closed extension page tab", rel, t.id);
+      } catch (e) {
+        logWarn("closeTabsShowingExtensionPath remove", t.id, e);
+      }
+    }
+  } catch (e) {
+    logWarn("closeTabsShowingExtensionPath query", e);
+  }
+}
+
 /** After Login First, close login windows only once the session has started (avoids killing the browser too early). */
 const LOGIN_FLOW_CLOSE_AFTER_FIRST_WINDOW_MS = 500;
 
@@ -2760,6 +2790,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           await chrome.storage.local.set({
             [STORAGE.PENDING_FIRST_POPUP_REFRESH]: true,
           });
+          await closeTabsShowingExtensionPath("popup/index.html");
           let opened = false;
           try {
             if (chrome.action && typeof chrome.action.openPopup === "function") {
