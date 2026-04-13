@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": 1776087124638,
+  "updatedAt": 1776087127970,
   "sessions": {
     "test": {
       "windows": [
@@ -191,89 +191,6 @@
       ],
       "_meta": {
         "updatedAt": 1775608042002
-      }
-    },
-    "testss": {
-      "windows": [
-        {
-          "id": "w_0_mnx8ezyw",
-          "left": -1554,
-          "top": 430,
-          "width": 1554,
-          "height": 975,
-          "state": "normal",
-          "focused": false,
-          "tabs": [
-            {
-              "url": "https://wnco.sharepoint.com/",
-              "active": false,
-              "index": 0,
-              "pinned": false
-            },
-            {
-              "url": "https://rvr.data.faa.gov/cgi-bin/rvr-details.pl?content=table&airport=BUR&rrate=medium&layout=2x2&gifsize=large&fontsize=large&fs=lg&cache_this=ct1776087021",
-              "active": false,
-              "index": 1,
-              "pinned": false
-            },
-            {
-              "url": "https://worknet.swa.smartairline.com/ArisWorkNet/calendar.do?doAction=navigation.menuItem.workerCalendar",
-              "active": false,
-              "index": 2,
-              "pinned": false
-            },
-            {
-              "url": "https://reports.swa.smartairline.com/ArisReports/report.jsr?ajaxCmd=fileDownloadCallback",
-              "active": false,
-              "index": 3,
-              "pinned": false
-            },
-            {
-              "url": "https://aviationweather.gov/",
-              "active": false,
-              "index": 4,
-              "pinned": false
-            },
-            {
-              "url": "https://weather.cod.edu/forecast/",
-              "active": false,
-              "index": 5,
-              "pinned": false
-            },
-            {
-              "url": "https://cursor.com/agents/bc-3ed29d99-8b40-42f6-9111-483a7ee161d3?branch=cursor%2Fdonkeycode-extension-foundation-9e8b",
-              "active": true,
-              "index": 6,
-              "pinned": false
-            },
-            {
-              "url": "https://github.com/MikeBane57/DonkeyCODE/actions",
-              "active": false,
-              "index": 7,
-              "pinned": false
-            }
-          ]
-        },
-        {
-          "id": "w_1_mnx8ezyw",
-          "left": 532,
-          "top": 327,
-          "width": 1554,
-          "height": 978,
-          "state": "normal",
-          "focused": false,
-          "tabs": [
-            {
-              "url": "https://opssuitemain.swacorp.com/go-metrics",
-              "active": true,
-              "index": 0,
-              "pinned": false
-            }
-          ]
-        }
-      ],
-      "_meta": {
-        "updatedAt": 1776087124376
       }
     }
   }
