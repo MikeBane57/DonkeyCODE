@@ -2685,6 +2685,60 @@ async function deleteSession(name) {
   log("session deleted", trimmed);
 }
 
+/**
+ * Rename a saved session in the current folder. Updates pending Login First target if it matches.
+ */
+async function renameSession(oldName, newName) {
+  const o = (oldName || "").trim();
+  const n = (newName || "").trim();
+  if (!o || !n) throw new Error("Session name required");
+  if (o === n) return;
+  const fk = await getCurrentSessionFolderKey();
+  const sessions = await getSessionsMapForFolder(fk);
+  if (!sessions[o]) throw new Error("Session not found");
+  if (sessions[n]) throw new Error("A session with that name already exists");
+  sessions[n] = sessions[o];
+  delete sessions[o];
+  await setSessionsMapForFolder(fk, sessions);
+  const pend = await getPendingRestore();
+  if (pend === o) {
+    await chrome.storage.local.set({ [STORAGE.PENDING_RESTORE]: n });
+  }
+  log("session renamed", o, "->", n);
+}
+
+/**
+ * Rename a session folder key (local). Default folder cannot be renamed.
+ * If it is the current folder, updates current key and reapplies script prefs.
+ */
+async function renameSessionFolder(oldKey, newKey) {
+  const o = normalizeFolderKey(oldKey);
+  const n = normalizeFolderKey(newKey);
+  if (o === DEFAULT_SESSION_FOLDER) throw new Error("Cannot rename the default folder");
+  if (!n || n === DEFAULT_SESSION_FOLDER) {
+    throw new Error("Choose a non-empty folder name (not Default)");
+  }
+  if (o === n) return;
+  const { folders, currentKey } = await getSessionFoldersState();
+  if (!folders[o]) throw new Error("Unknown folder");
+  if (folders[n]) throw new Error("A folder with that path already exists");
+  if (currentKey === o) {
+    await persistCurrentFolderScriptPrefsFromStorage();
+  }
+  folders[n] = folders[o];
+  delete folders[o];
+  let nextCur = currentKey;
+  if (currentKey === o) nextCur = n;
+  await chrome.storage.local.set({
+    [STORAGE.SESSION_FOLDERS_V2]: folders,
+    [STORAGE.CURRENT_SESSION_FOLDER]: nextCur,
+  });
+  if (currentKey === o) {
+    await applyScriptPrefsFromFolderToStorage(n);
+  }
+  log("session folder renamed", o, "->", n);
+}
+
 async function getStateForPopup() {
   try {
     const scripts = await getStoredScripts();
@@ -3204,6 +3258,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           const sessions = Object.keys(await getSessionsMapForFolder(fk)).sort();
           const githubAutoSync = await maybeAutoPushSessionsToGithub();
           sendResponse({ ok: true, sessions, githubAutoSync });
+          break;
+        }
+        case "RENAME_SESSION": {
+          await renameSession(message.oldName, message.newName);
+          const fk = await getCurrentSessionFolderKey();
+          const sessions = Object.keys(await getSessionsMapForFolder(fk)).sort();
+          const githubAutoSync = await maybeAutoPushSessionsToGithub();
+          const pendingRestoreSession = await getPendingRestore();
+          sendResponse({
+            ok: true,
+            sessions,
+            githubAutoSync,
+            pendingRestoreSession,
+          });
+          break;
+        }
+        case "RENAME_SESSION_FOLDER": {
+          await renameSessionFolder(message.oldFolderKey, message.newFolderKey);
+          const githubAutoSync = await maybeAutoPushSessionsToGithub();
+          const st = await getStateForPopup();
+          sendResponse({ ok: true, ...st, githubAutoSync });
           break;
         }
         case "SET_CURRENT_SESSION_FOLDER": {

@@ -392,6 +392,34 @@ body {
 .folder-tree-select-wrap {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.folder-tree-select-wrap > .folder-picker-item {
+  flex: 1;
+  min-width: 0;
+}
+
+button.folder-tree-rename {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  margin-top: 4px;
+  padding: 0;
+  border: 1px solid #cfd8dc;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  color: #37474f;
+}
+
+button.folder-tree-rename:hover {
+  background: #eceff1;
+  border-color: #90a4ae;
 }
 
 .folder-tree-select {

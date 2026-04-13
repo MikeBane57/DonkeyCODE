@@ -353,6 +353,60 @@ function syncLoginFirstSelect(names) {
   if (prev && names.includes(prev)) sel.value = prev;
 }
 
+async function renameSessionFromPopup(oldName) {
+  const next = window.prompt("Rename saved session:", oldName);
+  if (next == null) return;
+  const t = next.trim();
+  if (!t || t === oldName) return;
+  setStatus("Renaming session…");
+  try {
+    const res = await send("RENAME_SESSION", { oldName: oldName, newName: t });
+    renderSessions(res.sessions || []);
+    syncLoginFirstSelect(res.sessions || []);
+    updatePendingBanner({ pendingRestoreSession: res.pendingRestoreSession });
+    setStatus(
+      'Session renamed to "' + t + '".' + githubAutoSyncSuffix(res.githubAutoSync)
+    );
+  } catch (e) {
+    console.error("[DonkeyCode:popup] rename session", e);
+    setStatus(String(e.message || e), true);
+  }
+}
+
+async function renameSessionFolderFromPopup(oldKey) {
+  const next = window.prompt(
+    "Rename folder (use / for nested paths, e.g. team/ops):",
+    oldKey
+  );
+  if (next == null) return;
+  const t = next.trim();
+  if (!t || t === oldKey) return;
+  setStatus("Renaming folder…");
+  try {
+    const res = await send("RENAME_SESSION_FOLDER", {
+      oldFolderKey: oldKey,
+      newFolderKey: t,
+    });
+    fillSessionFolderUI(res);
+    renderSessions(res.sessions || []);
+    syncLoginFirstSelect(res.sessions || []);
+    updatePendingBanner(res);
+    updateScriptPrefsButtons(res);
+    const inp = $("folder-picker-filter");
+    renderFolderPickerList(inp ? inp.value : "");
+    const fk = res.currentSessionFolder || "__default__";
+    setStatus(
+      'Folder renamed to "' +
+        (fk === "__default__" ? "Default" : fk) +
+        '".' +
+        githubAutoSyncSuffix(res.githubAutoSync)
+    );
+  } catch (e) {
+    console.error("[DonkeyCode:popup] rename folder", e);
+    setStatus(String(e.message || e), true);
+  }
+}
+
 async function switchSessionFolder(folderKey) {
   const v = (folderKey || "").trim();
   if (!v) return;
@@ -596,6 +650,19 @@ function makeFolderPickerRow(opts) {
       if (folderKey !== cur) await switchSessionFolder(folderKey);
     });
     selectWrap.appendChild(btn);
+    if (folderKey && folderKey !== "__default__") {
+      const renameBtn = document.createElement("button");
+      renameBtn.type = "button";
+      renameBtn.className = "folder-tree-rename";
+      renameBtn.setAttribute("aria-label", "Rename folder");
+      renameBtn.title = "Rename folder";
+      renameBtn.textContent = "\u270E";
+      renameBtn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        renameSessionFolderFromPopup(folderKey);
+      });
+      selectWrap.appendChild(renameBtn);
+    }
   } else {
     const span = document.createElement("span");
     span.className = "folder-tree-label-only";
@@ -884,6 +951,14 @@ function renderSessions(names) {
     btnEdit.title = "Edit session";
     btnEdit.addEventListener("click", () => openSessionEditor(name));
 
+    const btnRename = document.createElement("button");
+    btnRename.type = "button";
+    btnRename.className = "btn-icon secondary";
+    btnRename.textContent = "\u270E";
+    btnRename.setAttribute("aria-label", "Rename session");
+    btnRename.title = "Rename session";
+    btnRename.addEventListener("click", () => renameSessionFromPopup(name));
+
     const btnLaunch = document.createElement("button");
     btnLaunch.type = "button";
     btnLaunch.className = "btn-icon btn-icon-launch secondary";
@@ -901,6 +976,7 @@ function renderSessions(names) {
     btnDelete.addEventListener("click", () => deleteSession(name));
 
     actions.appendChild(btnEdit);
+    actions.appendChild(btnRename);
     actions.appendChild(btnLaunch);
     actions.appendChild(btnDelete);
     li.appendChild(span);
