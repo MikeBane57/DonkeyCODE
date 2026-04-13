@@ -1044,9 +1044,20 @@ function worksheetPrimaryUrlForWindow(w) {
   return "";
 }
 
+/** First worksheet tab title (OpsSuite worksheet URLs are often identical). */
+function worksheetPrimaryTitleForWindow(w) {
+  for (const t of w.tabs || []) {
+    if (isOpsSuiteWorksheetUrl(t.url)) {
+      const tit = t.title != null ? String(t.title).trim() : "";
+      return tit;
+    }
+  }
+  return "";
+}
+
 /**
  * Deterministic order: optional `restoreOrder` (lower first), then worksheet URL,
- * then original index. Edit JSON to set per-window `restoreOrder` if needed.
+ * then worksheet tab title, then original index.
  */
 function sortWindowsForRestore(windows) {
   return windows
@@ -1062,6 +1073,11 @@ function sortWindowsForRestore(windows) {
       if (wa && wb && wa !== wb) return wa.localeCompare(wb);
       if (wa && !wb) return -1;
       if (!wa && wb) return 1;
+      const ta = worksheetPrimaryTitleForWindow(a);
+      const tb = worksheetPrimaryTitleForWindow(b);
+      if (ta && tb && ta !== tb) return ta.localeCompare(tb);
+      if (ta && !tb) return -1;
+      if (!ta && tb) return 1;
       return A.i - B.i;
     })
     .map((x) => x.w);
@@ -1144,6 +1160,9 @@ function normalizeSessionSnapshot(snap) {
         index: typeof t.index === "number" ? t.index : ti,
         pinned: !!t.pinned,
       };
+      if (t.title != null && String(t.title).trim()) {
+        row.title = String(t.title).trim();
+      }
       if (typeof t.zoomFactor === "number" && Number.isFinite(t.zoomFactor)) {
         row.zoomFactor = clampTabZoom(t.zoomFactor);
       }
@@ -2348,6 +2367,9 @@ async function captureSessionSnapshot() {
         index: t.index,
         pinned: !!t.pinned,
       };
+      if (t.title != null && String(t.title).trim()) {
+        row.title = String(t.title).trim();
+      }
       if (
         zoomEnabled &&
         t.id != null &&
@@ -2479,6 +2501,27 @@ async function restoreSessionInternal(name, opts) {
           await chrome.tabs.update(created.tabs[ti].id, { pinned: true });
         } catch (e) {
           logWarn("could not pin tab", ti, e);
+        }
+      }
+      const wsTabIdx = [];
+      for (let ti = 0; ti < validTabs.length; ti++) {
+        if (isOpsSuiteWorksheetUrl(validTabs[ti].url)) wsTabIdx.push(ti);
+      }
+      const tabStaggerMs =
+        curIsWs && stagger > 0 ? Math.min(stagger, 2000) : 0;
+      if (curIsWs && wsTabIdx.length > 1 && tabStaggerMs > 0) {
+        for (let si = 0; si < wsTabIdx.length; si++) {
+          const ti = wsTabIdx[si];
+          const tid = created.tabs[ti] && created.tabs[ti].id;
+          if (tid == null) continue;
+          try {
+            await chrome.tabs.update(tid, { active: true });
+          } catch (e) {
+            logWarn("worksheet tab stagger activate", ti, e);
+          }
+          if (si < wsTabIdx.length - 1) {
+            await delayMs(tabStaggerMs);
+          }
         }
       }
       const activeIndex = validTabs.findIndex((t) => t.active);

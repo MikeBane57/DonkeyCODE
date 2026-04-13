@@ -118,10 +118,12 @@ function windowHasWorksheet(w) {
   return false;
 }
 
-function worksheetPrimaryUrl(w) {
+function worksheetPrimaryLabel(w) {
   for (const t of w.tabs || []) {
     if (isOpsSuiteWorksheetUrl(t.url)) {
-      const u = String(t.url);
+      const tit = t.title != null ? String(t.title).trim() : "";
+      if (tit) return tit;
+      const u = String(t.url || "");
       return u.length > 92 ? u.slice(0, 89) + "…" : u;
     }
   }
@@ -190,7 +192,7 @@ function openWorksheetOrderModal(name, snapshot, worksheetWindowIndices) {
     const li = document.createElement("li");
     const label = document.createElement("span");
     label.className = "ws-url";
-    label.textContent = (pos + 1) + ". " + (worksheetPrimaryUrl(w) || "Worksheet window");
+    label.textContent = (pos + 1) + ". " + (worksheetPrimaryLabel(w) || "Worksheet window");
     const actions = document.createElement("div");
     actions.className = "ws-actions";
     const up = document.createElement("button");

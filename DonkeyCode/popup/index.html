@@ -157,10 +157,10 @@
       <div class="modal worksheet-order-modal" role="dialog" aria-labelledby="worksheet-order-title">
         <h2 id="worksheet-order-title" class="modal-title">Worksheet load order</h2>
         <p class="hint modal-hint">
-          These windows contain OpsSuite worksheets. Top opens first when you launch this session. Use ↑ ↓ to reorder.
+          Lists use each tab’s <strong>title</strong> (not the URL) so identical worksheet links stay distinct. Top opens first across windows. The same delay applies between worksheet <strong>tabs</strong> inside a window (capped at 2s per step).
         </p>
         <ol id="worksheet-order-list" class="worksheet-order-list"></ol>
-        <label for="worksheet-stagger-ms" class="worksheet-stagger-label">Delay between windows (ms)</label>
+        <label for="worksheet-stagger-ms" class="worksheet-stagger-label">Delay between worksheet windows and between worksheet tabs in the same window (ms)</label>
         <input id="worksheet-stagger-ms" type="number" min="0" step="100" value="800" class="worksheet-stagger-input" />
         <div class="btn-row modal-actions">
           <button type="button" id="worksheet-order-save">Save session</button>
