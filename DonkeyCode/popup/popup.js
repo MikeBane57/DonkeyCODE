@@ -1545,18 +1545,309 @@ async function deleteSession(name) {
   }
 }
 
+/** Mutable snapshot while session editor modal is open */
+let sessionEditorDraft = null;
+
+function sessionEditorSyncJsonTextarea() {
+  const ta = $("session-editor-json");
+  if (!ta || !sessionEditorDraft) return;
+  try {
+    ta.value = JSON.stringify(sessionEditorDraft, null, 2);
+  } catch (e) {
+    ta.value = "";
+  }
+}
+
+function sessionEditorReadFormIntoDraft() {
+  const staggerEl = $("session-editor-stagger");
+  const staggerRaw = staggerEl ? parseInt(String(staggerEl.value || "").trim(), 10) : NaN;
+  const stagger = Number.isFinite(staggerRaw) ? Math.max(0, staggerRaw) : 800;
+  const cards = document.querySelectorAll("#session-editor-windows .session-editor-window-card");
+  const windows = [];
+  cards.forEach(function (card, wi) {
+    const g = function (sel) {
+      const el = card.querySelector(sel);
+      return el ? el.value : "";
+    };
+    const gn = function (sel) {
+      const v = g(sel);
+      if (v === "" || v === undefined) return undefined;
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) ? n : undefined;
+    };
+    const left = gn('[data-field="left"]');
+    const top = gn('[data-field="top"]');
+    const width = gn('[data-field="width"]');
+    const height = gn('[data-field="height"]');
+    const roRaw = g('[data-field="restoreOrder"]');
+    const restoreOrder =
+      roRaw === "" || roRaw === undefined
+        ? undefined
+        : (function () {
+            const n = parseInt(roRaw, 10);
+            return Number.isFinite(n) ? n : undefined;
+          })();
+    const stateSel = card.querySelector('[data-field="state"]');
+    const stateVal = stateSel ? String(stateSel.value || "normal") : "normal";
+    const state =
+      stateVal === "minimized" || stateVal === "maximized" ? stateVal : undefined;
+    const focusedEl = card.querySelector('[data-field="focused"]');
+    const focused = focusedEl ? !!focusedEl.checked : false;
+
+    const tabRows = card.querySelectorAll(".session-editor-tab-row");
+    const tabs = [];
+    const activeRadio = card.querySelector('input[name="session-active-tab-' + wi + '"]:checked');
+    let activeIdx = 0;
+    if (activeRadio && activeRadio.dataset.tabIndex != null) {
+      const ai = parseInt(activeRadio.dataset.tabIndex, 10);
+      if (Number.isFinite(ai)) activeIdx = ai;
+    }
+    tabRows.forEach(function (row, ti) {
+      const urlEl = row.querySelector('[data-field="tabUrl"]');
+      const url = urlEl ? String(urlEl.value || "").trim() : "";
+      const pinEl = row.querySelector('[data-field="tabPinned"]');
+      const pinned = pinEl ? !!pinEl.checked : false;
+      tabs.push({
+        url: url,
+        active: ti === activeIdx,
+        index: ti,
+        pinned: pinned,
+      });
+    });
+
+    const win = {
+      left: left,
+      top: top,
+      width: width,
+      height: height,
+      state: state,
+      focused: focused,
+      tabs: tabs,
+    };
+    if (restoreOrder !== undefined) win.restoreOrder = restoreOrder;
+    windows.push(win);
+  });
+
+  sessionEditorDraft = {
+    windows: windows,
+    _meta: {
+      updatedAt: sessionEditorDraft && sessionEditorDraft._meta ? sessionEditorDraft._meta.updatedAt || 0 : 0,
+      worksheetStaggerMs: stagger,
+    },
+  };
+}
+
+function sessionEditorRender() {
+  const container = $("session-editor-windows");
+  if (!container || !sessionEditorDraft || !Array.isArray(sessionEditorDraft.windows)) return;
+  container.innerHTML = "";
+
+  const staggerEl = $("session-editor-stagger");
+  if (staggerEl) {
+    const m = sessionEditorDraft._meta;
+    const s =
+      m && typeof m.worksheetStaggerMs === "number" && Number.isFinite(m.worksheetStaggerMs)
+        ? m.worksheetStaggerMs
+        : 800;
+    staggerEl.value = String(s);
+  }
+
+  sessionEditorDraft.windows.forEach(function (w, wi) {
+    const card = document.createElement("div");
+    card.className = "session-editor-window-card";
+    card.dataset.windowIndex = String(wi);
+
+    const head = document.createElement("div");
+    head.className = "session-editor-window-head";
+    const h3 = document.createElement("h3");
+    h3.textContent = "Window " + (wi + 1);
+    head.appendChild(h3);
+    const removeWin = document.createElement("button");
+    removeWin.type = "button";
+    removeWin.className = "small danger session-editor-remove-win";
+    removeWin.textContent = "Remove window";
+    removeWin.dataset.windowIndex = String(wi);
+    head.appendChild(removeWin);
+    card.appendChild(head);
+
+    const grid = document.createElement("div");
+    grid.className = "session-editor-grid";
+    [
+      { key: "left", label: "Left", val: w.left },
+      { key: "top", label: "Top", val: w.top },
+      { key: "width", label: "Width", val: w.width },
+      { key: "height", label: "Height", val: w.height },
+      { key: "restoreOrder", label: "Open order", val: w.restoreOrder },
+    ].forEach(function (fd) {
+      const wrap = document.createElement("div");
+      wrap.className = "session-editor-field";
+      const lab = document.createElement("label");
+      lab.textContent = fd.label;
+      const inp = document.createElement("input");
+      inp.type = "number";
+      inp.className = "session-editor-input";
+      inp.dataset.field = fd.key;
+      inp.value =
+        fd.val != null && fd.val !== "" && Number.isFinite(Number(fd.val)) ? String(fd.val) : "";
+      wrap.appendChild(lab);
+      wrap.appendChild(inp);
+      grid.appendChild(wrap);
+    });
+    card.appendChild(grid);
+
+    const stateRow = document.createElement("div");
+    stateRow.className = "session-editor-field";
+    const stLab = document.createElement("label");
+    stLab.textContent = "State";
+    const stSel = document.createElement("select");
+    stSel.className = "session-editor-input";
+    stSel.dataset.field = "state";
+    ["normal", "minimized", "maximized"].forEach(function (sv) {
+      const o = document.createElement("option");
+      o.value = sv;
+      o.textContent = sv;
+      stSel.appendChild(o);
+    });
+    const curSt = w.state === "minimized" || w.state === "maximized" ? w.state : "normal";
+    stSel.value = curSt;
+    stateRow.appendChild(stLab);
+    stateRow.appendChild(stSel);
+    card.appendChild(stateRow);
+
+    const focRow = document.createElement("div");
+    focRow.className = "session-editor-field";
+    const focLab = document.createElement("label");
+    const focCb = document.createElement("input");
+    focCb.type = "checkbox";
+    focCb.dataset.field = "focused";
+    focCb.checked = !!w.focused;
+    focLab.appendChild(focCb);
+    focLab.appendChild(document.createTextNode(" Focused when restored"));
+    focRow.appendChild(focLab);
+    card.appendChild(focRow);
+
+    const tabsLabel = document.createElement("div");
+    tabsLabel.className = "session-editor-tabs-label";
+    tabsLabel.textContent = "Tabs";
+    card.appendChild(tabsLabel);
+
+    let tabs = Array.isArray(w.tabs) ? w.tabs.slice() : [];
+    if (tabs.length === 0) {
+      tabs.push({ url: "", active: true, index: 0, pinned: false });
+    }
+    let activeIndex = tabs.findIndex(function (t) {
+      return t && t.active;
+    });
+    if (activeIndex < 0) activeIndex = 0;
+
+    tabs.forEach(function (t, ti) {
+      const row = document.createElement("div");
+      row.className = "session-editor-tab-row";
+      const urlIn = document.createElement("input");
+      urlIn.type = "url";
+      urlIn.className = "session-editor-input session-editor-tab-url";
+      urlIn.dataset.field = "tabUrl";
+      urlIn.placeholder = "https://…";
+      urlIn.value = t && t.url ? String(t.url) : "";
+      const meta = document.createElement("div");
+      meta.className = "session-editor-tab-meta";
+      const pinLab = document.createElement("label");
+      const pinCb = document.createElement("input");
+      pinCb.type = "checkbox";
+      pinCb.dataset.field = "tabPinned";
+      pinCb.checked = !!(t && t.pinned);
+      pinLab.appendChild(pinCb);
+      pinLab.appendChild(document.createTextNode(" Pin"));
+      const ar = document.createElement("input");
+      ar.type = "radio";
+      ar.name = "session-active-tab-" + wi;
+      ar.dataset.tabIndex = String(ti);
+      ar.checked = ti === activeIndex;
+      const arLab = document.createElement("label");
+      arLab.appendChild(ar);
+      arLab.appendChild(document.createTextNode(" Active"));
+      meta.appendChild(pinLab);
+      meta.appendChild(arLab);
+      const rmTab = document.createElement("button");
+      rmTab.type = "button";
+      rmTab.className = "secondary small session-editor-remove-tab";
+      rmTab.textContent = "×";
+      rmTab.title = "Remove tab";
+      rmTab.dataset.windowIndex = String(wi);
+      rmTab.dataset.tabIndex = String(ti);
+      row.appendChild(urlIn);
+      row.appendChild(meta);
+      row.appendChild(rmTab);
+      card.appendChild(row);
+    });
+
+    const addTab = document.createElement("button");
+    addTab.type = "button";
+    addTab.className = "small secondary";
+    addTab.textContent = "+ Tab";
+    addTab.dataset.windowIndex = String(wi);
+    addTab.classList.add("session-editor-add-tab");
+    card.appendChild(addTab);
+
+    container.appendChild(card);
+  });
+
+  container.querySelectorAll(".session-editor-remove-win").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      sessionEditorReadFormIntoDraft();
+      const idx = parseInt(btn.dataset.windowIndex, 10);
+      if (!Number.isFinite(idx) || !sessionEditorDraft.windows.length) return;
+      sessionEditorDraft.windows.splice(idx, 1);
+      sessionEditorRender();
+      sessionEditorSyncJsonTextarea();
+    });
+  });
+  container.querySelectorAll(".session-editor-add-tab").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      sessionEditorReadFormIntoDraft();
+      const idx = parseInt(btn.dataset.windowIndex, 10);
+      if (!Number.isFinite(idx) || !sessionEditorDraft.windows[idx]) return;
+      if (!sessionEditorDraft.windows[idx].tabs) sessionEditorDraft.windows[idx].tabs = [];
+      sessionEditorDraft.windows[idx].tabs.push({
+        url: "https://",
+        active: false,
+        index: sessionEditorDraft.windows[idx].tabs.length,
+        pinned: false,
+      });
+      sessionEditorRender();
+      sessionEditorSyncJsonTextarea();
+    });
+  });
+  container.querySelectorAll(".session-editor-remove-tab").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      sessionEditorReadFormIntoDraft();
+      const wi = parseInt(btn.dataset.windowIndex, 10);
+      const ti = parseInt(btn.dataset.tabIndex, 10);
+      if (!Number.isFinite(wi) || !sessionEditorDraft.windows[wi]) return;
+      const ts = sessionEditorDraft.windows[wi].tabs || [];
+      if (!Number.isFinite(ti)) return;
+      ts.splice(ti, 1);
+      sessionEditorDraft.windows[wi].tabs = ts;
+      sessionEditorRender();
+      sessionEditorSyncJsonTextarea();
+    });
+  });
+}
+
 async function openSessionEditor(name) {
   editingSessionName = name;
   setStatus("Loading session…");
   try {
     const res = await send("GET_SESSION_DETAIL", { name });
-    const snap = res.snapshot;
-    const payload = { windows: snap.windows };
-    if (snap._meta && typeof snap._meta === "object") {
-      payload._meta = snap._meta;
-    }
-    $("session-editor-json").value = JSON.stringify(payload, null, 2);
+    const snap = res.snapshot || {};
+    const wins = Array.isArray(snap.windows) ? snap.windows : [];
+    sessionEditorDraft = {
+      windows: JSON.parse(JSON.stringify(wins)),
+      _meta: snap._meta && typeof snap._meta === "object" ? Object.assign({}, snap._meta) : { updatedAt: 0 },
+    };
     $("session-editor-title").textContent = 'Edit session: "' + name + '"';
+    sessionEditorRender();
+    sessionEditorSyncJsonTextarea();
     $("session-editor-overlay").classList.remove("hidden");
     $("session-editor-overlay").setAttribute("aria-hidden", "false");
     setStatus("");
@@ -1564,11 +1855,15 @@ async function openSessionEditor(name) {
     console.error("[DonkeyCode:popup]", e);
     setStatus(String(e.message || e), true);
     editingSessionName = null;
+    sessionEditorDraft = null;
   }
 }
 
 function closeSessionEditor() {
   editingSessionName = null;
+  sessionEditorDraft = null;
+  const wrap = $("session-editor-windows");
+  if (wrap) wrap.innerHTML = "";
   $("session-editor-overlay").classList.add("hidden");
   $("session-editor-overlay").setAttribute("aria-hidden", "true");
 }
@@ -1583,23 +1878,28 @@ async function openSettingsTab() {
 }
 
 async function saveSessionEditor() {
-  if (!editingSessionName) return;
-  let parsed;
-  try {
-    parsed = JSON.parse($("session-editor-json").value);
-  } catch (e) {
-    setStatus("Invalid JSON: " + (e.message || e), true);
+  if (!editingSessionName || !sessionEditorDraft) return;
+  sessionEditorReadFormIntoDraft();
+  if (!sessionEditorDraft.windows || sessionEditorDraft.windows.length === 0) {
+    setStatus("Add at least one window with tabs.", true);
     return;
   }
-  if (!parsed || !Array.isArray(parsed.windows)) {
-    setStatus('JSON must be an object with a "windows" array (optional "_meta").', true);
-    return;
+  for (let i = 0; i < sessionEditorDraft.windows.length; i++) {
+    const w = sessionEditorDraft.windows[i];
+    const tabs = w.tabs || [];
+    const ok = tabs.some(function (t) {
+      return t && String(t.url || "").trim() && /^https?:\/\//i.test(String(t.url).trim());
+    });
+    if (!ok) {
+      setStatus("Window " + (i + 1) + ": add at least one tab with a valid http(s) URL.", true);
+      return;
+    }
   }
   setStatus("Saving session…");
   try {
     const res = await send("SAVE_SESSION_DATA", {
       name: editingSessionName,
-      snapshot: parsed,
+      snapshot: sessionEditorDraft,
     });
     closeSessionEditor();
     renderSessions(res.sessions || []);
@@ -1611,6 +1911,32 @@ async function saveSessionEditor() {
     console.error("[DonkeyCode:popup]", e);
     setStatus(String(e.message || e), true);
   }
+}
+
+function sessionEditorApplyJson() {
+  const ta = $("session-editor-json");
+  if (!ta) return;
+  let parsed;
+  try {
+    parsed = JSON.parse(String(ta.value || "").trim() || "{}");
+  } catch (e) {
+    setStatus("Invalid JSON: " + (e.message || e), true);
+    return;
+  }
+  if (!parsed || !Array.isArray(parsed.windows)) {
+    setStatus('JSON must include a "windows" array.', true);
+    return;
+  }
+  sessionEditorDraft = {
+    windows: JSON.parse(JSON.stringify(parsed.windows)),
+    _meta:
+      parsed._meta && typeof parsed._meta === "object"
+        ? Object.assign({}, parsed._meta)
+        : { updatedAt: 0 },
+  };
+  sessionEditorRender();
+  sessionEditorSyncJsonTextarea();
+  setStatus("Form updated from JSON.");
 }
 
 document.querySelectorAll(".tab").forEach((btn) => {
@@ -1754,6 +2080,22 @@ bindClick("btn-login-first", loginFirst);
 
 bindClick("session-editor-save", saveSessionEditor);
 bindClick("session-editor-cancel", closeSessionEditor);
+bindClick("session-editor-apply-json", sessionEditorApplyJson);
+bindClick("session-editor-add-window", function () {
+  sessionEditorReadFormIntoDraft();
+  if (!sessionEditorDraft) return;
+  if (!sessionEditorDraft.windows) sessionEditorDraft.windows = [];
+  sessionEditorDraft.windows.push({
+    left: 40,
+    top: 40,
+    width: 1200,
+    height: 800,
+    focused: false,
+    tabs: [{ url: "https://", active: true, index: 0, pinned: false }],
+  });
+  sessionEditorRender();
+  sessionEditorSyncJsonTextarea();
+});
 (function () {
   const ov = $("session-editor-overlay");
   if (!ov) return;

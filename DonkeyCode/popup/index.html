@@ -186,15 +186,33 @@
     </div>
 
     <div id="session-editor-overlay" class="modal-overlay hidden" aria-hidden="true">
-      <div class="modal" role="dialog" aria-labelledby="session-editor-title">
+      <div class="modal session-editor-modal" role="dialog" aria-labelledby="session-editor-title">
         <h2 id="session-editor-title" class="modal-title">Edit session</h2>
-        <p class="hint modal-hint">
-          Each window: <code>left</code>, <code>top</code>, <code>width</code>, <code>height</code>, <code>tabs</code> (<code>url</code> per tab).
-          Optional per-window <code>restoreOrder</code> (number, lower opens first). OpsSuite worksheets
-          (<code>opssuitemain.swacorp.com/.../worksheet...</code>) open in stable URL order with a delay between windows; set
-          <code>"_meta": { "worksheetStaggerMs": 800 }</code> to tune delay (omit for default 800ms).
+        <p class="hint modal-hint session-editor-lead">
+          Adjust window position and size, tab URLs, and open order. Worksheet sessions: lower <strong>Open order</strong> opens first; delay applies between worksheet windows when launching.
         </p>
-        <textarea id="session-editor-json" class="session-json" spellcheck="false" rows="18"></textarea>
+        <div class="session-editor-meta">
+          <label for="session-editor-stagger" class="session-editor-meta-label">Delay between worksheet windows (ms)</label>
+          <input
+            id="session-editor-stagger"
+            type="number"
+            min="0"
+            step="100"
+            class="session-editor-input session-editor-stagger-input"
+            placeholder="800"
+            title="Used when this session has OpsSuite worksheet tabs"
+          />
+        </div>
+        <div id="session-editor-windows" class="session-editor-windows"></div>
+        <div class="session-editor-add-wrap">
+          <button type="button" id="session-editor-add-window" class="secondary small">+ Add window</button>
+        </div>
+        <details class="session-editor-advanced">
+          <summary>Advanced: edit as JSON</summary>
+          <p class="hint modal-hint">For edge cases. Saving uses the form above unless you click Apply JSON.</p>
+          <textarea id="session-editor-json" class="session-json session-editor-json-fallback" spellcheck="false" rows="8"></textarea>
+          <button type="button" id="session-editor-apply-json" class="small secondary">Apply JSON to form</button>
+        </details>
         <div class="btn-row modal-actions">
           <button type="button" id="session-editor-save">Save</button>
           <button type="button" id="session-editor-cancel" class="secondary">Cancel</button>
