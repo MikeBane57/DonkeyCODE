@@ -3029,7 +3029,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             prefs: Object.assign({}, prevP, merged),
           };
           await setScriptPrefsMapForFolder(fk, map);
-          forgetScriptEverywhere(scriptId);
+          /** Tear down in-page listeners/state so re-inject picks up new prefs (forget alone skips re-run). */
+          await cleanupScriptEverywhere(scriptId);
           await resyncAllTabs();
           updateInstallBadge().catch(() => {});
           sendResponse({ ok: true, scripts: await getStoredScripts() });
