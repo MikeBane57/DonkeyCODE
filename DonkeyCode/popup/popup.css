@@ -501,23 +501,29 @@ body {
 
 
 .settings-guard-modal {
-  max-width: 340px;
+  max-width: 360px;
   text-align: center;
 }
 
 .settings-guard-donkey-wrap {
   margin: 0 auto 12px;
+  max-height: 200px;
 }
 
 .settings-guard-donkey {
   display: block;
   margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 200px;
+  width: auto;
+  object-fit: contain;
   border-radius: 12px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
 }
 
 .settings-guard-title {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .settings-guard-line {
@@ -526,10 +532,6 @@ body {
   line-height: 1.5;
   color: #333;
   font-weight: 500;
-}
-
-.settings-guard-dash {
-  margin: 0 0.2em;
 }
 
 .settings-guard-actions {
