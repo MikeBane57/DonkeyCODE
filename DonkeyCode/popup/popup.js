@@ -1245,16 +1245,7 @@ function renderScripts(scripts) {
       sensitivity: "base",
     });
   };
-  const enabledList = list
-    .filter(function (s) {
-      return s.enabled !== false;
-    })
-    .sort(cmp);
-  const inactiveList = list
-    .filter(function (s) {
-      return s.enabled === false;
-    })
-    .sort(cmp);
+  const sorted = list.slice().sort(cmp);
 
   function appendScriptRow(s) {
     const li = document.createElement("li");
@@ -1317,13 +1308,6 @@ function renderScripts(scripts) {
     ul.appendChild(li);
   }
 
-  function appendSectionLabel(text) {
-    const li = document.createElement("li");
-    li.className = "script-section-label";
-    li.textContent = text;
-    ul.appendChild(li);
-  }
-
   function appendColumnHeader() {
     const head = document.createElement("li");
     head.className = "script-section-heading script-section-heading--scripts";
@@ -1335,16 +1319,8 @@ function renderScripts(scripts) {
     ul.appendChild(head);
   }
 
-  if (enabledList.length) {
-    appendSectionLabel("Enabled");
-    appendColumnHeader();
-    enabledList.forEach(appendScriptRow);
-  }
-  if (inactiveList.length) {
-    appendSectionLabel("Inactive");
-    appendColumnHeader();
-    inactiveList.forEach(appendScriptRow);
-  }
+  appendColumnHeader();
+  sorted.forEach(appendScriptRow);
 }
 
 async function toggleScript(scriptId, enabled) {

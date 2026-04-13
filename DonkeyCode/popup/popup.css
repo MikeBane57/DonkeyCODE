@@ -705,22 +705,6 @@ button.danger:hover {
   margin-top: 0;
 }
 
-.script-section-label {
-  list-style: none;
-  margin: 10px 0 4px;
-  padding: 0 4px 2px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #78909c;
-  border-bottom: 1px solid #eceff1;
-}
-
-.script-section-label:first-child {
-  margin-top: 0;
-}
-
 .script-section-heading--scripts {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) minmax(52px, 4.5em) 32px;
