@@ -892,7 +892,7 @@ button.danger:hover {
 }
 
 .script-col-ver {
-  justify-self: stretch;
+  justify-self: end;
   text-align: right;
   font: inherit;
   color: #78909c;
@@ -901,7 +901,7 @@ button.danger:hover {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   padding: 0 0 1px;
-  width: auto;
+  width: 100%;
   min-width: 0;
 }
 
@@ -942,8 +942,11 @@ button.danger:hover {
   font-size: 11px;
   color: #546e7a;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  justify-self: stretch;
+  justify-self: end;
+  align-self: start;
   text-align: right;
+  width: 100%;
+  box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
