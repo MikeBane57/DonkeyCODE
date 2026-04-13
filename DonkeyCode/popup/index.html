@@ -16,6 +16,10 @@
             <p class="sub">Sessions &amp; user scripts</p>
           </div>
         </div>
+        <div class="header-session-folder" title="Current session folder">
+          <span class="session-folder-label header-session-folder-label">Session folder</span>
+          <span id="session-folder-current-label" class="session-folder-current-label header-session-folder-name">Default</span>
+        </div>
         <div class="header-actions">
           <button
             type="button"
@@ -67,28 +71,21 @@
 
       <p class="hint restore-hint restore-hint--top">
         <strong>Login First</strong> opens two side-by-side windows (opssuite + swalife). Sign in, then click
-        <strong>Continue: open saved session</strong> to launch your saved layout. Use the <strong>folder</strong> icon to pick a session folder, or the <strong>gear</strong> for scripts and GitHub settings.
+        <strong>Continue: open saved session</strong> to launch your saved layout. Use the header <strong>folder</strong> control to pick a session folder, or the <strong>gear</strong> for scripts and GitHub settings.
       </p>
-
-      <div class="row session-folder-row">
-        <span class="session-folder-label">Session folder</span>
-        <div class="session-folder-controls">
-          <div class="session-folder-active-wrap" title="Current folder">
-            <span id="session-folder-current-label" class="session-folder-current-label">Default</span>
-          </div>
-        </div>
-      </div>
 
       <div class="row">
         <label for="session-name">Session name</label>
         <input id="session-name" type="text" placeholder="e.g. Morning ops" autocomplete="off" />
       </div>
-      <div class="btn-row github-sync-row">
-        <button type="button" id="btn-save-session">Save current layout</button>
-        <button type="button" id="btn-push-sessions-github" class="primary" title="Upload this folder’s sessions to GitHub">
+      <div class="btn-row github-sync-row github-sync-row--inline">
+        <button type="button" id="btn-save-session" class="btn-save-compact" title="Save current window layout as this session">
+          Save layout
+        </button>
+        <button type="button" id="btn-push-sessions-github" class="primary btn-save-compact" title="Upload this folder’s sessions to GitHub">
           Save to cloud
         </button>
-        <button type="button" id="btn-pull-sessions-github" class="secondary" title="Merge GitHub session layouts into this folder">
+        <button type="button" id="btn-pull-sessions-github" class="secondary btn-save-compact" title="Merge GitHub session layouts into this folder">
           Get cloud layouts
         </button>
       </div>
