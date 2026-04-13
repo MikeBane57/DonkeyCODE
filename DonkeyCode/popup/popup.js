@@ -314,7 +314,7 @@ function setTabVersions(version) {
   const s1 = $("tab-ver-sessions");
   const s2 = $("tab-ver-scripts");
   if (s1) s1.textContent = v ? v : "";
-  if (s2) s2.textContent = "";
+  if (s2) s2.textContent = v ? v : "";
 }
 
 /** Script prefs (GitHub) only apply to named session folders, not Default. */
