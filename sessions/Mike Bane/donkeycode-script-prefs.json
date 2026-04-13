@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": 1776085209463,
+  "updatedAt": 1776095877382,
   "scriptPrefs": {
     "dc_102c64bc": {
       "enabled": false,
@@ -75,6 +75,111 @@
     "dc_f5b6697b": {
       "enabled": true,
       "updatedAt": 1776085209256,
+      "prefs": {}
+    },
+    "dc_19f58365": {
+      "enabled": false,
+      "updatedAt": 1776095877149,
+      "prefs": {}
+    },
+    "dc_25277520": {
+      "enabled": false,
+      "updatedAt": 1776093685956,
+      "prefs": {}
+    },
+    "dc_2b9f0d1e": {
+      "enabled": false,
+      "updatedAt": 1776095877149,
+      "prefs": {}
+    },
+    "dc_2f54f561": {
+      "enabled": false,
+      "updatedAt": 1776095877149,
+      "prefs": {}
+    },
+    "dc_30329a67": {
+      "enabled": false,
+      "updatedAt": 1776095877149,
+      "prefs": {}
+    },
+    "dc_44fa5b8d": {
+      "enabled": false,
+      "updatedAt": 1776095877149,
+      "prefs": {}
+    },
+    "dc_46c60df1": {
+      "enabled": false,
+      "updatedAt": 1776095877149,
+      "prefs": {}
+    },
+    "dc_486adf83": {
+      "enabled": false,
+      "updatedAt": 1776095877149,
+      "prefs": {}
+    },
+    "dc_555fde5d": {
+      "enabled": false,
+      "updatedAt": 1776095877149,
+      "prefs": {}
+    },
+    "dc_673e0b4d": {
+      "enabled": false,
+      "updatedAt": 1776095877149,
+      "prefs": {
+        "goTurnHeight": 900,
+        "goTurnLeft": 0,
+        "goTurnMonitor": "1",
+        "goTurnTop": 0,
+        "goTurnWidth": 1100,
+        "paxConnectionsHeight": 800,
+        "paxConnectionsLeft": 0,
+        "paxConnectionsMonitor": "1",
+        "paxConnectionsTop": 0,
+        "paxConnectionsWidth": 1000,
+        "relatedFlightsHeight": 900,
+        "relatedFlightsLeft": 0,
+        "relatedFlightsMonitor": "1",
+        "relatedFlightsTop": 0,
+        "relatedFlightsWidth": 500
+      }
+    },
+    "dc_7007c058": {
+      "enabled": false,
+      "updatedAt": 1776095877149,
+      "prefs": {}
+    },
+    "dc_7209209e": {
+      "enabled": false,
+      "updatedAt": 1776095877149,
+      "prefs": {
+        "completedFlightOpacity": 0.4
+      }
+    },
+    "dc_8d98af8c": {
+      "enabled": true,
+      "updatedAt": 1776095877149,
+      "prefs": {
+        "airportMapProvider": "adsb",
+        "flightTrackerProvider": "flightaware",
+        "fr24AirportZoom": 16,
+        "fr24MapLat": 39,
+        "fr24MapLon": -98,
+        "fr24MapZoom": 8
+      }
+    },
+    "dc_9a683df9": {
+      "enabled": false,
+      "updatedAt": 1776095877149,
+      "prefs": {}
+    },
+    "dc_b32b28d3": {
+      "enabled": false,
+      "updatedAt": 1776095877149,
+      "prefs": {}
+    },
+    "dc_f80a8e8a": {
+      "enabled": false,
+      "updatedAt": 1776095877149,
       "prefs": {}
     }
   }
