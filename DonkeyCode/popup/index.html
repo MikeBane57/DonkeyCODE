@@ -89,6 +89,16 @@
           Get cloud layouts
         </button>
       </div>
+      <div class="session-zoom-section" role="group" aria-labelledby="session-zoom-heading">
+        <h3 id="session-zoom-heading" class="session-zoom-heading">Session zoom</h3>
+        <p class="hint session-zoom-hint">
+          When on, saving a layout stores each tab’s zoom level and launch restores it (per tab, per window).
+        </p>
+        <label class="session-zoom-toggle">
+          <input type="checkbox" id="chk-session-save-zoom" checked />
+          <span>Save and restore zoom per tab</span>
+        </label>
+      </div>
       <h2 class="section-title">Saved sessions</h2>
       <ul id="session-list" class="list"></ul>
       <p id="sessions-empty" class="hint hidden">No saved sessions in this folder yet.</p>

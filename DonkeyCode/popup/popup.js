@@ -757,6 +757,12 @@ async function maybeInitialGithubSessionPull(state) {
   }
 }
 
+function updateSessionZoomToggle(state) {
+  const el = $("chk-session-save-zoom");
+  if (!el || !state) return;
+  el.checked = state.sessionSaveZoomPerTab !== false;
+}
+
 async function loadState() {
   setStatus("Loading…");
   try {
@@ -781,6 +787,7 @@ async function loadState() {
     renderSessions(state.sessions || []);
     syncLoginFirstSelect(state.sessions || []);
     renderScripts(Array.isArray(state.scripts) ? state.scripts : []);
+    updateSessionZoomToggle(state);
     if (!state.stateLoadError) setStatus("");
 
     await runFirstPopupRefreshIfNeeded();
@@ -2016,6 +2023,28 @@ bindClick("btn-push-sessions-github", pushCurrentFolderToGithub);
 bindClick("btn-refresh-scripts", refreshScripts);
 bindClick("btn-pull-script-prefs-github", pullScriptPrefsFromGithub);
 bindClick("btn-push-script-prefs-github", pushScriptPrefsToGithub);
+bindChange("chk-session-save-zoom", async function (ev) {
+  const enabled = !!(ev.target && ev.target.checked);
+  try {
+    await send("SET_SESSION_SAVE_ZOOM_PER_TAB", { enabled });
+    const st = await send("GET_STATE", {});
+    updateSessionZoomToggle(st);
+    setStatus(
+      enabled
+        ? "Per-tab zoom will be saved with layouts and restored on launch."
+        : "Zoom is no longer saved or applied from layouts (re-save sessions to drop stored zoom)."
+    );
+  } catch (e) {
+    console.error("[DonkeyCode:popup] session zoom toggle", e);
+    setStatus(String(e.message || e), true);
+    try {
+      const st = await send("GET_STATE", {});
+      updateSessionZoomToggle(st);
+    } catch (e2) {
+      /* ignore */
+    }
+  }
+});
 bindClick("btn-open-settings", openSettingsGuardModal);
 bindClick("settings-guard-proceed", function () {
   closeSettingsGuardModal();

@@ -94,6 +94,8 @@ const STORAGE = {
   PENDING_INITIAL_SESSION_PULL: "donkeycode_pending_initial_session_pull",
   /** Cleared after popup runs one GitHub folder discover when configured */
   PENDING_INITIAL_FOLDER_DISCOVER: "donkeycode_pending_initial_folder_discover",
+  /** Save/restore per-tab zoom in session layouts (default: on). */
+  SESSION_SAVE_ZOOM_PER_TAB: "donkeycode_session_save_zoom_per_tab",
 };
 
 /** Default URLs opened before restoring a session (user signs in, then continues). */
@@ -1104,6 +1106,19 @@ async function closeTabsShowingExtensionPath(relativePath) {
 /** After Login First, close login windows only once the session has started (avoids killing the browser too early). */
 const LOGIN_FLOW_CLOSE_AFTER_FIRST_WINDOW_MS = 500;
 
+/** Chrome tab zoom range (fraction of default). */
+function clampTabZoom(z) {
+  const n = Number(z);
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(5, Math.max(0.25, n));
+}
+
+async function getSessionSaveZoomEnabled() {
+  const d = await chrome.storage.local.get(STORAGE.SESSION_SAVE_ZOOM_PER_TAB);
+  if (d[STORAGE.SESSION_SAVE_ZOOM_PER_TAB] === false) return false;
+  return true;
+}
+
 function normalizeSessionSnapshot(snap) {
   if (!snap || !Array.isArray(snap.windows)) {
     const empty = { windows: [], _meta: { updatedAt: 0 } };
@@ -1122,12 +1137,18 @@ function normalizeSessionSnapshot(snap) {
       w.id && String(w.id).trim()
         ? String(w.id)
         : "w_" + wi + "_" + Math.random().toString(36).slice(2, 9);
-    const tabs = (w.tabs || []).map((t, ti) => ({
-      url: t.url != null ? String(t.url) : "",
-      active: !!t.active,
-      index: typeof t.index === "number" ? t.index : ti,
-      pinned: !!t.pinned,
-    }));
+    const tabs = (w.tabs || []).map((t, ti) => {
+      const row = {
+        url: t.url != null ? String(t.url) : "",
+        active: !!t.active,
+        index: typeof t.index === "number" ? t.index : ti,
+        pinned: !!t.pinned,
+      };
+      if (typeof t.zoomFactor === "number" && Number.isFinite(t.zoomFactor)) {
+        row.zoomFactor = clampTabZoom(t.zoomFactor);
+      }
+      return row;
+    });
     const win = {
       id,
       left: w.left,
@@ -2314,9 +2335,38 @@ async function maybeAutoPushSessionsToGithub() {
 }
 
 async function captureSessionSnapshot() {
+  const zoomEnabled = await getSessionSaveZoomEnabled();
   const wins = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] });
-  const snapshot = {
-    windows: wins.map((w, wi) => ({
+  const snapshot = { windows: [] };
+  for (let wi = 0; wi < wins.length; wi++) {
+    const w = wins[wi];
+    const tabs = [];
+    for (const t of w.tabs || []) {
+      const row = {
+        url: t.url || "",
+        active: !!t.active,
+        index: t.index,
+        pinned: !!t.pinned,
+      };
+      if (
+        zoomEnabled &&
+        t.id != null &&
+        t.url &&
+        /^https?:\/\//i.test(t.url) &&
+        !String(t.url).startsWith("chrome-extension:")
+      ) {
+        try {
+          const z = await chrome.tabs.getZoom(t.id);
+          if (typeof z === "number" && Number.isFinite(z)) {
+            row.zoomFactor = clampTabZoom(z);
+          }
+        } catch (e) {
+          /* tab may be closing */
+        }
+      }
+      tabs.push(row);
+    }
+    snapshot.windows.push({
       id: "w_" + wi + "_" + Date.now().toString(36),
       left: w.left,
       top: w.top,
@@ -2324,14 +2374,9 @@ async function captureSessionSnapshot() {
       height: w.height,
       state: w.state,
       focused: w.focused,
-      tabs: (w.tabs || []).map((t) => ({
-        url: t.url || "",
-        active: t.active,
-        index: t.index,
-        pinned: t.pinned,
-      })),
-    })),
-  };
+      tabs,
+    });
+  }
   return normalizeSessionSnapshot(snapshot);
 }
 
@@ -2370,6 +2415,8 @@ async function restoreSessionInternal(name, opts) {
   const sessions = await getSessionsMapForFolder(fk);
   const snap = normalizeSessionSnapshot(sessions[trimmed]);
   if (!snap.windows.length) throw new Error("Session not found");
+
+  const zoomRestoreEnabled = await getSessionSaveZoomEnabled();
 
   const ordered = sortWindowsForRestore(snap.windows);
   const hasWs = sessionHasWorksheetTabs(snap);
@@ -2440,6 +2487,20 @@ async function restoreSessionInternal(name, opts) {
           await chrome.tabs.update(created.tabs[activeIndex].id, { active: true });
         } catch (e) {
           logWarn("could not activate tab", e);
+        }
+      }
+      if (zoomRestoreEnabled) {
+        const nZ = Math.min(created.tabs.length, validTabs.length);
+        for (let ti = 0; ti < nZ; ti++) {
+          const z = validTabs[ti].zoomFactor;
+          if (typeof z !== "number" || !Number.isFinite(z)) continue;
+          const tid = created.tabs[ti] && created.tabs[ti].id;
+          if (tid == null) continue;
+          try {
+            await chrome.tabs.setZoom(tid, clampTabZoom(z));
+          } catch (e) {
+            logWarn("could not set tab zoom", tid, e);
+          }
         }
       }
     }
@@ -2666,6 +2727,8 @@ async function getStateForPopup() {
     const ghPathForFolder = await getGithubPathForFolder(currentKey);
     const ghErr = await chrome.storage.local.get(STORAGE.GITHUB_SYNC_LAST_ERROR);
     const ghOk = await chrome.storage.local.get(STORAGE.GITHUB_SYNC_LAST_OK);
+    const zoomPref = await chrome.storage.local.get(STORAGE.SESSION_SAVE_ZOOM_PER_TAB);
+    const sessionSaveZoomPerTab = zoomPref[STORAGE.SESSION_SAVE_ZOOM_PER_TAB] !== false;
     return {
       scripts,
       scriptSourceUrl: sourceUrl,
@@ -2695,6 +2758,7 @@ async function getStateForPopup() {
       ).trim(),
       githubSyncLastOk: ghOk[STORAGE.GITHUB_SYNC_LAST_OK] || null,
       githubSyncLastError: ghErr[STORAGE.GITHUB_SYNC_LAST_ERROR] || "",
+      sessionSaveZoomPerTab,
       stateLoadError: "",
     };
   } catch (e) {
@@ -2732,6 +2796,7 @@ async function getStateForPopup() {
       githubBakedIn: false,
       githubSyncLastOk: null,
       githubSyncLastError: "",
+      sessionSaveZoomPerTab: true,
       stateLoadError: String(e && e.message ? e.message : e),
     };
   }
@@ -2744,6 +2809,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         case "GET_STATE": {
           const state = await getStateForPopup();
           sendResponse({ ok: true, ...state });
+          break;
+        }
+        case "SET_SESSION_SAVE_ZOOM_PER_TAB": {
+          const enabled = message.enabled !== false;
+          await chrome.storage.local.set({
+            [STORAGE.SESSION_SAVE_ZOOM_PER_TAB]: enabled,
+          });
+          sendResponse({ ok: true, sessionSaveZoomPerTab: enabled });
           break;
         }
         case "REQUEST_HOST_ACCESS": {
