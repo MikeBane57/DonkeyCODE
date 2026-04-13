@@ -123,6 +123,28 @@
 
     <p id="status" class="status" role="status"></p>
 
+    <div id="settings-guard-overlay" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal settings-guard-modal" role="dialog" aria-labelledby="settings-guard-title">
+        <div class="settings-guard-donkey-wrap" aria-hidden="true">
+          <img
+            src="../icons/icon128.png"
+            alt=""
+            class="settings-guard-donkey"
+            width="96"
+            height="96"
+          />
+        </div>
+        <h2 id="settings-guard-title" class="modal-title settings-guard-title">Hold on</h2>
+        <p class="settings-guard-line" aria-live="polite">
+          Ah ah ah<span class="settings-guard-dash">—</span>you don’t need to go back there.
+        </p>
+        <div class="btn-row modal-actions settings-guard-actions">
+          <button type="button" id="settings-guard-proceed" class="primary">Proceed</button>
+          <button type="button" id="settings-guard-cancel" class="secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <div id="worksheet-order-overlay" class="modal-overlay hidden" aria-hidden="true">
       <div class="modal worksheet-order-modal" role="dialog" aria-labelledby="worksheet-order-title">
         <h2 id="worksheet-order-title" class="modal-title">Worksheet load order</h2>

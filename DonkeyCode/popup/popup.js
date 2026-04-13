@@ -1882,7 +1882,24 @@ function closeSessionEditor() {
   $("session-editor-overlay").setAttribute("aria-hidden", "true");
 }
 
-async function openSettingsTab() {
+function openSettingsGuardModal() {
+  const ov = $("settings-guard-overlay");
+  if (!ov) {
+    openSettingsTabInternal();
+    return;
+  }
+  ov.classList.remove("hidden");
+  ov.setAttribute("aria-hidden", "false");
+}
+
+function closeSettingsGuardModal() {
+  const ov = $("settings-guard-overlay");
+  if (!ov) return;
+  ov.classList.add("hidden");
+  ov.setAttribute("aria-hidden", "true");
+}
+
+async function openSettingsTabInternal() {
   try {
     await send("OPEN_SETTINGS_TAB", {});
   } catch (e) {
@@ -1999,7 +2016,19 @@ bindClick("btn-push-sessions-github", pushCurrentFolderToGithub);
 bindClick("btn-refresh-scripts", refreshScripts);
 bindClick("btn-pull-script-prefs-github", pullScriptPrefsFromGithub);
 bindClick("btn-push-script-prefs-github", pushScriptPrefsToGithub);
-bindClick("btn-open-settings", openSettingsTab);
+bindClick("btn-open-settings", openSettingsGuardModal);
+bindClick("settings-guard-proceed", function () {
+  closeSettingsGuardModal();
+  openSettingsTabInternal();
+});
+bindClick("settings-guard-cancel", closeSettingsGuardModal);
+(function () {
+  const ov = $("settings-guard-overlay");
+  if (!ov) return;
+  ov.addEventListener("click", function (ev) {
+    if (ev.target === ov) closeSettingsGuardModal();
+  });
+})();
 
 bindClick("btn-browse-session-folders", function () {
   openFolderPickerModal();
