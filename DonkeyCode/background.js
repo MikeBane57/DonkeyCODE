@@ -673,12 +673,33 @@ async function getExtraUrls() {
   return list;
 }
 
-async function fetchGitHubFileList(apiUrl) {
-  const res = await fetch(apiUrl, {
-    headers: { Accept: "application/vnd.github+json" },
-  });
-  if (!res.ok) throw new Error(`GitHub API ${res.status}: ${await res.text()}`);
-  const json = await res.json();
+/**
+ * List a directory via GitHub Contents API. Pass **token** when available so
+ * requests count as authenticated (much higher rate limits than anonymous IP).
+ */
+async function fetchGitHubFileList(apiUrl, token) {
+  const headers = {
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  const t = (token || "").trim();
+  if (t) headers.Authorization = "Bearer " + t;
+  const res = await fetch(apiUrl, { headers, cache: "no-store" });
+  const text = await res.text();
+  if (!res.ok) {
+    let hint = "";
+    if (res.status === 403 && /rate limit/i.test(text) && !t) {
+      hint =
+        " Unauthenticated GitHub API hits a low per-IP limit. Add a personal access token under Settings (same token as session sync) so script refresh uses authenticated rate limits.";
+    }
+    throw new Error(`GitHub API ${res.status}: ${text}${hint}`);
+  }
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch (e) {
+    throw new Error("GitHub API: invalid JSON listing response");
+  }
   if (!Array.isArray(json)) throw new Error("GitHub API: expected array");
   return json;
 }
@@ -695,12 +716,13 @@ async function fetchScriptText(url) {
 async function loadScriptsFromRemote() {
   const sourceUrl = await getScriptSourceUrl();
   const extra = await getExtraUrls();
+  const ghForList = await getGithubSettings();
   log("loading script list from", sourceUrl, "extras", extra.length);
 
   const entries = [];
 
   try {
-    const listing = await fetchGitHubFileList(sourceUrl);
+    const listing = await fetchGitHubFileList(sourceUrl, ghForList.token);
     for (const item of listing) {
       if (item.type !== "file") continue;
       if (!/\.user\.js$/i.test(item.name || "")) continue;
