@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "updatedAt": 1776126417720,
+  "updatedAt": 1776203122059,
   "scriptPrefs": {
     "dc_102c64bc": {
       "enabled": false,
-      "updatedAt": 1776126417548,
+      "updatedAt": 1776203121927,
       "prefs": {
         "goTurnHeight": 900,
         "goTurnLeft": 0,
@@ -25,15 +25,15 @@
     },
     "dc_2d81c5db": {
       "enabled": false,
-      "updatedAt": 1776126417548,
+      "updatedAt": 1776203121927,
       "prefs": {
         "airportMapProvider": "adsb",
         "flightTrackerProvider": "flightaware"
       }
     },
     "dc_34006cf6": {
-      "enabled": true,
-      "updatedAt": 1776126417548,
+      "enabled": false,
+      "updatedAt": 1776203121927,
       "prefs": {
         "wallOfFameShowTab": true,
         "wallOfFameSyncUrl": ""
@@ -41,12 +41,12 @@
     },
     "dc_3985235e": {
       "enabled": true,
-      "updatedAt": 1776126417548,
+      "updatedAt": 1776203121927,
       "prefs": {}
     },
     "dc_5c1790aa": {
       "enabled": false,
-      "updatedAt": 1776126417548,
+      "updatedAt": 1776203121927,
       "prefs": {
         "rfColAc": true,
         "rfColArr": true,
@@ -62,22 +62,22 @@
       }
     },
     "dc_64676088": {
-      "enabled": false,
-      "updatedAt": 1776126417548,
+      "enabled": true,
+      "updatedAt": 1776203121927,
       "prefs": {
         "stationTabTitleTemplate": "{station} · {base}"
       }
     },
     "dc_67472316": {
-      "enabled": true,
-      "updatedAt": 1776126417548,
+      "enabled": false,
+      "updatedAt": 1776203121927,
       "prefs": {
         "worksheetTitleTemplate": "{num} · {base}"
       }
     },
     "dc_903e4243": {
       "enabled": false,
-      "updatedAt": 1776126417548,
+      "updatedAt": 1776203121927,
       "prefs": {
         "opsDashOtpH": 300,
         "opsDashOtpHidden": false,
@@ -98,12 +98,12 @@
     },
     "dc_9f7b6198": {
       "enabled": false,
-      "updatedAt": 1776126417548,
+      "updatedAt": 1776203121927,
       "prefs": {}
     },
     "dc_a68d966f": {
       "enabled": true,
-      "updatedAt": 1776126417548,
+      "updatedAt": 1776203121927,
       "prefs": {
         "fimsTopClickersMaxNames": 0,
         "fimsTopClickersPersist": true,
@@ -112,7 +112,7 @@
     },
     "dc_c67ef143": {
       "enabled": false,
-      "updatedAt": 1776126417548,
+      "updatedAt": 1776203121927,
       "prefs": {
         "metarCacheMinutes": 5,
         "metarDebug": false,
@@ -131,7 +131,7 @@
     },
     "dc_cb8b9238": {
       "enabled": true,
-      "updatedAt": 1776126417548,
+      "updatedAt": 1776203121927,
       "prefs": {
         "midClickCustomUrlTemplate": "",
         "midClickLaunchCustom": false,
@@ -141,29 +141,29 @@
     },
     "dc_d7a721c2": {
       "enabled": false,
-      "updatedAt": 1776126417548,
+      "updatedAt": 1776203121927,
       "prefs": {}
     },
     "dc_d8c3460e": {
       "enabled": true,
-      "updatedAt": 1776126417548,
+      "updatedAt": 1776203121927,
       "prefs": {}
     },
     "dc_ea14fe10": {
       "enabled": true,
-      "updatedAt": 1776126417548,
+      "updatedAt": 1776203121927,
       "prefs": {}
     },
     "dc_f3578525": {
       "enabled": false,
-      "updatedAt": 1776126417548,
+      "updatedAt": 1776203121927,
       "prefs": {
         "completedFlightOpacity": 0.4
       }
     },
     "dc_f5b6697b": {
       "enabled": false,
-      "updatedAt": 1776126417548,
+      "updatedAt": 1776203121927,
       "prefs": {}
     }
   }
