@@ -1112,6 +1112,94 @@ function delayMs(ms) {
 }
 
 /**
+ * Serialized into pages for per-tab zoom (CSS `zoom` on <html>). Chrome's
+ * tabs.setZoom is per-origin; CSS zoom is per tab so identical URLs can differ.
+ * @param {{ mode?: string, scale?: number }} payload
+ */
+function donkeycodeZoomPageMain(payload) {
+  const p = payload || {};
+  if (p.mode === "get") {
+    try {
+      const raw = document.documentElement.style.zoom;
+      const x = parseFloat(String(raw || "").trim());
+      if (Number.isFinite(x) && x > 0) {
+        return Math.min(5, Math.max(0.25, x));
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    return null;
+  }
+  const s = Number(p.scale);
+  const z = Number.isFinite(s) ? Math.min(5, Math.max(0.25, s)) : 1;
+  try {
+    document.documentElement.style.zoom = String(z);
+  } catch (e) {
+    /* ignore */
+  }
+  return undefined;
+}
+
+async function getEffectiveTabZoomForCapture(tabId) {
+  let zChrome = 1;
+  try {
+    const z = await chrome.tabs.getZoom(tabId);
+    if (typeof z === "number" && Number.isFinite(z)) {
+      zChrome = clampTabZoom(z);
+    }
+  } catch (e) {
+    /* ignore */
+  }
+  const zCss = await getCssZoomFromTab(tabId);
+  if (zCss != null) {
+    return clampTabZoom(zCss * zChrome);
+  }
+  return zChrome;
+}
+
+async function getCssZoomFromTab(tabId) {
+  if (tabId == null) return null;
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId, allFrames: false },
+      world: "MAIN",
+      func: donkeycodeZoomPageMain,
+      args: [{ mode: "get" }],
+    });
+    const r = results && results[0] && results[0].result;
+    return typeof r === "number" && Number.isFinite(r) ? r : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function applySavedZoomToTab(tabId, zoomFactor) {
+  const z =
+    typeof zoomFactor === "number" && Number.isFinite(zoomFactor)
+      ? clampTabZoom(zoomFactor)
+      : 1;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    try {
+      await chrome.tabs.setZoom(tabId, 1);
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId, allFrames: false },
+        world: "MAIN",
+        func: donkeycodeZoomPageMain,
+        args: [{ scale: z }],
+      });
+      return;
+    } catch (e) {
+      if (attempt < 5) await delayMs(100 + attempt * 50);
+    }
+  }
+  logWarn("applySavedZoomToTab failed after retries", tabId);
+}
+
+/**
  * Close normal tabs that show a given extension page (e.g. popup opened as a fallback tab).
  */
 async function closeTabsShowingExtensionPath(relativePath) {
@@ -2488,9 +2576,9 @@ async function captureSessionSnapshot() {
         !String(t.url).startsWith("chrome-extension:")
       ) {
         try {
-          const z = await chrome.tabs.getZoom(t.id);
-          if (typeof z === "number" && Number.isFinite(z)) {
-            row.zoomFactor = clampTabZoom(z);
+          const zEff = await getEffectiveTabZoomForCapture(t.id);
+          if (typeof zEff === "number" && Number.isFinite(zEff)) {
+            row.zoomFactor = clampTabZoom(zEff);
           }
         } catch (e) {
           /* tab may be closing */
@@ -2649,11 +2737,7 @@ async function restoreSessionInternal(name, opts) {
           if (typeof z !== "number" || !Number.isFinite(z)) continue;
           const tid = created.tabs[ti] && created.tabs[ti].id;
           if (tid == null) continue;
-          try {
-            await chrome.tabs.setZoom(tid, clampTabZoom(z));
-          } catch (e) {
-            logWarn("could not set tab zoom", tid, e);
-          }
+          await applySavedZoomToTab(tid, z);
         }
       }
     }
