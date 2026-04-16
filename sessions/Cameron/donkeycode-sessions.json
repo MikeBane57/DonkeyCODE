@@ -1,5 +1,158 @@
 {
   "version": 1,
-  "updatedAt": 1776379415641,
-  "sessions": {}
+  "updatedAt": 1776379452284,
+  "sessions": {
+    "Sector": {
+      "windows": [
+        {
+          "id": "w_0_mo22g18r",
+          "left": 3837,
+          "top": 978,
+          "width": 2848,
+          "height": 1186,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://wnco.sharepoint.com/sites/SWALife-NOC-Secure?startedResponseCatch=true",
+              "active": false,
+              "index": 0,
+              "pinned": true,
+              "title": "Welcome to the NOC and NOP SharePoint",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://webmail.emailsrvr.com/wmidentity/Account/Login?ReturnUrl=%2Fwmidentity%2Fconnect%2Fauthorize%2Fcallback%3Fresponse_mode%3Dform_post%26response_type%3Dcode%2520id_token%26redirect_uri%3Dhttps%253A%252F%252Fwebmail.emailsrvr.com%252Flogin.php%26client_id%3Dwebmail%26nonce%3Dce2fa7b67fe45074eb29d55ff2bfe36b%26state%3D8833072d2b064b63f3ce4bae31aa1998%26scope%3Dopenid%2520profile%2520email%2520webmail%2520openid",
+              "active": false,
+              "index": 1,
+              "pinned": true,
+              "title": "Webmail",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/schedule",
+              "active": false,
+              "index": 2,
+              "pinned": false,
+              "title": "MCI",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": false,
+              "index": 3,
+              "pinned": false,
+              "title": "Worksheet 1 for Thu, Apr 16",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/related-flights?dark=true&windowId=f1f3f905-e05e-4df0-93ce-27ff945a719e&windowState=true&groupId=3c45c464-ff07-4be5-97aa-55fd6118ec55",
+              "active": false,
+              "index": 4,
+              "pinned": false,
+              "title": "Related-flights 1",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": false,
+              "index": 5,
+              "pinned": false,
+              "title": "Worksheet 2 for Thu, Apr 16",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 6,
+              "pinned": false,
+              "title": "OTS3",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 0
+        },
+        {
+          "id": "w_1_mo22g1a1",
+          "left": 3836,
+          "top": 1,
+          "width": 1330,
+          "height": 1041,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/ots",
+              "active": false,
+              "index": 0,
+              "pinned": false,
+              "title": "OTS List",
+              "zoomFactor": 0.8
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": true,
+              "index": 1,
+              "pinned": false,
+              "title": "Ops Suite",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/flifo",
+              "active": false,
+              "index": 2,
+              "pinned": false,
+              "title": "FLIFO: Flight Times Management",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 1
+        },
+        {
+          "id": "w_2_mo22g1a2",
+          "left": 2363,
+          "top": 1,
+          "width": 1481,
+          "height": 1441,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/schedule",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "Schedule 1",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 2
+        },
+        {
+          "id": "w_3_mo22g1a3",
+          "left": 6284,
+          "top": 0,
+          "width": 1400,
+          "height": 817,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "4",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 3
+        }
+      ],
+      "_meta": {
+        "updatedAt": 1776379452117,
+        "worksheetStaggerMs": 800
+      }
+    }
+  }
 }
