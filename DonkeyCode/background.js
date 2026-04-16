@@ -167,6 +167,7 @@ async function ensureHostAccessAndBridge() {
   } catch (e) {
     logError("registerBridgeContentScripts failed", e);
   }
+  applyPerTabZoomScopeToOpenHttpTabs().catch(() => {});
   return true;
 }
 
@@ -965,10 +966,21 @@ async function syncTabScripts(tabId, url) {
 }
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === "complete" && tab && tab.url) {
+    maybeEnsurePerTabZoomOnNavigation(tabId, tab.url).catch(() => {});
+  }
   if (changeInfo.status !== "complete" || !tab.url) return;
   tabInjectedScripts.delete(tabId);
   syncTabScripts(tabId, tab.url).catch((e) => logError("syncTabScripts", e));
 });
+
+/** Same as https://github.com/xinan/zoom-per-tab — keep zoom mode per-tab after user adjusts zoom. */
+if (chrome.tabs && chrome.tabs.onZoomChange) {
+  chrome.tabs.onZoomChange.addListener((zoomChangeInfo) => {
+    const tid = zoomChangeInfo && zoomChangeInfo.tabId;
+    if (tid != null) ensurePerTabZoomForTab(tid).catch(() => {});
+  });
+}
 
 /**
  * Re-run matching for all tabs (after toggle or refresh).
@@ -1112,64 +1124,15 @@ function delayMs(ms) {
 }
 
 /**
- * Serialized into pages for per-tab zoom (CSS `zoom` on <html>). Chrome's
- * tabs.setZoom is per-origin; CSS zoom is per tab so identical URLs can differ.
- * @param {{ mode?: string, scale?: number }} payload
+ * Chrome defaults zoom to per-origin; `scope: "per-tab"` matches extensions like
+ * https://github.com/xinan/zoom-per-tab — each tab can have its own zoom for the same site.
  */
-function donkeycodeZoomPageMain(payload) {
-  const p = payload || {};
-  if (p.mode === "get") {
-    try {
-      const raw = document.documentElement.style.zoom;
-      const x = parseFloat(String(raw || "").trim());
-      if (Number.isFinite(x) && x > 0) {
-        return Math.min(5, Math.max(0.25, x));
-      }
-    } catch (e) {
-      /* ignore */
-    }
-    return null;
-  }
-  const s = Number(p.scale);
-  const z = Number.isFinite(s) ? Math.min(5, Math.max(0.25, s)) : 1;
+async function ensurePerTabZoomForTab(tabId) {
+  if (tabId == null) return;
   try {
-    document.documentElement.style.zoom = String(z);
+    await chrome.tabs.setZoomSettings(tabId, { scope: "per-tab" });
   } catch (e) {
     /* ignore */
-  }
-  return undefined;
-}
-
-async function getEffectiveTabZoomForCapture(tabId) {
-  let zChrome = 1;
-  try {
-    const z = await chrome.tabs.getZoom(tabId);
-    if (typeof z === "number" && Number.isFinite(z)) {
-      zChrome = clampTabZoom(z);
-    }
-  } catch (e) {
-    /* ignore */
-  }
-  const zCss = await getCssZoomFromTab(tabId);
-  if (zCss != null) {
-    return clampTabZoom(zCss * zChrome);
-  }
-  return zChrome;
-}
-
-async function getCssZoomFromTab(tabId) {
-  if (tabId == null) return null;
-  try {
-    const results = await chrome.scripting.executeScript({
-      target: { tabId, allFrames: false },
-      world: "MAIN",
-      func: donkeycodeZoomPageMain,
-      args: [{ mode: "get" }],
-    });
-    const r = results && results[0] && results[0].result;
-    return typeof r === "number" && Number.isFinite(r) ? r : null;
-  } catch (e) {
-    return null;
   }
 }
 
@@ -1178,25 +1141,35 @@ async function applySavedZoomToTab(tabId, zoomFactor) {
     typeof zoomFactor === "number" && Number.isFinite(zoomFactor)
       ? clampTabZoom(zoomFactor)
       : 1;
-  for (let attempt = 0; attempt < 6; attempt++) {
-    try {
-      await chrome.tabs.setZoom(tabId, 1);
-    } catch (e) {
-      /* ignore */
-    }
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId, allFrames: false },
-        world: "MAIN",
-        func: donkeycodeZoomPageMain,
-        args: [{ scale: z }],
-      });
-      return;
-    } catch (e) {
-      if (attempt < 5) await delayMs(100 + attempt * 50);
-    }
+  try {
+    await ensurePerTabZoomForTab(tabId);
+    await chrome.tabs.setZoom(tabId, z);
+  } catch (e) {
+    logWarn("applySavedZoomToTab", tabId, e);
   }
-  logWarn("applySavedZoomToTab failed after retries", tabId);
+}
+
+/** After load, set per-tab zoom mode so Ctrl+/wheel only affects this tab (same as Zoom Per Tab). */
+async function maybeEnsurePerTabZoomOnNavigation(tabId, url) {
+  if (tabId == null || !url) return;
+  if (!/^https?:\/\//i.test(url) || String(url).startsWith("chrome-extension:")) {
+    return;
+  }
+  await ensurePerTabZoomForTab(tabId);
+}
+
+async function applyPerTabZoomScopeToOpenHttpTabs() {
+  try {
+    const tabs = await chrome.tabs.query({});
+    for (const t of tabs) {
+      if (!t.id || !t.url) continue;
+      if (!/^https?:\/\//i.test(t.url)) continue;
+      if (String(t.url).startsWith("chrome-extension:")) continue;
+      await ensurePerTabZoomForTab(t.id);
+    }
+  } catch (e) {
+    logWarn("applyPerTabZoomScopeToOpenHttpTabs", e);
+  }
 }
 
 /**
@@ -2576,9 +2549,9 @@ async function captureSessionSnapshot() {
         !String(t.url).startsWith("chrome-extension:")
       ) {
         try {
-          const zEff = await getEffectiveTabZoomForCapture(t.id);
-          if (typeof zEff === "number" && Number.isFinite(zEff)) {
-            row.zoomFactor = clampTabZoom(zEff);
+          const z = await chrome.tabs.getZoom(t.id);
+          if (typeof z === "number" && Number.isFinite(z)) {
+            row.zoomFactor = clampTabZoom(z);
           }
         } catch (e) {
           /* tab may be closing */
