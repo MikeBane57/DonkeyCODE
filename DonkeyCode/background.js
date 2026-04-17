@@ -216,6 +216,16 @@ function logError(...args) {
   console.error(LOG_PREFIX, ...args);
 }
 
+/** Logs from MAIN-world injection (routed via bridge); keeps site DevTools clean. */
+function logFromInjectedPage(scriptId, level, parts) {
+  const sid = (scriptId || "").trim();
+  const prefix = sid ? `[page ${sid}]` : "[page]";
+  const p = Array.isArray(parts) ? parts : [];
+  if (level === "error") console.error(LOG_PREFIX, prefix, ...p);
+  else if (level === "warn") console.warn(LOG_PREFIX, prefix, ...p);
+  else console.log(LOG_PREFIX, prefix, ...p);
+}
+
 /**
  * One-time: derive sessions root from stored GITHUB_PATH and/or baked path.
  */
@@ -459,12 +469,24 @@ function donkeycodeInjectMain(payload) {
   const key = "__donkeycodeCleanups";
   if (!g[key]) g[key] = Object.create(null);
   const cleanups = g[key];
+
+  function dcPageLog(level) {
+    var args = [];
+    for (var ai = 1; ai < arguments.length; ai++) args.push(arguments[ai]);
+    try {
+      g.postMessage(
+        { type: "DONKEYCODE_PAGE_LOG", scriptId: scriptId, level: level, parts: args },
+        "*"
+      );
+    } catch (e) {}
+  }
+
   if (cleanups[scriptId]) {
     try {
-      console.log("[DonkeyCode:page] cleaning up before re-inject", scriptId);
+      dcPageLog("log", "[DonkeyCode:page] cleaning up before re-inject", scriptId);
       cleanups[scriptId]();
     } catch (e) {
-      console.warn("[DonkeyCode:page] cleanup error before inject", scriptId, e);
+      dcPageLog("warn", "[DonkeyCode:page] cleanup error before inject", scriptId, e);
     }
     delete cleanups[scriptId];
   }
@@ -483,7 +505,7 @@ function donkeycodeInjectMain(payload) {
       if (!rec) return;
       const details = rec.details;
       if (d.error) {
-        console.warn("[DonkeyCode:page] GM_xmlhttpRequest error", d.error);
+        dcPageLog("warn", "[DonkeyCode:page] GM_xmlhttpRequest error", d.error);
         if (details.onerror) details.onerror({ status: 0, statusText: d.error });
       } else if (details.onload) {
         details.onload({
@@ -540,7 +562,8 @@ function donkeycodeInjectMain(payload) {
   let gmImpl;
   if (wantsGmXhr) {
     gmImpl = makeGmXmlHttpRequest(scriptId);
-    console.log(
+    dcPageLog(
+      "log",
       "[DonkeyCode:page] GM_xmlhttpRequest via closure (SES-safe)",
       scriptId,
       { wantsGmByMeta, wantsGmByCode, connects }
@@ -563,9 +586,10 @@ function donkeycodeInjectMain(payload) {
   try {
     const prefKeys = Object.keys(userPrefs);
     if (prefKeys.length > 0) {
-      console.log("[DonkeyCode:page] applying saved prefs", scriptId, userPrefs);
+      dcPageLog("log", "[DonkeyCode:page] applying saved prefs", scriptId, userPrefs);
     }
-    console.log(
+    dcPageLog(
+      "log",
       "[DonkeyCode:page] executing script",
       scriptId,
       wantsGmXhr ? "+GM_xmlhttpRequest" : ""
@@ -589,15 +613,12 @@ function donkeycodeInjectMain(payload) {
       } catch (e) {
         g.__myScriptCleanup = undefined;
       }
-      console.log("[DonkeyCode:page] registered __myScriptCleanup", scriptId);
+      dcPageLog("log", "[DonkeyCode:page] registered __myScriptCleanup", scriptId);
     } else {
-      console.log(
-        "[DonkeyCode:page] no __myScriptCleanup (optional)",
-        scriptId
-      );
+      dcPageLog("log", "[DonkeyCode:page] no __myScriptCleanup (optional)", scriptId);
     }
   } catch (e) {
-    console.error("[DonkeyCode:page] script error", scriptId, e);
+    dcPageLog("error", "[DonkeyCode:page] script error", scriptId, e);
   }
 }
 
@@ -605,16 +626,28 @@ function donkeycodeCleanupMain(scriptId) {
   const g = typeof window !== "undefined" ? window : globalThis;
   const key = "__donkeycodeCleanups";
   const cleanups = g[key];
+
+  function dcPageLog(level) {
+    var args = [];
+    for (var ai = 1; ai < arguments.length; ai++) args.push(arguments[ai]);
+    try {
+      g.postMessage(
+        { type: "DONKEYCODE_PAGE_LOG", scriptId: scriptId, level: level, parts: args },
+        "*"
+      );
+    } catch (e) {}
+  }
+
   if (cleanups && typeof cleanups[scriptId] === "function") {
     try {
-      console.log("[DonkeyCode:page] cleanup invoked", scriptId);
+      dcPageLog("log", "[DonkeyCode:page] cleanup invoked", scriptId);
       cleanups[scriptId]();
     } catch (e) {
-      console.warn("[DonkeyCode:page] cleanup failed", scriptId, e);
+      dcPageLog("warn", "[DonkeyCode:page] cleanup failed", scriptId, e);
     }
     delete cleanups[scriptId];
   } else {
-    console.log("[DonkeyCode:page] no cleanup to run", scriptId);
+    dcPageLog("log", "[DonkeyCode:page] no cleanup to run", scriptId);
   }
 }
 
@@ -3787,6 +3820,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         case "OPEN_SETTINGS_TAB": {
           const url = chrome.runtime.getURL("settings.html");
           await chrome.tabs.create({ url });
+          sendResponse({ ok: true });
+          break;
+        }
+        case "PAGE_LOG": {
+          const sid = (message.scriptId || "").trim();
+          const level = message.level === "warn" || message.level === "error" ? message.level : "log";
+          const parts = Array.isArray(message.parts) ? message.parts : [];
+          logFromInjectedPage(sid, level, parts);
           sendResponse({ ok: true });
           break;
         }
