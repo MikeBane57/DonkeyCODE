@@ -1,5 +1,202 @@
 {
   "version": 1,
-  "updatedAt": 1776467951618,
-  "sessions": {}
+  "updatedAt": 1776467987548,
+  "sessions": {
+    "main": {
+      "windows": [
+        {
+          "id": "w_0_mo3j6715",
+          "left": 3252,
+          "top": 0,
+          "width": 1695,
+          "height": 1279,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "Alerts 1",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/pathfinder",
+              "active": false,
+              "index": 1,
+              "pinned": false,
+              "title": "Pathfinder 1",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://wnco.sharepoint.com/sites/SWALife-NOC-Secure",
+              "active": false,
+              "index": 2,
+              "pinned": false,
+              "title": "Welcome to the NOC and NOP SharePoint",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://worknet.swa.smartairline.com/ArisWorkNet/trader.do",
+              "active": false,
+              "index": 3,
+              "pinned": false,
+              "title": "ARIS/WorkNet® bid and trade manager. Copyright 2003–2025 by Ascent Technology, Inc. All rights reserved.",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/go-metrics",
+              "active": false,
+              "index": 4,
+              "pinned": false,
+              "title": "Ops Suite",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/go-turns/DAL/20260417",
+              "active": false,
+              "index": 5,
+              "pinned": false,
+              "title": "Ops Suite",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/go-gates/DAL/20260417",
+              "active": false,
+              "index": 6,
+              "pinned": false,
+              "title": "Ops Suite",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/station-dashboard",
+              "active": false,
+              "index": 7,
+              "pinned": false,
+              "title": "Ops Suite",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/go-flight-audit",
+              "active": false,
+              "index": 8,
+              "pinned": false,
+              "title": "Ops Suite",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/acars-events",
+              "active": false,
+              "index": 9,
+              "pinned": false,
+              "title": "Ops Suite",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 0
+        },
+        {
+          "id": "w_1_mo3j6716",
+          "left": 498,
+          "top": 118,
+          "width": 2067,
+          "height": 1279,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/schedule",
+              "active": false,
+              "index": 0,
+              "pinned": false,
+              "title": "Schedule 1",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": false,
+              "index": 1,
+              "pinned": false,
+              "title": "Worksheet 1 for Fri, Apr 17",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": false,
+              "index": 2,
+              "pinned": false,
+              "title": "Worksheet 2 for Fri, Apr 17",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": false,
+              "index": 3,
+              "pinned": false,
+              "title": "Worksheet 3 for Fri, Apr 17",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": false,
+              "index": 4,
+              "pinned": false,
+              "title": "Worksheet 4 for Fri, Apr 17",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": false,
+              "index": 5,
+              "pinned": false,
+              "title": "Worksheet 5 for Fri, Apr 17",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/pax-connections/20260417-LAS-2257-WN-NULL",
+              "active": false,
+              "index": 6,
+              "pinned": false,
+              "title": "Ops Suite",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 7,
+              "pinned": false,
+              "title": "Worksheet 6 for Fri, Apr 17",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 1
+        },
+        {
+          "id": "w_2_mo3j6716",
+          "left": -1,
+          "top": 0,
+          "width": 516,
+          "height": 1399,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/ots",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "OTS List",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 2
+        }
+      ],
+      "_meta": {
+        "updatedAt": 1776467987320,
+        "worksheetStaggerMs": 800
+      }
+    }
+  }
 }
