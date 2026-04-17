@@ -1,5 +1,118 @@
 {
   "version": 1,
-  "updatedAt": 1776451373479,
-  "sessions": {}
+  "updatedAt": 1776451398681,
+  "sessions": {
+    "Dispatch": {
+      "windows": [
+        {
+          "id": "w_0_mo39amwk",
+          "left": -7,
+          "top": 0,
+          "width": 1736,
+          "height": 1274,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "Worksheet 1 for Fri, Apr 17",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/go-metrics",
+              "active": false,
+              "index": 1,
+              "pinned": false,
+              "title": "Ops Suite",
+              "zoomFactor": 1
+            },
+            {
+              "url": "http://155.178.172.205/ois/",
+              "active": false,
+              "index": 2,
+              "pinned": false,
+              "title": "OIS",
+              "zoomFactor": 1
+            },
+            {
+              "url": "http://155.178.172.205/sir/statements",
+              "active": false,
+              "index": 3,
+              "pinned": false,
+              "title": "System Impact Reports",
+              "zoomFactor": 1
+            },
+            {
+              "url": "http://155.178.172.205/fly/",
+              "active": false,
+              "index": 4,
+              "pinned": false,
+              "title": "Systems Operations Intranet",
+              "zoomFactor": 1
+            },
+            {
+              "url": "http://155.178.172.205/current_reroutes/",
+              "active": false,
+              "index": 5,
+              "pinned": false,
+              "title": "Current Reroutes",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://swawcc.aerodata.aero/",
+              "active": false,
+              "index": 6,
+              "pinned": false,
+              "title": "Wind Component Calculator",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://www.flightaware.com/analysis/route.rvt?origin=mci&destination=cun",
+              "active": false,
+              "index": 7,
+              "pinned": false,
+              "title": "IFR Route Analyzer ✈ Kansas City Intl - Cancun Int'l (KMCI-MMUN) - FlightAware",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://aviationweather.gov/gfa/#afd",
+              "active": false,
+              "index": 8,
+              "pinned": false,
+              "title": "GFA: Area Forecast Discussions - Aviation Weather Center",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 0
+        },
+        {
+          "id": "w_1_mo39amwk",
+          "left": 1715,
+          "top": 0,
+          "width": 2132,
+          "height": 1274,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://globalui.fpflightkeys.prod.aws.swacorp.com/5d-visual-angular/",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "5D Visual / SWA-DR",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 1
+        }
+      ],
+      "_meta": {
+        "updatedAt": 1776451398570,
+        "worksheetStaggerMs": 800
+      }
+    }
+  }
 }
