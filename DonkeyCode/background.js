@@ -857,7 +857,7 @@ async function loadScriptsFromRemote() {
     [STORAGE.LAST_FETCH]: Date.now(),
   });
 
-  forgetAllInjections();
+  await incrementalReloadScriptsAfterRemoteFetch(prev, next);
   log("scripts saved", next.length);
   updateInstallBadge().catch(() => {});
   return next;
@@ -1011,6 +1011,116 @@ async function cleanupScriptEverywhere(scriptId) {
     const set = tabInjectedScripts.get(t.id);
     if (set) set.delete(scriptId);
   }
+}
+
+/** Deterministic JSON-like string for comparing script inject payloads (key order stable for objects). */
+function stableStringify(value) {
+  if (value === null) return "null";
+  const t = typeof value;
+  if (t === "number" || t === "boolean") return JSON.stringify(value);
+  if (t === "string") return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    return "[" + value.map(stableStringify).join(",") + "]";
+  }
+  if (t === "object") {
+    const keys = Object.keys(value).sort();
+    return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify(value[k])).join(",") + "}";
+  }
+  return JSON.stringify(String(value));
+}
+
+/**
+ * Fingerprint of everything that affects MAIN-world injection for a script row.
+ * If unchanged, existing injections stay valid and we skip cleanup/resync for that script.
+ */
+function computeScriptInjectionKey(script) {
+  const o = {
+    enabled: script.enabled !== false,
+    code: script.code || "",
+    matches: script.matches || [],
+    excludes: script.excludes || [],
+    grants: script.grants || [],
+    connects: script.connects || [],
+    userPrefs: script.userPrefs && typeof script.userPrefs === "object" && !Array.isArray(script.userPrefs) ? script.userPrefs : {},
+    donkeycodePrefSchema:
+      script.donkeycodePrefSchema && typeof script.donkeycodePrefSchema === "object" && !Array.isArray(script.donkeycodePrefSchema)
+        ? script.donkeycodePrefSchema
+        : {},
+  };
+  return stableStringify(o);
+}
+
+/**
+ * Re-inject only for tabs that match at least one of the given script ids (after clearing those ids from the per-tab set).
+ * Skips tabs that would not run any of these scripts.
+ */
+async function resyncTabsForScriptIds(scriptIds) {
+  if (!scriptIds || scriptIds.length === 0) return;
+  const idSet = new Set(scriptIds);
+  const scripts = await getStoredScripts();
+  const byId = new Map(scripts.map((s) => [s.id, s]));
+  const tabs = await chrome.tabs.query({});
+  for (const t of tabs) {
+    if (!t.id || !t.url) continue;
+    if (!(await hasOriginAccessForUrl(t.url))) continue;
+    let anyMatch = false;
+    for (const sid of idSet) {
+      const sc = byId.get(sid);
+      if (!sc || !sc.enabled || !sc.code) continue;
+      if (scriptMatchesUrl(sc, t.url)) {
+        anyMatch = true;
+        break;
+      }
+    }
+    if (!anyMatch) continue;
+    for (const sid of idSet) {
+      const sc = byId.get(sid);
+      if (!sc || !sc.enabled || !sc.code) continue;
+      if (!scriptMatchesUrl(sc, t.url)) continue;
+      const set = tabInjectedScripts.get(t.id) || new Set();
+      if (set.has(sid)) set.delete(sid);
+    }
+    await syncTabScripts(t.id, t.url);
+  }
+}
+
+/**
+ * After fetching scripts from remote: only tear down + re-inject scripts that were removed or changed.
+ * Avoids re-running every user script on every tab when nothing (or little) changed.
+ */
+async function incrementalReloadScriptsAfterRemoteFetch(prev, next) {
+  const prevById = new Map(prev.map((s) => [s.id, s]));
+  const nextById = new Map(next.map((s) => [s.id, s]));
+  const removedIds = [];
+  for (const id of prevById.keys()) {
+    if (!nextById.has(id)) removedIds.push(id);
+  }
+  const changedIds = [];
+  for (const [id, s] of nextById) {
+    const p = prevById.get(id);
+    const newKey = computeScriptInjectionKey(s);
+    const oldKey = p ? computeScriptInjectionKey(p) : null;
+    if (oldKey !== newKey) changedIds.push(id);
+  }
+  if (removedIds.length === 0 && changedIds.length === 0) {
+    log("incremental script reload: no changes");
+    return;
+  }
+  for (const id of removedIds) {
+    await cleanupScriptEverywhere(id);
+  }
+  for (const id of changedIds) {
+    if (prevById.has(id)) {
+      await cleanupScriptEverywhere(id);
+    }
+  }
+  const toResync = changedIds.filter((id) => nextById.has(id));
+  await resyncTabsForScriptIds(toResync);
+  log("incremental script reload", {
+    removed: removedIds.length,
+    changed: changedIds.length,
+    resyncedIds: toResync.length,
+  });
 }
 
 async function toggleScript(scriptId, enabled) {
@@ -3310,7 +3420,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         case "REFRESH_SCRIPTS": {
           log("refresh scripts requested");
           const scripts = await loadScriptsFromRemote();
-          await resyncAllTabs();
           sendResponse({ ok: true, scripts });
           break;
         }
@@ -3392,7 +3501,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           await chrome.storage.sync.set({ [STORAGE.SCRIPT_SOURCE]: url });
           log("script source URL updated");
           const scripts = await loadScriptsFromRemote();
-          await resyncAllTabs();
           sendResponse({ ok: true, scripts });
           break;
         }
@@ -3405,7 +3513,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           await chrome.storage.sync.set({ [STORAGE.EXTRA_URLS]: lines });
           log("extra URLs updated", lines.length);
           const scripts = await loadScriptsFromRemote();
-          await resyncAllTabs();
           sendResponse({ ok: true, scripts });
           break;
         }
