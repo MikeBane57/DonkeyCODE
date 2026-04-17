@@ -6,11 +6,22 @@ body {
   margin: 0;
   padding: 12px;
   width: 420px;
-  max-height: 90vh;
-  overflow-y: auto;
+  min-height: min(720px, 92vh);
+  max-height: 92vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   font: 13px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   color: #1a1a1a;
   background: #f6f7f9;
+}
+
+.popup-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .header-row {
@@ -222,16 +233,23 @@ body {
   border: 1px solid #d8dde4;
   border-radius: 8px;
   padding: 12px;
-  min-height: 320px;
   box-sizing: border-box;
 }
 
-#panel-scripts.panel {
-  min-height: 380px;
+.popup-shell > .panel.active {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 #panel-report.panel {
-  min-height: 240px;
+  min-height: 0;
+}
+
+#panel-report.panel.active {
+  overflow-y: auto;
 }
 
 .panel.panel--compact {
@@ -563,6 +581,7 @@ button.folder-tree-rename:hover {
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .scripts-last-fetch--head {
@@ -799,24 +818,73 @@ button.danger:hover {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 220px;
+}
+
+/* Scroll only the saved-sessions block on Sessions tab */
+.session-saved-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.session-saved-scroll .section-title {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+#session-list.session-list--scroll {
+  flex: 1;
+  min-height: 72px;
   overflow-y: auto;
+  max-height: none;
 }
 
-#session-list {
-  min-height: 200px;
-  max-height: 220px;
+.session-saved-scroll #sessions-empty {
+  flex-shrink: 0;
+  margin-bottom: 0;
 }
 
-#script-list {
-  min-height: 260px;
-  max-height: min(58vh, 420px);
+/* Scripts tab: scroll only the script table area */
+#panel-scripts {
+  min-height: 0;
+}
+
+.script-list-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#script-list.script-list--scroll {
+  flex: 1;
+  min-height: 120px;
+  overflow-y: auto;
+  max-height: none;
+}
+
+.script-list-scroll #scripts-empty {
+  flex-shrink: 0;
 }
 
 .session-zoom-section {
   margin-top: 12px;
   padding-top: 10px;
   border-top: 1px solid #e0e4e8;
+  flex-shrink: 0;
+}
+
+#panel-sessions .login-first-bar,
+#panel-sessions .pending-banner,
+#panel-sessions .pending-actions,
+#panel-sessions .restore-hint,
+#panel-sessions .row,
+#panel-sessions .github-sync-row {
+  flex-shrink: 0;
 }
 
 .session-zoom-heading {

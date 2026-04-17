@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
+    <div class="popup-shell">
     <header class="header">
       <div class="header-row">
         <div class="header-brand">
@@ -100,9 +101,11 @@
           Get cloud layouts
         </button>
       </div>
-      <h2 class="section-title">Saved sessions</h2>
-      <ul id="session-list" class="list"></ul>
-      <p id="sessions-empty" class="hint hidden">No saved sessions in this folder yet.</p>
+      <div class="session-saved-scroll">
+        <h2 class="section-title">Saved sessions</h2>
+        <ul id="session-list" class="list session-list--scroll"></ul>
+        <p id="sessions-empty" class="hint hidden">No saved sessions in this folder yet.</p>
+      </div>
       <div class="session-zoom-section" role="group" aria-labelledby="session-zoom-heading">
         <h3 id="session-zoom-heading" class="session-zoom-heading">Session zoom</h3>
         <p class="hint session-zoom-hint">
@@ -138,8 +141,10 @@
           <button type="button" id="btn-refresh-scripts" class="scripts-head-btn scripts-refresh-btn">Refresh</button>
         </div>
       </div>
-      <ul id="script-list" class="list script-list"></ul>
-      <p id="scripts-empty" class="hint hidden">No scripts loaded. Open settings (gear) and refresh.</p>
+      <div class="script-list-scroll">
+        <ul id="script-list" class="list script-list script-list--scroll"></ul>
+        <p id="scripts-empty" class="hint hidden">No scripts loaded. Open settings (gear) and refresh.</p>
+      </div>
     </section>
 
     <section id="panel-report" class="panel panel--compact" role="tabpanel" hidden>
@@ -160,6 +165,7 @@
       </div>
       <p id="report-result" class="hint report-result hidden" role="status"></p>
     </section>
+    </div>
 
     <p id="status" class="status" role="status"></p>
 
