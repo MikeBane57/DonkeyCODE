@@ -2,12 +2,17 @@
   box-sizing: border-box;
 }
 
+/**
+ * Extension popups: avoid vh — Chrome can report a tiny viewport height here,
+ * so min(720px, 92vh) collapses the UI to a sliver. Use fixed px bounds; inner
+ * panels scroll where needed.
+ */
 body {
   margin: 0;
   padding: 12px;
   width: 420px;
-  min-height: min(720px, 92vh);
-  max-height: 92vh;
+  min-height: 520px;
+  max-height: 600px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -380,7 +385,8 @@ textarea.report-body {
 
 .folder-picker-modal {
   max-width: 420px;
-  width: calc(100vw - 32px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .folder-picker-head {
@@ -425,7 +431,7 @@ textarea.report-body {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: min(52vh, 320px);
+  max-height: 320px;
   overflow-y: auto;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
@@ -1050,11 +1056,12 @@ button.danger:hover {
 
 .script-prefs-modal {
   max-width: 420px;
-  width: calc(100vw - 32px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .script-prefs-fields {
-  max-height: min(50vh, 280px);
+  max-height: 280px;
   overflow-y: auto;
   margin: 8px 0 12px;
   padding: 2px 0;
@@ -1179,8 +1186,9 @@ button.danger:hover {
 
 .session-editor-modal {
   max-width: 440px;
-  width: calc(100vw - 24px);
-  max-height: min(92vh, 640px);
+  width: 100%;
+  box-sizing: border-box;
+  max-height: 520px;
   overflow-y: auto;
 }
 
@@ -1446,7 +1454,7 @@ button.btn-icon-launch {
   padding: 12px;
   width: 100%;
   max-width: 520px;
-  max-height: calc(90vh - 24px);
+  max-height: 540px;
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
