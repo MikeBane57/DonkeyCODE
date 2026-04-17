@@ -111,6 +111,14 @@ const OPTIONAL_ORIGIN_PATTERNS = ["http://*/*", "https://*/*"];
 
 const BRIDGE_CS_ID = "donkeycode-bridge";
 
+/** Serialize register/unregister so concurrent ensureHostAccessAndBridge() calls cannot double-register. */
+let bridgeContentScriptRegisterChain = Promise.resolve();
+
+function isDuplicateContentScriptIdError(e) {
+  const msg = String(e && e.message ? e.message : e);
+  return /duplicate script id/i.test(msg);
+}
+
 /** @type {Map<number, Set<string>>} */
 const tabInjectedScripts = new Map();
 
@@ -128,31 +136,52 @@ async function hasOptionalHostAccess() {
   return chrome.permissions.contains({ origins: OPTIONAL_ORIGIN_PATTERNS });
 }
 
-async function registerBridgeContentScripts() {
-  try {
-    await chrome.scripting.unregisterContentScripts({ ids: [BRIDGE_CS_ID] });
-  } catch (e) {
-    /* ignore */
-  }
-  await chrome.scripting.registerContentScripts([
-    {
-      id: BRIDGE_CS_ID,
-      matches: ["http://*/*", "https://*/*"],
-      js: ["bridge.js"],
-      runAt: "document_start",
-      allFrames: false,
-    },
-  ]);
-  log("registered bridge content script");
+function registerBridgeContentScripts() {
+  const run = async () => {
+    try {
+      await chrome.scripting.unregisterContentScripts({ ids: [BRIDGE_CS_ID] });
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      await chrome.scripting.registerContentScripts([
+        {
+          id: BRIDGE_CS_ID,
+          matches: ["http://*/*", "https://*/*"],
+          js: ["bridge.js"],
+          runAt: "document_start",
+          allFrames: false,
+        },
+      ]);
+    } catch (e) {
+      if (isDuplicateContentScriptIdError(e)) {
+        logWarn("bridge content script already registered (concurrent register; ignoring)");
+        return;
+      }
+      throw e;
+    }
+    log("registered bridge content script");
+  };
+
+  const p = bridgeContentScriptRegisterChain.then(run);
+  bridgeContentScriptRegisterChain = p.catch((e) => {
+    logError("registerBridgeContentScripts failed", e);
+  });
+  return p;
 }
 
-async function unregisterBridgeContentScripts() {
-  try {
-    await chrome.scripting.unregisterContentScripts({ ids: [BRIDGE_CS_ID] });
-    log("unregistered bridge content script");
-  } catch (e) {
-    /* ignore */
-  }
+function unregisterBridgeContentScripts() {
+  const run = async () => {
+    try {
+      await chrome.scripting.unregisterContentScripts({ ids: [BRIDGE_CS_ID] });
+      log("unregistered bridge content script");
+    } catch (e) {
+      /* ignore */
+    }
+  };
+  const p = bridgeContentScriptRegisterChain.then(run);
+  bridgeContentScriptRegisterChain = p.catch(() => {});
+  return p;
 }
 
 async function ensureHostAccessAndBridge() {
