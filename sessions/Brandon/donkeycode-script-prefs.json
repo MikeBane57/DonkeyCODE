@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "updatedAt": 1776451433782,
+  "updatedAt": 1776451566298,
   "scriptPrefs": {
     "dc_102c64bc": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {
         "goTurnHeight": 900,
         "goTurnLeft": 0,
@@ -25,7 +25,7 @@
     },
     "dc_28616e00": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {
         "flifoTabFavicon": "",
         "flifoTabTitleTemplate": "FLIFO · {base}"
@@ -33,7 +33,7 @@
     },
     "dc_2d81c5db": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {
         "airportMapProvider": "adsb",
         "flightTrackerProvider": "flightaware"
@@ -41,7 +41,7 @@
     },
     "dc_34006cf6": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {
         "githubBranch": "main",
         "githubOwner": "",
@@ -54,12 +54,12 @@
     },
     "dc_3985235e": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {}
     },
     "dc_5c1790aa": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {
         "rfColAc": true,
         "rfColArr": true,
@@ -76,7 +76,7 @@
     },
     "dc_64676088": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {
         "stationTabFaviconUrl": "",
         "stationTabTitleTemplate": "{station} · {base}"
@@ -84,7 +84,7 @@
     },
     "dc_67472316": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {
         "worksheetFaviconUrl": "",
         "worksheetTitleTemplate": "{num} · {base}"
@@ -92,7 +92,7 @@
     },
     "dc_79643f31": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {
         "crewTabFavicon": "",
         "crewTabTitleTemplate": "Crew · {base}"
@@ -100,7 +100,7 @@
     },
     "dc_903e4243": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {
         "opsDashOtpH": 300,
         "opsDashOtpHidden": false,
@@ -121,12 +121,12 @@
     },
     "dc_9f7b6198": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {}
     },
     "dc_a68d966f": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {
         "fimsTopClickersMaxNames": 0,
         "fimsTopClickersPersist": true,
@@ -135,7 +135,7 @@
     },
     "dc_c67ef143": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {
         "metarCacheMinutes": 5,
         "metarDebug": false,
@@ -153,8 +153,8 @@
       }
     },
     "dc_cb8b9238": {
-      "enabled": false,
-      "updatedAt": 1776451433686,
+      "enabled": true,
+      "updatedAt": 1776451566080,
       "prefs": {
         "midClickCustomUrlTemplate": "",
         "midClickLaunchCustom": false,
@@ -168,7 +168,7 @@
     },
     "dc_d1706601": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {
         "relatedFlightsTabFavicon": "",
         "relatedFlightsTabTitleTemplate": "Related flights · {base}"
@@ -176,42 +176,42 @@
     },
     "dc_d7a721c2": {
       "enabled": true,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {}
     },
     "dc_d8c3460e": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {}
     },
     "dc_ea14fe10": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {}
     },
     "dc_ea27a0d6": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {
         "otsTabFavicon": "",
         "otsTabTitleTemplate": "OTS {n} · {base}"
       }
     },
     "dc_f3578525": {
-      "enabled": false,
-      "updatedAt": 1776451433686,
+      "enabled": true,
+      "updatedAt": 1776451566080,
       "prefs": {
         "completedFlightOpacity": 0.4
       }
     },
     "dc_f5b6697b": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {}
     },
     "dc_fc54a9ff": {
       "enabled": false,
-      "updatedAt": 1776451433686,
+      "updatedAt": 1776451566080,
       "prefs": {
         "alertsTabFavicon": "",
         "alertsTabTitleTemplate": "Alerts {n} · {base}"
