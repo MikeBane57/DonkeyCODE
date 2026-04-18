@@ -1,7 +1,133 @@
 {
   "version": 1,
-  "updatedAt": 1776490131395,
+  "updatedAt": 1776490217214,
   "sessions": {
+    "Startup": {
+      "windows": [
+        {
+          "id": "w_0_mo3weo7y",
+          "left": -6,
+          "top": 0,
+          "width": 1550,
+          "height": 847,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "",
+              "active": false,
+              "index": 0,
+              "pinned": false
+            },
+            {
+              "url": "https://worknet.swa.smartairline.com/ArisWorkNet/login.do",
+              "active": false,
+              "index": 1,
+              "pinned": false,
+              "title": "ARIS/WorkNet® bid and trade manager. Copyright 2003–2025 by Ascent Technology, Inc. All rights reserved.",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/metrics",
+              "active": false,
+              "index": 2,
+              "pinned": false,
+              "title": "Ops Suite",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/go-flight-audit/20260417%7CPHX%7C4638%7CWN%7CNULL/departure-arrival",
+              "active": false,
+              "index": 3,
+              "pinned": false,
+              "title": "Ops Suite",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": true,
+              "index": 4,
+              "pinned": false,
+              "title": "Alerts 1",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://southwest.quickbase.com/nav/app/bqbzevcga/action/appoverview?from=myqb",
+              "active": false,
+              "index": 5,
+              "pinned": false,
+              "title": "NCP Event Tracking - NOC - NCP Dashboard",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://passenger-recovery.amadeus.com/paxrecovery/#/app/events/list",
+              "active": false,
+              "index": 6,
+              "pinned": false,
+              "title": "Amadeus Passenger Recovery",
+              "zoomFactor": 1
+            }
+          ]
+        },
+        {
+          "id": "w_1_mo3weo7y",
+          "left": 846,
+          "top": 390,
+          "width": 1553,
+          "height": 851,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://www.flightradar24.com/32.79,-96.80/6",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "Flightradar24: Live Flight Tracker - Real-Time Flight Tracker Map | Flightradar24",
+              "zoomFactor": 1
+            }
+          ]
+        },
+        {
+          "id": "w_2_mo3weo7y",
+          "left": 1530,
+          "top": 840,
+          "width": 1550,
+          "height": 847,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://nasstatus.faa.gov/",
+              "active": false,
+              "index": 0,
+              "pinned": false,
+              "title": "National Airspace System",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/ots",
+              "active": true,
+              "index": 1,
+              "pinned": false,
+              "title": "OTS List",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/pax-connections/20260417-ITO-2504-WN-NULL",
+              "active": false,
+              "index": 2,
+              "pinned": false,
+              "title": "Ops Suite",
+              "zoomFactor": 1
+            }
+          ]
+        }
+      ],
+      "_meta": {
+        "updatedAt": 1776490216990
+      }
+    },
     "test": {
       "windows": [
         {
