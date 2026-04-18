@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "updatedAt": 1776432229944,
+  "updatedAt": 1776538633609,
   "scriptPrefs": {
     "dc_102c64bc": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
         "goTurnHeight": 900,
         "goTurnLeft": 0,
@@ -25,7 +25,7 @@
     },
     "dc_2d81c5db": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
         "airportMapProvider": "adsb",
         "flightTrackerProvider": "flightaware"
@@ -33,7 +33,7 @@
     },
     "dc_34006cf6": {
       "enabled": false,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
         "githubBranch": "main",
         "githubOwner": "",
@@ -46,12 +46,12 @@
     },
     "dc_3985235e": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {}
     },
     "dc_5c1790aa": {
       "enabled": false,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
         "rfColAc": true,
         "rfColArr": true,
@@ -68,23 +68,23 @@
     },
     "dc_64676088": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
-        "stationTabFaviconUrl": "https://emojigraph.org/media/facebook/donkey_1facf.png",
-        "stationTabTitleTemplate": "{station}"
+        "stationTabFaviconUrl": "",
+        "stationTabTitleTemplate": "{station} · {base}"
       }
     },
     "dc_67472316": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
-        "worksheetFaviconUrl": "https://images.emojiterra.com/google/noto-emoji/unicode-17.0/color/svg/1f43a.svg",
-        "worksheetTitleTemplate": "WS {num}"
+        "worksheetFaviconUrl": "",
+        "worksheetTitleTemplate": "{num} · {base}"
       }
     },
     "dc_903e4243": {
       "enabled": false,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
         "opsDashOtpH": 300,
         "opsDashOtpHidden": false,
@@ -105,12 +105,12 @@
     },
     "dc_9f7b6198": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {}
     },
     "dc_a68d966f": {
       "enabled": false,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
         "fimsTopClickersMaxNames": 0,
         "fimsTopClickersPersist": true,
@@ -119,7 +119,7 @@
     },
     "dc_c67ef143": {
       "enabled": false,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
         "metarCacheMinutes": 5,
         "metarDebug": false,
@@ -138,83 +138,86 @@
     },
     "dc_cb8b9238": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
         "midClickCustomUrlTemplate": "",
         "midClickLaunchCustom": false,
         "midClickLaunchGoTurn": false,
         "midClickLaunchPax": true,
+        "midClickMonitorOffsetX": 0,
+        "midClickMonitorOffsetY": 0,
         "midClickMultiLayout": "horizontal",
         "midClickMultiMaxHeight": 720,
         "midClickMultiMaxWidth": 780,
-        "midClickOverlapTopTarget": "go_turn"
+        "midClickOverlapTopTarget": "go_turn",
+        "midClickWindowMode": "new"
       }
     },
     "dc_d7a721c2": {
       "enabled": false,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {}
     },
     "dc_d8c3460e": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {}
     },
     "dc_ea14fe10": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {}
     },
     "dc_f3578525": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
         "completedFlightOpacity": 0.4
       }
     },
     "dc_f5b6697b": {
       "enabled": false,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {}
     },
     "dc_28616e00": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
-        "flifoTabFavicon": "https://images.emojiterra.com/google/noto-emoji/unicode-17.0/color/svg/2708.svg",
-        "flifoTabTitleTemplate": "{base}"
+        "flifoTabFavicon": "",
+        "flifoTabTitleTemplate": "FLIFO · {base}"
       }
     },
     "dc_79643f31": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
-        "crewTabFavicon": "🧑‍✈️",
-        "crewTabTitleTemplate": "{base}"
+        "crewTabFavicon": "",
+        "crewTabTitleTemplate": "Crew · {base}"
       }
     },
     "dc_d1706601": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
-        "relatedFlightsTabFavicon": "https://emojis.slackmojis.com/emojis/images/1643514739/7437/southwest.png?1643514739",
-        "relatedFlightsTabTitleTemplate": "Related Flights"
+        "relatedFlightsTabFavicon": "",
+        "relatedFlightsTabTitleTemplate": "Related flights · {base}"
       }
     },
     "dc_ea27a0d6": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
-        "otsTabFavicon": "https://images.emojiterra.com/google/noto-emoji/unicode-17.0/color/svg/1f527.svg",
+        "otsTabFavicon": "",
         "otsTabTitleTemplate": "OTS {n} · {base}"
       }
     },
     "dc_fc54a9ff": {
       "enabled": true,
-      "updatedAt": 1776432229782,
+      "updatedAt": 1776538633404,
       "prefs": {
-        "alertsTabFavicon": "https://images.emojiterra.com/google/noto-emoji/unicode-17.0/color/svg/1f6a8.svg",
-        "alertsTabTitleTemplate": "Alerts {n}"
+        "alertsTabFavicon": "",
+        "alertsTabTitleTemplate": "Alerts {n} · {base}"
       }
     }
   }
