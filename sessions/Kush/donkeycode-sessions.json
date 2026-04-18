@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": 1776513935185,
+  "updatedAt": 1776513984786,
   "sessions": {
     "1": {
       "windows": [
@@ -313,6 +313,394 @@
       ],
       "_meta": {
         "updatedAt": 1775610051096,
+        "worksheetStaggerMs": 800
+      }
+    },
+    "2": {
+      "windows": [
+        {
+          "id": "w_0_mo4ajysf",
+          "left": 1905,
+          "top": 876,
+          "width": 1935,
+          "height": 1236,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://worknet.swa.smartairline.com/ArisWorkNet/calendar.do?doAction=navigation.menuItem.workerCalendar",
+              "active": false,
+              "index": 0,
+              "pinned": true,
+              "title": "ARIS/WorkNet® bid and trade manager. Copyright 2003–2025 by Ascent Technology, Inc. All rights reserved.",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://glance.evercharge.com/admin/site/A04LJ/info",
+              "active": false,
+              "index": 1,
+              "pinned": true,
+              "title": "Southwest Airlines (TOPS)",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://globalui.fpflightkeys.prod.aws.swacorp.com/5d-visual-angular/",
+              "active": false,
+              "index": 2,
+              "pinned": true,
+              "title": "5D Visual / SWA-DR",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://dispatchhangar.swacorp.com/#fl/",
+              "active": false,
+              "index": 3,
+              "pinned": true,
+              "title": "Hangar",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://wnco.sharepoint.com/sites/SWALife-NOC-Secure/SitePages/SOD-Main.aspx?source=https%3A%2F%2Fwnco.sharepoint.com%2Fsites%2FSWALife-NOC-Secure%2FSitePages%2FForms%2FAllPages.aspx&startedResponseCatch=true",
+              "active": false,
+              "index": 4,
+              "pinned": false,
+              "title": "SOD | Network Superintendents",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://cospa.wx.ll.mit.edu/",
+              "active": false,
+              "index": 5,
+              "pinned": false,
+              "title": "CoSPA Web Display",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://southwest.quickbase.com/nav/main/action/myqb",
+              "active": false,
+              "index": 6,
+              "pinned": false,
+              "title": "southwest.quickbase.com - Home",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/operational-dashboard",
+              "active": false,
+              "index": 7,
+              "pinned": false,
+              "title": "Operational-dashboard 1",
+              "zoomFactor": 1
+            },
+            {
+              "url": "http://155.178.64.61/itws_servlets/servlet/MapTop",
+              "active": false,
+              "index": 8,
+              "pinned": false,
+              "title": "ITWS - Map - Integrated Terminal Weather System",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://globe.adsbexchange.com/",
+              "active": true,
+              "index": 9,
+              "pinned": false,
+              "title": "ADS-B Exchange - track aircraft live",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 0
+        },
+        {
+          "id": "w_7_mo4ajysh",
+          "left": 3840,
+          "top": 6,
+          "width": 1605,
+          "height": 1004,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "1 · for Sat, Apr",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 1
+        },
+        {
+          "id": "w_2_mo4ajysh",
+          "left": 6598,
+          "top": 7,
+          "width": 1080,
+          "height": 1001,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://globalui.fpflightkeys.prod.aws.swacorp.com/auth/signIn?rd=https://globalui.fpflightkeys.prod.aws.swacorp.com%2F5d-visual-angular%2F",
+              "active": false,
+              "index": 0,
+              "pinned": true,
+              "title": "Flightkeys - Where efficiency takes off",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/schedule",
+              "active": true,
+              "index": 1,
+              "pinned": false,
+              "title": "ORD · Schedule 2",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/schedule",
+              "active": false,
+              "index": 2,
+              "pinned": false,
+              "title": "Schedule 3",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/schedule",
+              "active": false,
+              "index": 3,
+              "pinned": false,
+              "title": "Schedule 5",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/baker-scenario-view/baker/2025-12-09/e139891_1765309958912",
+              "active": false,
+              "index": 4,
+              "pinned": false,
+              "title": "Solution View",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/flifo",
+              "active": false,
+              "index": 5,
+              "pinned": false,
+              "title": "FLIFO · FLIFO: Flight Times Management",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 2
+        },
+        {
+          "id": "w_3_mo4ajysh",
+          "left": -225,
+          "top": 0,
+          "width": 984,
+          "height": 775,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://www.fly.faa.gov/ois/?legacy=true",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "OIS",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 3
+        },
+        {
+          "id": "w_4_mo4ajysh",
+          "left": 4,
+          "top": 644,
+          "width": 753,
+          "height": 982,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://southwest.quickbase.com/nav/app/bny4y93qb/table/buf7x88sk/action/td?skip=0",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "SOD Network Ops - List All",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 4
+        },
+        {
+          "id": "w_5_mo4ajysh",
+          "left": 6043,
+          "top": 996,
+          "width": 632,
+          "height": 1116,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/ots",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "OTS List",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 5
+        },
+        {
+          "id": "w_6_mo4ajysh",
+          "left": 6648,
+          "top": 997,
+          "width": 1032,
+          "height": 1115,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "Alerts 2",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/alerts",
+              "active": false,
+              "index": 1,
+              "pinned": false,
+              "title": "Crew",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 6
+        },
+        {
+          "id": "w_1_mo4ajysg",
+          "left": 3840,
+          "top": 996,
+          "width": 2263,
+          "height": 1116,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "2 · for Sat, Apr",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/related-flights?dark=true&windowId=202651c2-b592-45fc-9879-edca1c84eadd&windowState=true&groupId=0367a187-cb81-424e-b673-f5bd86ecf8fb",
+              "active": false,
+              "index": 1,
+              "pinned": false,
+              "title": "Related flights · Related-flights 2",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": false,
+              "index": 2,
+              "pinned": false,
+              "title": "3 · for Sat, Apr",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/related-flights?dark=true&windowId=3da18214-1800-4d76-bfdf-ce81f371cd56&windowState=true&groupId=8cb84439-410d-4643-bd90-c37219e61806",
+              "active": false,
+              "index": 3,
+              "pinned": false,
+              "title": "Related flights · Related-flights 3",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/widgets/worksheet?dark=true",
+              "active": false,
+              "index": 4,
+              "pinned": false,
+              "title": "4 · for Sat, Apr",
+              "zoomFactor": 1
+            },
+            {
+              "url": "https://opssuitemain.swacorp.com/schedule",
+              "active": false,
+              "index": 5,
+              "pinned": false,
+              "title": "MDW · Schedule 1",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 7
+        },
+        {
+          "id": "w_8_mo4ajysh",
+          "left": 1621,
+          "top": 5,
+          "width": 1324,
+          "height": 879,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://outlook.office.com/mail/AAMkADM5MzE4ZjgxLWM0YzAtNDYwMC04ZGE0LTE3YmJkMDAxYzU4NgAuAAAAAACO%2Fe0%2FrbNzQoblbpb6X1vYAQBDdOf1MLgCToRrEu8EzrRAAAXU24pLAAA%3D/id/AAQkADM5MzE4ZjgxLWM0YzAtNDYwMC04ZGE0LTE3YmJkMDAxYzU4NgAQAGg%2BjzmkvEsVnSMEAe9lW9Y%3D",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "aaa SOD schedule - Kush Patel - Outlook",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 8
+        },
+        {
+          "id": "w_9_mo4ajysh",
+          "left": 2929,
+          "top": 5,
+          "width": 911,
+          "height": 881,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://teams.microsoft.com/v2/",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "Chat | NOC Operational Chat | Microsoft Teams",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 9
+        },
+        {
+          "id": "w_10_mo4ajysh",
+          "left": 5429,
+          "top": 2,
+          "width": 1186,
+          "height": 557,
+          "state": "normal",
+          "focused": false,
+          "tabs": [
+            {
+              "url": "https://www.earthcam.com/usa/illinois/chicago/midwayairport/?cam=midwayairport",
+              "active": true,
+              "index": 0,
+              "pinned": false,
+              "title": "earthcam.com/usa/illinois/chicago/midwayairport/?cam=midwayairport",
+              "zoomFactor": 1
+            }
+          ],
+          "restoreOrder": 10
+        }
+      ],
+      "_meta": {
+        "updatedAt": 1776513984536,
         "worksheetStaggerMs": 800
       }
     }
