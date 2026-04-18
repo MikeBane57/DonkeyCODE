@@ -1075,6 +1075,36 @@ async function cleanupScriptEverywhere(scriptId) {
   }
 }
 
+/**
+ * Like cleanupScriptEverywhere but only hits http(s) tabs where this script matches the URL
+ * or we still track an injection for that tab — avoids hundreds of no-op executeScript calls
+ * when saving prefs / toggling scripts with many tabs open.
+ */
+async function cleanupScriptOnMatchingTabs(scriptId) {
+  const scripts = await getStoredScripts();
+  const script = scripts.find((s) => s.id === scriptId);
+  if (!script) return;
+  const tabs = await chrome.tabs.query({});
+  for (const t of tabs) {
+    if (!t.id || !t.url) continue;
+    const set = tabInjectedScripts.get(t.id);
+    const tracked = set && set.has(scriptId);
+    const matched = (await hasOriginAccessForUrl(t.url)) && scriptMatchesUrl(script, t.url);
+    if (!tracked && !matched) continue;
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: t.id, allFrames: false },
+        world: "MAIN",
+        func: donkeycodeCleanupMain,
+        args: [scriptId],
+      });
+    } catch (e) {
+      logWarn("cleanup failed for tab", t.id, e);
+    }
+    if (set) set.delete(scriptId);
+  }
+}
+
 /** Deterministic JSON-like string for comparing script inject payloads (key order stable for objects). */
 function stableStringify(value) {
   if (value === null) return "null";
@@ -1208,10 +1238,10 @@ async function toggleScript(scriptId, enabled) {
   log("toggle script", scriptId, enabled);
 
   if (!enabled) {
-    await cleanupScriptEverywhere(scriptId);
+    await cleanupScriptOnMatchingTabs(scriptId);
   } else {
     forgetScriptEverywhere(scriptId);
-    await resyncAllTabs();
+    await resyncTabsForScriptIds([scriptId]);
   }
   updateInstallBadge().catch(() => {});
 }
@@ -3550,11 +3580,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             prefs: Object.assign({}, prevP, merged),
           };
           await setScriptPrefsMapForFolder(fk, map);
-          /** Tear down in-page listeners/state so re-inject picks up new prefs (forget alone skips re-run). */
-          await cleanupScriptEverywhere(scriptId);
-          await resyncAllTabs();
-          updateInstallBadge().catch(() => {});
-          sendResponse({ ok: true, scripts: await getStoredScripts() });
+          const nextScripts = await getStoredScripts();
+          sendResponse({ ok: true, scripts: nextScripts });
+          /** Re-inject only this script on matching tabs; defer so the popup is not blocked. */
+          void (async () => {
+            try {
+              await cleanupScriptOnMatchingTabs(scriptId);
+              await resyncTabsForScriptIds([scriptId]);
+            } catch (e) {
+              logError("SET_SCRIPT_USER_PREFS re-inject", e);
+            }
+            updateInstallBadge().catch(() => {});
+          })();
           break;
         }
         case "SET_SCRIPT_SOURCE_URL": {
