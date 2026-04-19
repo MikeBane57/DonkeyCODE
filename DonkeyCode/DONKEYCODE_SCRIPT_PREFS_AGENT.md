@@ -100,7 +100,7 @@ Semantics:
 
 - `donkeycodeGetPref("key")` returns the **saved** value for the active session folder (merged with schema), or the schema **`default`**, or `undefined` if neither exists.
 
-**Debug:** After saving prefs and reloading the page, the browser console may log `[DonkeyCode:page] applying saved prefs` with the script id and object when non-empty prefs are injected.
+**Debug:** After saving prefs and reloading the page, the **extension** service worker console (not the site page console) may log `[DonkeyCode:page] applying saved prefs` with the script id and object when non-empty prefs are injected.
 
 ## What is possible / not possible
 

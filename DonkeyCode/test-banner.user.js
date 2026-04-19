@@ -10,8 +10,6 @@
 (function () {
   "use strict";
 
-  console.log("[DonkeyCode:test-banner] script running on", window.location.href);
-
   var el = document.createElement("div");
   el.textContent = "DonkeyCode test banner (remove via popup toggle)";
   el.setAttribute("data-donkeycode-test-banner", "1");
@@ -23,7 +21,6 @@
   document.documentElement.appendChild(el);
 
   __myScriptCleanup = function () {
-    console.log("[DonkeyCode:test-banner] cleanup on", window.location.href);
     if (el && el.parentNode) {
       el.parentNode.removeChild(el);
     }

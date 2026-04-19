@@ -83,6 +83,11 @@ function switchTab(name) {
   $("panel-sessions").classList.toggle("active", name === "sessions");
   $("panel-scripts").classList.toggle("active", name === "scripts");
   if (pr) pr.classList.toggle("active", name === "report");
+  if (name === "report") {
+    loadOpenIssuesForReport().catch(function () {
+      /* status line in panel */
+    });
+  }
 }
 
 /** Display INC as a 7-digit zero-padded code (GitHub issue #42 → 0000042). */
@@ -96,6 +101,7 @@ function formatIncCode(issueNumber) {
 function updateReportPanel(state) {
   const btn = $("btn-submit-report");
   const lead = document.querySelector(".report-lead");
+  const openWrap = $("report-open-issues-wrap");
   if (!btn) return;
   const hasGh =
     state &&
@@ -113,11 +119,68 @@ function updateReportPanel(state) {
   } else if (lead) {
     lead.classList.remove("report-lead--warn");
   }
+  if (openWrap) {
+    openWrap.classList.toggle("hidden", !hasGh);
+  }
+}
+
+/**
+ * Load open GitHub issues for the Report tab (requires configured repo + token).
+ */
+async function loadOpenIssuesForReport() {
+  const wrap = $("report-open-issues-wrap");
+  const listEl = $("report-open-issues-list");
+  const statusEl = $("report-open-issues-status");
+  if (!wrap || !listEl) return;
+  if (wrap.classList.contains("hidden")) return;
+  if (statusEl) {
+    statusEl.classList.remove("hidden");
+    statusEl.textContent = "Loading open issues…";
+  }
+  listEl.innerHTML = "";
+  try {
+    const res = await send("LIST_GITHUB_OPEN_ISSUES", { maxItems: 20 });
+    const loadErr = res && res.loadError ? String(res.loadError).trim() : "";
+    if (loadErr) {
+      if (statusEl) {
+        statusEl.classList.remove("hidden");
+        statusEl.textContent = loadErr;
+      }
+      listEl.innerHTML =
+        '<li><p class="report-open-issues-empty">Could not load open issues. Your token may need permission to read issues.</p></li>';
+      return;
+    }
+    const issues = Array.isArray(res.issues) ? res.issues : [];
+    if (statusEl) statusEl.classList.add("hidden");
+    if (issues.length === 0) {
+      listEl.innerHTML = '<li><p class="report-open-issues-empty">No open issues in this repo.</p></li>';
+      return;
+    }
+    for (const it of issues) {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.href = it.htmlUrl || "#";
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = "#" + it.number + " — " + (it.title || "(no title)");
+      li.appendChild(a);
+      listEl.appendChild(li);
+    }
+  } catch (e) {
+    console.error("[DonkeyCode:popup] open issues", e);
+    if (statusEl) {
+      statusEl.classList.remove("hidden");
+      statusEl.textContent = String(e.message || e);
+    }
+    listEl.innerHTML =
+      '<li><p class="report-open-issues-empty">Could not load open issues.</p></li>';
+  }
 }
 
 async function submitIssueReport() {
   const titleEl = $("report-title");
   const bodyEl = $("report-body");
+  const reporterEl = $("report-reporter");
   const out = $("report-result");
   const title = titleEl ? titleEl.value.trim() : "";
   if (!title) {
@@ -125,12 +188,14 @@ async function submitIssueReport() {
     return;
   }
   const body = bodyEl ? bodyEl.value.trim() : "";
+  const reporterName = reporterEl ? reporterEl.value.trim() : "";
   setStatus("Submitting report…");
   try {
     const res = await send("REPORT_GITHUB_ISSUE", {
       title,
       body,
       labels: [],
+      reporterName,
     });
     const num = res.issueNumber;
     const incDisp = formatIncCode(num);
@@ -161,6 +226,7 @@ async function submitIssueReport() {
     setStatus("Report filed: INC #" + incDisp + ".");
     if (titleEl) titleEl.value = "";
     if (bodyEl) bodyEl.value = "";
+    loadOpenIssuesForReport().catch(function () {});
   } catch (e) {
     console.error("[DonkeyCode:popup] report issue", e);
     const msg = String(e.message || e);

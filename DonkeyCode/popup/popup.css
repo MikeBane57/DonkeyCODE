@@ -2,12 +2,17 @@
   box-sizing: border-box;
 }
 
+/**
+ * Extension popups: avoid vh — Chrome can report a tiny viewport height here,
+ * so min(720px, 92vh) collapses the UI to a sliver. Use fixed px bounds; inner
+ * panels scroll where needed.
+ */
 body {
   margin: 0;
   padding: 12px;
   width: 420px;
-  min-height: min(720px, 92vh);
-  max-height: 92vh;
+  min-height: 520px;
+  max-height: 600px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -250,6 +255,10 @@ body {
 
 #panel-report.panel.active {
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
 }
 
 .panel.panel--compact {
@@ -303,6 +312,72 @@ textarea.report-body {
 
 .report-result a {
   color: #0d47a1;
+}
+
+.report-open-issues-wrap {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e0e4e8;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.report-open-issues-wrap.hidden {
+  display: none !important;
+}
+
+.report-open-issues-title {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #37474f;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.report-open-issues-status {
+  margin: 0 0 6px;
+  font-size: 11px;
+}
+
+.report-open-issues-status.hidden {
+  display: none !important;
+}
+
+.report-open-issues-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-height: 80px;
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 11px;
+}
+
+.report-open-issues-list li {
+  margin: 0 0 6px;
+  padding: 0;
+  line-height: 1.35;
+}
+
+.report-open-issues-list a {
+  color: #0d47a1;
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.report-open-issues-list a:hover {
+  text-decoration: underline;
+}
+
+.report-open-issues-empty {
+  margin: 0;
+  color: #78909c;
+  font-size: 11px;
 }
 
 .panel[hidden] {
@@ -380,7 +455,8 @@ textarea.report-body {
 
 .folder-picker-modal {
   max-width: 420px;
-  width: calc(100vw - 32px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .folder-picker-head {
@@ -425,7 +501,7 @@ textarea.report-body {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: min(52vh, 320px);
+  max-height: 320px;
   overflow-y: auto;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
@@ -714,6 +790,13 @@ button.folder-tree-rename:hover {
   color: #333;
 }
 
+.row--session-name .session-name-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 6px;
+}
+
 input[type="text"],
 input[type="url"],
 textarea {
@@ -820,9 +903,13 @@ button.danger:hover {
   padding: 0;
 }
 
-/* Scroll only the saved-sessions block on Sessions tab */
+/* Sessions tab: only .session-saved-scroll / #session-list scrolls */
+#panel-sessions.panel {
+  min-height: 0;
+}
+
 .session-saved-scroll {
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -876,6 +963,9 @@ button.danger:hover {
   padding-top: 10px;
   border-top: 1px solid #e0e4e8;
   flex-shrink: 0;
+  width: 100%;
+  align-self: stretch;
+  box-sizing: border-box;
 }
 
 #panel-sessions .login-first-bar,
@@ -888,29 +978,30 @@ button.danger:hover {
 }
 
 .session-zoom-heading {
-  margin: 0 0 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #37474f;
-}
-
-.session-zoom-hint {
   margin: 0 0 8px;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #37474f;
 }
 
 .session-zoom-toggle {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   cursor: pointer;
   font-size: 12px;
   color: #333;
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-.session-zoom-toggle input {
-  margin-top: 2px;
-  flex-shrink: 0;
+.session-zoom-toggle .session-zoom-toggle-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.35;
 }
 
 .list li {
@@ -944,9 +1035,9 @@ button.danger:hover {
 
 .script-section-heading--scripts {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) minmax(52px, 4.5em) 32px;
+  grid-template-columns: 34px minmax(0, 1fr) max-content max-content;
   align-items: end;
-  gap: 6px;
+  gap: 6px 10px;
   padding: 4px 4px 6px;
   box-sizing: border-box;
 }
@@ -969,8 +1060,7 @@ button.danger:hover {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   padding: 0 0 1px;
-  width: 100%;
-  min-width: 0;
+  white-space: nowrap;
 }
 
 .script-col-prefs {
@@ -982,14 +1072,14 @@ button.danger:hover {
   letter-spacing: 0.03em;
   color: #78909c;
   padding-bottom: 1px;
-  width: 100%;
+  white-space: nowrap;
 }
 
 .script-list li.script-row {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) minmax(52px, 4.5em) 32px;
+  grid-template-columns: 34px minmax(0, 1fr) max-content max-content;
   align-items: start;
-  gap: 6px;
+  gap: 6px 10px;
   padding-top: 6px;
   padding-bottom: 6px;
 }
@@ -1013,12 +1103,11 @@ button.danger:hover {
   justify-self: end;
   align-self: start;
   text-align: right;
-  width: 100%;
+  max-width: 7.5rem;
   box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0;
 }
 
 .btn-script-prefs {
@@ -1050,11 +1139,12 @@ button.danger:hover {
 
 .script-prefs-modal {
   max-width: 420px;
-  width: calc(100vw - 32px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .script-prefs-fields {
-  max-height: min(50vh, 280px);
+  max-height: 280px;
   overflow-y: auto;
   margin: 8px 0 12px;
   padding: 2px 0;
@@ -1179,8 +1269,9 @@ button.danger:hover {
 
 .session-editor-modal {
   max-width: 440px;
-  width: calc(100vw - 24px);
-  max-height: min(92vh, 640px);
+  width: 100%;
+  box-sizing: border-box;
+  max-height: 520px;
   overflow-y: auto;
 }
 
@@ -1446,7 +1537,7 @@ button.btn-icon-launch {
   padding: 12px;
   width: 100%;
   max-width: 520px;
-  max-height: calc(90vh - 24px);
+  max-height: 540px;
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);

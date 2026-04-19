@@ -83,11 +83,11 @@
 
       <p class="hint restore-hint restore-hint--top">
         <strong>Login First</strong> opens two side-by-side windows (opssuite + swalife). Sign in, then click
-        <strong>Continue: open saved session</strong> to launch your saved layout. Use the header <strong>folder</strong> control to pick a session folder, or the <strong>gear</strong> for scripts and GitHub settings.
+        <strong>Continue: open saved session</strong> to launch your saved layout.
       </p>
 
-      <div class="row">
-        <label for="session-name">Session name</label>
+      <div class="row row--session-name">
+        <label for="session-name" class="session-name-label">Session name</label>
         <input id="session-name" type="text" placeholder="e.g. Morning ops" autocomplete="off" />
       </div>
       <div class="btn-row github-sync-row github-sync-row--inline">
@@ -107,13 +107,11 @@
         <p id="sessions-empty" class="hint hidden">No saved sessions in this folder yet.</p>
       </div>
       <div class="session-zoom-section" role="group" aria-labelledby="session-zoom-heading">
-        <h3 id="session-zoom-heading" class="session-zoom-heading">Session zoom</h3>
-        <p class="hint session-zoom-hint">
-          When on, DonkeyCode sets <strong>per-tab</strong> zoom (like the “Zoom Per Tab” extension) so Ctrl+/wheel only affects the active tab; saved layouts store and restore each tab’s zoom.
-        </p>
-        <label class="session-zoom-toggle">
+        <h3 id="session-zoom-heading" class="session-zoom-heading">ZOOM per TAB</h3>
+        <label class="toggle toggle--sm session-zoom-toggle" title="Save and restore zoom per tab">
           <input type="checkbox" id="chk-session-save-zoom" checked />
-          <span>Save and restore zoom per tab</span>
+          <span class="toggle-slider" aria-hidden="true"></span>
+          <span class="session-zoom-toggle-label">Save and restore zoom per tab</span>
         </label>
       </div>
     </section>
@@ -153,6 +151,16 @@
         Creates a <strong>GitHub Issue</strong> in your configured repo. <strong>INC</strong> shows the issue number zero-padded to 7 digits (same as GitHub #). Requires token <strong>Issues</strong> permission.
       </p>
       <div class="row row--compact">
+        <label for="report-reporter">Your name</label>
+        <input
+          id="report-reporter"
+          type="text"
+          placeholder="Optional — shown on the GitHub issue"
+          maxlength="120"
+          autocomplete="name"
+        />
+      </div>
+      <div class="row row--compact">
         <label for="report-title">Title</label>
         <input id="report-title" type="text" placeholder="Short summary" maxlength="240" autocomplete="off" />
       </div>
@@ -164,6 +172,11 @@
         <button type="button" id="btn-submit-report" class="primary btn-report-submit">Submit</button>
       </div>
       <p id="report-result" class="hint report-result hidden" role="status"></p>
+      <div id="report-open-issues-wrap" class="report-open-issues-wrap hidden">
+        <h3 class="report-open-issues-title">Open issues</h3>
+        <p id="report-open-issues-status" class="hint report-open-issues-status hidden" role="status"></p>
+        <ul id="report-open-issues-list" class="report-open-issues-list" aria-label="Open GitHub issues"></ul>
+      </div>
     </section>
     </div>
 

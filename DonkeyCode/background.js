@@ -111,6 +111,14 @@ const OPTIONAL_ORIGIN_PATTERNS = ["http://*/*", "https://*/*"];
 
 const BRIDGE_CS_ID = "donkeycode-bridge";
 
+/** Serialize register/unregister so concurrent ensureHostAccessAndBridge() calls cannot double-register. */
+let bridgeContentScriptRegisterChain = Promise.resolve();
+
+function isDuplicateContentScriptIdError(e) {
+  const msg = String(e && e.message ? e.message : e);
+  return /duplicate script id/i.test(msg);
+}
+
 /** @type {Map<number, Set<string>>} */
 const tabInjectedScripts = new Map();
 
@@ -128,31 +136,52 @@ async function hasOptionalHostAccess() {
   return chrome.permissions.contains({ origins: OPTIONAL_ORIGIN_PATTERNS });
 }
 
-async function registerBridgeContentScripts() {
-  try {
-    await chrome.scripting.unregisterContentScripts({ ids: [BRIDGE_CS_ID] });
-  } catch (e) {
-    /* ignore */
-  }
-  await chrome.scripting.registerContentScripts([
-    {
-      id: BRIDGE_CS_ID,
-      matches: ["http://*/*", "https://*/*"],
-      js: ["bridge.js"],
-      runAt: "document_start",
-      allFrames: false,
-    },
-  ]);
-  log("registered bridge content script");
+function registerBridgeContentScripts() {
+  const run = async () => {
+    try {
+      await chrome.scripting.unregisterContentScripts({ ids: [BRIDGE_CS_ID] });
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      await chrome.scripting.registerContentScripts([
+        {
+          id: BRIDGE_CS_ID,
+          matches: ["http://*/*", "https://*/*"],
+          js: ["bridge.js"],
+          runAt: "document_start",
+          allFrames: false,
+        },
+      ]);
+    } catch (e) {
+      if (isDuplicateContentScriptIdError(e)) {
+        logWarn("bridge content script already registered (concurrent register; ignoring)");
+        return;
+      }
+      throw e;
+    }
+    log("registered bridge content script");
+  };
+
+  const p = bridgeContentScriptRegisterChain.then(run);
+  bridgeContentScriptRegisterChain = p.catch((e) => {
+    logError("registerBridgeContentScripts failed", e);
+  });
+  return p;
 }
 
-async function unregisterBridgeContentScripts() {
-  try {
-    await chrome.scripting.unregisterContentScripts({ ids: [BRIDGE_CS_ID] });
-    log("unregistered bridge content script");
-  } catch (e) {
-    /* ignore */
-  }
+function unregisterBridgeContentScripts() {
+  const run = async () => {
+    try {
+      await chrome.scripting.unregisterContentScripts({ ids: [BRIDGE_CS_ID] });
+      log("unregistered bridge content script");
+    } catch (e) {
+      /* ignore */
+    }
+  };
+  const p = bridgeContentScriptRegisterChain.then(run);
+  bridgeContentScriptRegisterChain = p.catch(() => {});
+  return p;
 }
 
 async function ensureHostAccessAndBridge() {
@@ -214,6 +243,16 @@ function logWarn(...args) {
 
 function logError(...args) {
   console.error(LOG_PREFIX, ...args);
+}
+
+/** Logs from MAIN-world injection (routed via bridge); keeps site DevTools clean. */
+function logFromInjectedPage(scriptId, level, parts) {
+  const sid = (scriptId || "").trim();
+  const prefix = sid ? `[page ${sid}]` : "[page]";
+  const p = Array.isArray(parts) ? parts : [];
+  if (level === "error") console.error(LOG_PREFIX, prefix, ...p);
+  else if (level === "warn") console.warn(LOG_PREFIX, prefix, ...p);
+  else console.log(LOG_PREFIX, prefix, ...p);
 }
 
 /**
@@ -459,12 +498,24 @@ function donkeycodeInjectMain(payload) {
   const key = "__donkeycodeCleanups";
   if (!g[key]) g[key] = Object.create(null);
   const cleanups = g[key];
+
+  function dcPageLog(level) {
+    var args = [];
+    for (var ai = 1; ai < arguments.length; ai++) args.push(arguments[ai]);
+    try {
+      g.postMessage(
+        { type: "DONKEYCODE_PAGE_LOG", scriptId: scriptId, level: level, parts: args },
+        "*"
+      );
+    } catch (e) {}
+  }
+
   if (cleanups[scriptId]) {
     try {
-      console.log("[DonkeyCode:page] cleaning up before re-inject", scriptId);
+      dcPageLog("log", "[DonkeyCode:page] cleaning up before re-inject", scriptId);
       cleanups[scriptId]();
     } catch (e) {
-      console.warn("[DonkeyCode:page] cleanup error before inject", scriptId, e);
+      dcPageLog("warn", "[DonkeyCode:page] cleanup error before inject", scriptId, e);
     }
     delete cleanups[scriptId];
   }
@@ -483,7 +534,7 @@ function donkeycodeInjectMain(payload) {
       if (!rec) return;
       const details = rec.details;
       if (d.error) {
-        console.warn("[DonkeyCode:page] GM_xmlhttpRequest error", d.error);
+        dcPageLog("warn", "[DonkeyCode:page] GM_xmlhttpRequest error", d.error);
         if (details.onerror) details.onerror({ status: 0, statusText: d.error });
       } else if (details.onload) {
         details.onload({
@@ -540,7 +591,8 @@ function donkeycodeInjectMain(payload) {
   let gmImpl;
   if (wantsGmXhr) {
     gmImpl = makeGmXmlHttpRequest(scriptId);
-    console.log(
+    dcPageLog(
+      "log",
       "[DonkeyCode:page] GM_xmlhttpRequest via closure (SES-safe)",
       scriptId,
       { wantsGmByMeta, wantsGmByCode, connects }
@@ -563,9 +615,10 @@ function donkeycodeInjectMain(payload) {
   try {
     const prefKeys = Object.keys(userPrefs);
     if (prefKeys.length > 0) {
-      console.log("[DonkeyCode:page] applying saved prefs", scriptId, userPrefs);
+      dcPageLog("log", "[DonkeyCode:page] applying saved prefs", scriptId, userPrefs);
     }
-    console.log(
+    dcPageLog(
+      "log",
       "[DonkeyCode:page] executing script",
       scriptId,
       wantsGmXhr ? "+GM_xmlhttpRequest" : ""
@@ -589,15 +642,12 @@ function donkeycodeInjectMain(payload) {
       } catch (e) {
         g.__myScriptCleanup = undefined;
       }
-      console.log("[DonkeyCode:page] registered __myScriptCleanup", scriptId);
+      dcPageLog("log", "[DonkeyCode:page] registered __myScriptCleanup", scriptId);
     } else {
-      console.log(
-        "[DonkeyCode:page] no __myScriptCleanup (optional)",
-        scriptId
-      );
+      dcPageLog("log", "[DonkeyCode:page] no __myScriptCleanup (optional)", scriptId);
     }
   } catch (e) {
-    console.error("[DonkeyCode:page] script error", scriptId, e);
+    dcPageLog("error", "[DonkeyCode:page] script error", scriptId, e);
   }
 }
 
@@ -605,16 +655,28 @@ function donkeycodeCleanupMain(scriptId) {
   const g = typeof window !== "undefined" ? window : globalThis;
   const key = "__donkeycodeCleanups";
   const cleanups = g[key];
+
+  function dcPageLog(level) {
+    var args = [];
+    for (var ai = 1; ai < arguments.length; ai++) args.push(arguments[ai]);
+    try {
+      g.postMessage(
+        { type: "DONKEYCODE_PAGE_LOG", scriptId: scriptId, level: level, parts: args },
+        "*"
+      );
+    } catch (e) {}
+  }
+
   if (cleanups && typeof cleanups[scriptId] === "function") {
     try {
-      console.log("[DonkeyCode:page] cleanup invoked", scriptId);
+      dcPageLog("log", "[DonkeyCode:page] cleanup invoked", scriptId);
       cleanups[scriptId]();
     } catch (e) {
-      console.warn("[DonkeyCode:page] cleanup failed", scriptId, e);
+      dcPageLog("warn", "[DonkeyCode:page] cleanup failed", scriptId, e);
     }
     delete cleanups[scriptId];
   } else {
-    console.log("[DonkeyCode:page] no cleanup to run", scriptId);
+    dcPageLog("log", "[DonkeyCode:page] no cleanup to run", scriptId);
   }
 }
 
@@ -857,7 +919,7 @@ async function loadScriptsFromRemote() {
     [STORAGE.LAST_FETCH]: Date.now(),
   });
 
-  forgetAllInjections();
+  await incrementalReloadScriptsAfterRemoteFetch(prev, next);
   log("scripts saved", next.length);
   updateInstallBadge().catch(() => {});
   return next;
@@ -1013,6 +1075,146 @@ async function cleanupScriptEverywhere(scriptId) {
   }
 }
 
+/**
+ * Like cleanupScriptEverywhere but only hits http(s) tabs where this script matches the URL
+ * or we still track an injection for that tab — avoids hundreds of no-op executeScript calls
+ * when saving prefs / toggling scripts with many tabs open.
+ */
+async function cleanupScriptOnMatchingTabs(scriptId) {
+  const scripts = await getStoredScripts();
+  const script = scripts.find((s) => s.id === scriptId);
+  if (!script) return;
+  const tabs = await chrome.tabs.query({});
+  for (const t of tabs) {
+    if (!t.id || !t.url) continue;
+    const set = tabInjectedScripts.get(t.id);
+    const tracked = set && set.has(scriptId);
+    const matched = (await hasOriginAccessForUrl(t.url)) && scriptMatchesUrl(script, t.url);
+    if (!tracked && !matched) continue;
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: t.id, allFrames: false },
+        world: "MAIN",
+        func: donkeycodeCleanupMain,
+        args: [scriptId],
+      });
+    } catch (e) {
+      logWarn("cleanup failed for tab", t.id, e);
+    }
+    if (set) set.delete(scriptId);
+  }
+}
+
+/** Deterministic JSON-like string for comparing script inject payloads (key order stable for objects). */
+function stableStringify(value) {
+  if (value === null) return "null";
+  const t = typeof value;
+  if (t === "number" || t === "boolean") return JSON.stringify(value);
+  if (t === "string") return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    return "[" + value.map(stableStringify).join(",") + "]";
+  }
+  if (t === "object") {
+    const keys = Object.keys(value).sort();
+    return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify(value[k])).join(",") + "}";
+  }
+  return JSON.stringify(String(value));
+}
+
+/**
+ * Fingerprint of everything that affects MAIN-world injection for a script row.
+ * If unchanged, existing injections stay valid and we skip cleanup/resync for that script.
+ */
+function computeScriptInjectionKey(script) {
+  const o = {
+    enabled: script.enabled !== false,
+    code: script.code || "",
+    matches: script.matches || [],
+    excludes: script.excludes || [],
+    grants: script.grants || [],
+    connects: script.connects || [],
+    userPrefs: script.userPrefs && typeof script.userPrefs === "object" && !Array.isArray(script.userPrefs) ? script.userPrefs : {},
+    donkeycodePrefSchema:
+      script.donkeycodePrefSchema && typeof script.donkeycodePrefSchema === "object" && !Array.isArray(script.donkeycodePrefSchema)
+        ? script.donkeycodePrefSchema
+        : {},
+  };
+  return stableStringify(o);
+}
+
+/**
+ * Re-inject only for tabs that match at least one of the given script ids (after clearing those ids from the per-tab set).
+ * Skips tabs that would not run any of these scripts.
+ */
+async function resyncTabsForScriptIds(scriptIds) {
+  if (!scriptIds || scriptIds.length === 0) return;
+  const idSet = new Set(scriptIds);
+  const scripts = await getStoredScripts();
+  const byId = new Map(scripts.map((s) => [s.id, s]));
+  const tabs = await chrome.tabs.query({});
+  for (const t of tabs) {
+    if (!t.id || !t.url) continue;
+    if (!(await hasOriginAccessForUrl(t.url))) continue;
+    let anyMatch = false;
+    for (const sid of idSet) {
+      const sc = byId.get(sid);
+      if (!sc || !sc.enabled || !sc.code) continue;
+      if (scriptMatchesUrl(sc, t.url)) {
+        anyMatch = true;
+        break;
+      }
+    }
+    if (!anyMatch) continue;
+    for (const sid of idSet) {
+      const sc = byId.get(sid);
+      if (!sc || !sc.enabled || !sc.code) continue;
+      if (!scriptMatchesUrl(sc, t.url)) continue;
+      const set = tabInjectedScripts.get(t.id) || new Set();
+      if (set.has(sid)) set.delete(sid);
+    }
+    await syncTabScripts(t.id, t.url);
+  }
+}
+
+/**
+ * After fetching scripts from remote: only tear down + re-inject scripts that were removed or changed.
+ * Avoids re-running every user script on every tab when nothing (or little) changed.
+ */
+async function incrementalReloadScriptsAfterRemoteFetch(prev, next) {
+  const prevById = new Map(prev.map((s) => [s.id, s]));
+  const nextById = new Map(next.map((s) => [s.id, s]));
+  const removedIds = [];
+  for (const id of prevById.keys()) {
+    if (!nextById.has(id)) removedIds.push(id);
+  }
+  const changedIds = [];
+  for (const [id, s] of nextById) {
+    const p = prevById.get(id);
+    const newKey = computeScriptInjectionKey(s);
+    const oldKey = p ? computeScriptInjectionKey(p) : null;
+    if (oldKey !== newKey) changedIds.push(id);
+  }
+  if (removedIds.length === 0 && changedIds.length === 0) {
+    log("incremental script reload: no changes");
+    return;
+  }
+  for (const id of removedIds) {
+    await cleanupScriptEverywhere(id);
+  }
+  for (const id of changedIds) {
+    if (prevById.has(id)) {
+      await cleanupScriptEverywhere(id);
+    }
+  }
+  const toResync = changedIds.filter((id) => nextById.has(id));
+  await resyncTabsForScriptIds(toResync);
+  log("incremental script reload", {
+    removed: removedIds.length,
+    changed: changedIds.length,
+    resyncedIds: toResync.length,
+  });
+}
+
 async function toggleScript(scriptId, enabled) {
   const scripts = await getStoredScripts();
   const idx = scripts.findIndex((s) => s.id === scriptId);
@@ -1036,10 +1238,10 @@ async function toggleScript(scriptId, enabled) {
   log("toggle script", scriptId, enabled);
 
   if (!enabled) {
-    await cleanupScriptEverywhere(scriptId);
+    await cleanupScriptOnMatchingTabs(scriptId);
   } else {
     forgetScriptEverywhere(scriptId);
-    await resyncAllTabs();
+    await resyncTabsForScriptIds([scriptId]);
   }
   updateInstallBadge().catch(() => {});
 }
@@ -1793,10 +1995,44 @@ async function getGithubSettings() {
 }
 
 /**
+ * List open issues (excludes pull requests) for the configured repo.
+ * PAT needs read access to issues (e.g. classic `repo` or `public_repo`, or fine-grained Issues read).
+ */
+async function fetchGithubOpenIssues(maxItems) {
+  const gh = await getGithubSettings();
+  if (!gh.token || !gh.owner || !gh.repo) {
+    throw new Error("Configure GitHub owner, repo, and token.");
+  }
+  const perPage = Math.min(Math.max(Number(maxItems) || 20, 1), 30);
+  const apiPath =
+    "/repos/" +
+    encodeURIComponent(gh.owner) +
+    "/" +
+    encodeURIComponent(gh.repo) +
+    "/issues?state=open&per_page=" +
+    perPage +
+    "&sort=updated&direction=desc";
+  const json = await githubApiRequest(apiPath, { method: "GET" }, gh.token);
+  if (!Array.isArray(json)) return [];
+  return json
+    .filter(function (it) {
+      return it && !it.pull_request;
+    })
+    .map(function (it) {
+      return {
+        number: it.number,
+        title: it.title || "",
+        htmlUrl: it.html_url || "",
+        updatedAt: it.updated_at || "",
+      };
+    });
+}
+
+/**
  * Create a GitHub Issue in the configured repo. The returned issue **number** is the INC reference.
  * PAT must include the `issues` scope (classic) or Issues write (fine-grained).
  */
-async function createGithubIssueReport(title, body, labelNames) {
+async function createGithubIssueReport(title, body, labelNames, reporterName) {
   const gh = await getGithubSettings();
   if (!gh.token || !gh.owner || !gh.repo) {
     throw new Error("Configure GitHub owner, repo, and token in Settings to report issues.");
@@ -1804,11 +2040,18 @@ async function createGithubIssueReport(title, body, labelNames) {
   const t = (title || "").trim();
   if (!t) throw new Error("Title is required");
   const b = (body || "").trim();
+  const reporter = (reporterName || "").trim();
+  const footer =
+    "\n\n---\n" +
+    (reporter ? "**Reporter:** " + reporter + "\n" : "") +
+    "_Report submitted from DonkeyCode._";
+  let bodyText = b ? b + footer : "(no description provided)" + footer;
+  if (bodyText.length > 65530) {
+    bodyText = bodyText.slice(0, 65500) + "…" + footer;
+  }
   const payload = {
     title: t.length > 240 ? t.slice(0, 237) + "…" : t,
-    body:
-      b ||
-      "(no description provided)\n\n---\n_Report submitted from DonkeyCode._",
+    body: bodyText,
   };
   const labels = Array.isArray(labelNames)
     ? labelNames.map((x) => String(x || "").trim()).filter(Boolean)
@@ -3088,12 +3331,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           const title = (message.title || "").trim();
           const body = (message.body || "").trim();
           const labels = Array.isArray(message.labels) ? message.labels : [];
-          const result = await createGithubIssueReport(title, body, labels);
+          const reporterName = (message.reporterName || "").trim();
+          const result = await createGithubIssueReport(title, body, labels, reporterName);
           sendResponse({
             ok: true,
             issueNumber: result.number,
             issueUrl: result.htmlUrl,
           });
+          break;
+        }
+        case "LIST_GITHUB_OPEN_ISSUES": {
+          try {
+            const max = message.maxItems != null ? Number(message.maxItems) : 20;
+            const issues = await fetchGithubOpenIssues(max);
+            sendResponse({ ok: true, issues, loadError: "" });
+          } catch (e) {
+            sendResponse({
+              ok: true,
+              issues: [],
+              loadError: String(e && e.message ? e.message : e),
+            });
+          }
           break;
         }
         case "REQUEST_HOST_ACCESS": {
@@ -3310,7 +3568,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         case "REFRESH_SCRIPTS": {
           log("refresh scripts requested");
           const scripts = await loadScriptsFromRemote();
-          await resyncAllTabs();
           sendResponse({ ok: true, scripts });
           break;
         }
@@ -3379,11 +3636,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             prefs: Object.assign({}, prevP, merged),
           };
           await setScriptPrefsMapForFolder(fk, map);
-          /** Tear down in-page listeners/state so re-inject picks up new prefs (forget alone skips re-run). */
-          await cleanupScriptEverywhere(scriptId);
-          await resyncAllTabs();
-          updateInstallBadge().catch(() => {});
-          sendResponse({ ok: true, scripts: await getStoredScripts() });
+          const nextScripts = await getStoredScripts();
+          sendResponse({ ok: true, scripts: nextScripts });
+          /** Re-inject only this script on matching tabs; defer so the popup is not blocked. */
+          void (async () => {
+            try {
+              await cleanupScriptOnMatchingTabs(scriptId);
+              await resyncTabsForScriptIds([scriptId]);
+            } catch (e) {
+              logError("SET_SCRIPT_USER_PREFS re-inject", e);
+            }
+            updateInstallBadge().catch(() => {});
+          })();
           break;
         }
         case "SET_SCRIPT_SOURCE_URL": {
@@ -3392,7 +3656,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           await chrome.storage.sync.set({ [STORAGE.SCRIPT_SOURCE]: url });
           log("script source URL updated");
           const scripts = await loadScriptsFromRemote();
-          await resyncAllTabs();
           sendResponse({ ok: true, scripts });
           break;
         }
@@ -3405,7 +3668,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           await chrome.storage.sync.set({ [STORAGE.EXTRA_URLS]: lines });
           log("extra URLs updated", lines.length);
           const scripts = await loadScriptsFromRemote();
-          await resyncAllTabs();
           sendResponse({ ok: true, scripts });
           break;
         }
@@ -3680,6 +3942,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         case "OPEN_SETTINGS_TAB": {
           const url = chrome.runtime.getURL("settings.html");
           await chrome.tabs.create({ url });
+          sendResponse({ ok: true });
+          break;
+        }
+        case "PAGE_LOG": {
+          const sid = (message.scriptId || "").trim();
+          const level = message.level === "warn" || message.level === "error" ? message.level : "log";
+          const parts = Array.isArray(message.parts) ? message.parts : [];
+          logFromInjectedPage(sid, level, parts);
           sendResponse({ ok: true });
           break;
         }
