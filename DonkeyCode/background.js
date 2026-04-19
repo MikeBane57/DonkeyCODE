@@ -1995,10 +1995,44 @@ async function getGithubSettings() {
 }
 
 /**
+ * List open issues (excludes pull requests) for the configured repo.
+ * PAT needs read access to issues (e.g. classic `repo` or `public_repo`, or fine-grained Issues read).
+ */
+async function fetchGithubOpenIssues(maxItems) {
+  const gh = await getGithubSettings();
+  if (!gh.token || !gh.owner || !gh.repo) {
+    throw new Error("Configure GitHub owner, repo, and token.");
+  }
+  const perPage = Math.min(Math.max(Number(maxItems) || 20, 1), 30);
+  const apiPath =
+    "/repos/" +
+    encodeURIComponent(gh.owner) +
+    "/" +
+    encodeURIComponent(gh.repo) +
+    "/issues?state=open&per_page=" +
+    perPage +
+    "&sort=updated&direction=desc";
+  const json = await githubApiRequest(apiPath, { method: "GET" }, gh.token);
+  if (!Array.isArray(json)) return [];
+  return json
+    .filter(function (it) {
+      return it && !it.pull_request;
+    })
+    .map(function (it) {
+      return {
+        number: it.number,
+        title: it.title || "",
+        htmlUrl: it.html_url || "",
+        updatedAt: it.updated_at || "",
+      };
+    });
+}
+
+/**
  * Create a GitHub Issue in the configured repo. The returned issue **number** is the INC reference.
  * PAT must include the `issues` scope (classic) or Issues write (fine-grained).
  */
-async function createGithubIssueReport(title, body, labelNames) {
+async function createGithubIssueReport(title, body, labelNames, reporterName) {
   const gh = await getGithubSettings();
   if (!gh.token || !gh.owner || !gh.repo) {
     throw new Error("Configure GitHub owner, repo, and token in Settings to report issues.");
@@ -2006,11 +2040,18 @@ async function createGithubIssueReport(title, body, labelNames) {
   const t = (title || "").trim();
   if (!t) throw new Error("Title is required");
   const b = (body || "").trim();
+  const reporter = (reporterName || "").trim();
+  const footer =
+    "\n\n---\n" +
+    (reporter ? "**Reporter:** " + reporter + "\n" : "") +
+    "_Report submitted from DonkeyCode._";
+  let bodyText = b ? b + footer : "(no description provided)" + footer;
+  if (bodyText.length > 65530) {
+    bodyText = bodyText.slice(0, 65500) + "…" + footer;
+  }
   const payload = {
     title: t.length > 240 ? t.slice(0, 237) + "…" : t,
-    body:
-      b ||
-      "(no description provided)\n\n---\n_Report submitted from DonkeyCode._",
+    body: bodyText,
   };
   const labels = Array.isArray(labelNames)
     ? labelNames.map((x) => String(x || "").trim()).filter(Boolean)
@@ -3290,12 +3331,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           const title = (message.title || "").trim();
           const body = (message.body || "").trim();
           const labels = Array.isArray(message.labels) ? message.labels : [];
-          const result = await createGithubIssueReport(title, body, labels);
+          const reporterName = (message.reporterName || "").trim();
+          const result = await createGithubIssueReport(title, body, labels, reporterName);
           sendResponse({
             ok: true,
             issueNumber: result.number,
             issueUrl: result.htmlUrl,
           });
+          break;
+        }
+        case "LIST_GITHUB_OPEN_ISSUES": {
+          try {
+            const max = message.maxItems != null ? Number(message.maxItems) : 20;
+            const issues = await fetchGithubOpenIssues(max);
+            sendResponse({ ok: true, issues, loadError: "" });
+          } catch (e) {
+            sendResponse({
+              ok: true,
+              issues: [],
+              loadError: String(e && e.message ? e.message : e),
+            });
+          }
           break;
         }
         case "REQUEST_HOST_ACCESS": {

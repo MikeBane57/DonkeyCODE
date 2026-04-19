@@ -151,6 +151,16 @@
         Creates a <strong>GitHub Issue</strong> in your configured repo. <strong>INC</strong> shows the issue number zero-padded to 7 digits (same as GitHub #). Requires token <strong>Issues</strong> permission.
       </p>
       <div class="row row--compact">
+        <label for="report-reporter">Your name</label>
+        <input
+          id="report-reporter"
+          type="text"
+          placeholder="Optional — shown on the GitHub issue"
+          maxlength="120"
+          autocomplete="name"
+        />
+      </div>
+      <div class="row row--compact">
         <label for="report-title">Title</label>
         <input id="report-title" type="text" placeholder="Short summary" maxlength="240" autocomplete="off" />
       </div>
@@ -162,6 +172,11 @@
         <button type="button" id="btn-submit-report" class="primary btn-report-submit">Submit</button>
       </div>
       <p id="report-result" class="hint report-result hidden" role="status"></p>
+      <div id="report-open-issues-wrap" class="report-open-issues-wrap hidden">
+        <h3 class="report-open-issues-title">Open issues</h3>
+        <p id="report-open-issues-status" class="hint report-open-issues-status hidden" role="status"></p>
+        <ul id="report-open-issues-list" class="report-open-issues-list" aria-label="Open GitHub issues"></ul>
+      </div>
     </section>
     </div>
 
