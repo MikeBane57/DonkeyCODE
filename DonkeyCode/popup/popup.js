@@ -1493,8 +1493,8 @@ function renderScripts(scripts) {
 
     li.appendChild(toggleLabel);
     li.appendChild(labelSpan);
-    li.appendChild(verSpan);
     li.appendChild(prefsBtn);
+    li.appendChild(verSpan);
     ul.appendChild(li);
   }
 
@@ -1504,8 +1504,8 @@ function renderScripts(scripts) {
     head.innerHTML =
       '<span class="script-col-toggle" aria-hidden="true"></span>' +
       '<span class="script-col-name">Script</span>' +
-      '<span class="script-col-ver">Ver</span>' +
-      '<span class="script-col-prefs" title="Scripts with @donkeycode-pref in the header">Pref</span>';
+      '<span class="script-col-prefs" title="Scripts with @donkeycode-pref in the header">Pref</span>' +
+      '<span class="script-col-ver">Ver</span>';
     ul.appendChild(head);
   }
 

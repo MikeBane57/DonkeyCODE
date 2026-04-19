@@ -11,8 +11,8 @@ body {
   margin: 0;
   padding: 12px;
   width: 420px;
-  min-height: 520px;
-  max-height: 600px;
+  min-height: 1200px;
+  max-height: 1200px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -720,6 +720,13 @@ button.folder-tree-rename:hover {
   color: #333;
 }
 
+.row--session-name .session-name-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 6px;
+}
+
 input[type="text"],
 input[type="url"],
 textarea {
@@ -894,29 +901,27 @@ button.danger:hover {
 }
 
 .session-zoom-heading {
-  margin: 0 0 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #37474f;
-}
-
-.session-zoom-hint {
   margin: 0 0 8px;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #37474f;
 }
 
 .session-zoom-toggle {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   cursor: pointer;
   font-size: 12px;
   color: #333;
+  margin: 0;
 }
 
-.session-zoom-toggle input {
-  margin-top: 2px;
-  flex-shrink: 0;
+.session-zoom-toggle .session-zoom-toggle-label {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
 }
 
 .list li {
@@ -950,9 +955,9 @@ button.danger:hover {
 
 .script-section-heading--scripts {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) minmax(52px, 4.5em) 32px;
+  grid-template-columns: 34px minmax(0, 1fr) max-content max-content;
   align-items: end;
-  gap: 6px;
+  gap: 6px 10px;
   padding: 4px 4px 6px;
   box-sizing: border-box;
 }
@@ -975,8 +980,7 @@ button.danger:hover {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   padding: 0 0 1px;
-  width: 100%;
-  min-width: 0;
+  white-space: nowrap;
 }
 
 .script-col-prefs {
@@ -988,14 +992,14 @@ button.danger:hover {
   letter-spacing: 0.03em;
   color: #78909c;
   padding-bottom: 1px;
-  width: 100%;
+  white-space: nowrap;
 }
 
 .script-list li.script-row {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) minmax(52px, 4.5em) 32px;
+  grid-template-columns: 34px minmax(0, 1fr) max-content max-content;
   align-items: start;
-  gap: 6px;
+  gap: 6px 10px;
   padding-top: 6px;
   padding-bottom: 6px;
 }
@@ -1019,12 +1023,11 @@ button.danger:hover {
   justify-self: end;
   align-self: start;
   text-align: right;
-  width: 100%;
+  max-width: 7.5rem;
   box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0;
 }
 
 .btn-script-prefs {
